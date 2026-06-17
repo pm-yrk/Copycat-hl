@@ -1,0 +1,70 @@
+# Render blueprint template. Review before production use.
+services:
+  - type: web
+    name: hwt-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: PUBLIC_SITE_URL
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
+      - key: NANSEN_API_KEY
+        sync: false
+
+  - type: web
+    name: hwt-frontend
+    runtime: docker
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: .
+    envVars:
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
+      - key: NEXT_PUBLIC_API_BASE_URL
+        sync: false
+
+  - type: cron
+    name: hwt-collector-15m
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    schedule: "*/15 * * * *"
+    dockerCommand: "python -m app.jobs.collect_once"
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
+
+  - type: cron
+    name: hwt-daily-refresh-midnight
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    schedule: "0 0 * * *"
+    dockerCommand: "python -m app.jobs.daily_refresh"
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: NANSEN_API_KEY
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
