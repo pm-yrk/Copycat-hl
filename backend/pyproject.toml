@@ -1,0 +1,5 @@
+[project]
+name = "hyper-wallet-tracker-saas-backend"
+version = "0.1.0"
+description = "Production SaaS backend for Hyper Wallet Tracker"
+requires-python = ">=3.11"
