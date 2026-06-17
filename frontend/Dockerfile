@@ -1,7 +1,14 @@
-FROM node:22-slim
+FROM node:20-bookworm-slim
 WORKDIR /app
+
+# Keep installs deterministic and avoid noisy npm audit/funding/update checks in Render builds.
+ENV NPM_CONFIG_AUDIT=false \
+    NPM_CONFIG_FUND=false \
+    NPM_CONFIG_UPDATE_NOTIFIER=false
+
 COPY frontend/package*.json ./
-RUN npm install
+RUN if [ -f package-lock.json ]; then npm ci --no-audit --no-fund; else npm install --no-audit --no-fund --legacy-peer-deps; fi
+
 COPY frontend ./
 
 # Safe build-time placeholders. Real values are read at runtime through
