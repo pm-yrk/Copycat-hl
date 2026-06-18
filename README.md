@@ -1,8 +1,3 @@
-# copycat.hl force frontend Dockerfile fix
+# copycat.hl no-lock npm fix
 
-This patch adds the same fixed frontend Dockerfile at BOTH:
-
-- `Dockerfile` at the repo root
-- `frontend/Dockerfile`
-
-This removes ambiguity if Render is accidentally building from the repo-root Dockerfile instead of `frontend/Dockerfile`.
+This patch changes both Dockerfiles to copy only `frontend/package.json` before `npm install`, avoiding Render's npm/package-lock failure. It also checks that `next` actually installed before build.
