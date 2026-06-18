@@ -60,17 +60,19 @@ def summary(user: dict = Depends(require_active_subscription)):
         ) or {'tracked_total': 0, 'signal_open_total': 0, 'signal_positions': 0, 'assets': 0}
         snapshot_rollup = fetch_one(
             """
-            SELECT COALESCE(sum(account_value_usd),0) AS tracked_total, count(DISTINCT wallet) AS wallets
-            FROM wallet_snapshots
-            WHERE ts_ms=:ts
+            SELECT COALESCE(sum(ws.account_value_usd),0) AS tracked_total, count(DISTINCT ws.wallet) AS wallets
+            FROM wallet_snapshots ws
+            JOIN qualified_wallets q ON q.wallet=ws.wallet AND q.status='active'
+            WHERE ws.ts_ms=:ts
             """,
             {'ts': stable_ts},
         ) or {'tracked_total': 0, 'wallets': 0}
         position_rollup = fetch_one(
             """
-            SELECT COALESCE(sum(position_value_usd),0) AS open_total, count(*) AS positions
-            FROM positions
-            WHERE ts_ms=:ts
+            SELECT COALESCE(sum(p.position_value_usd),0) AS open_total, count(*) AS positions
+            FROM positions p
+            JOIN qualified_wallets q ON q.wallet=p.wallet AND q.status='active'
+            WHERE p.ts_ms=:ts
             """,
             {'ts': stable_ts},
         ) or {'open_total': 0, 'positions': 0}
@@ -97,8 +99,10 @@ def summary(user: dict = Depends(require_active_subscription)):
         open_value = fetch_one(
             """
             WITH latest_ts AS (SELECT max(ts_ms) ts_ms FROM positions)
-            SELECT COALESCE(sum(position_value_usd),0) AS total, count(*) AS positions
-            FROM positions WHERE ts_ms=(SELECT ts_ms FROM latest_ts)
+            SELECT COALESCE(sum(p.position_value_usd),0) AS total, count(*) AS positions
+            FROM positions p
+            JOIN qualified_wallets q ON q.wallet=p.wallet AND q.status='active'
+            WHERE p.ts_ms=(SELECT ts_ms FROM latest_ts)
             """
         ) or {'total': 0, 'positions': 0}
         assets = {'n': 0}
@@ -135,15 +139,19 @@ def data_health(user: dict = Depends(require_active_subscription)):
         ) or signal_rollup
         positions_at_signal = fetch_one(
             """
-            SELECT COALESCE(sum(position_value_usd),0) AS open_total, count(*) AS open_positions
-            FROM positions WHERE ts_ms=:ts
+            SELECT COALESCE(sum(p.position_value_usd),0) AS open_total, count(*) AS open_positions
+            FROM positions p
+            JOIN qualified_wallets q ON q.wallet=p.wallet AND q.status='active'
+            WHERE p.ts_ms=:ts
             """, {'ts': ts}
         ) or positions_at_signal
     latest_positions = fetch_one(
         """
         WITH latest_ts AS (SELECT max(ts_ms) ts_ms FROM positions)
-        SELECT COALESCE(sum(position_value_usd),0) AS open_total, count(*) AS open_positions
-        FROM positions WHERE ts_ms=(SELECT ts_ms FROM latest_ts)
+        SELECT COALESCE(sum(p.position_value_usd),0) AS open_total, count(*) AS open_positions
+        FROM positions p
+        JOIN qualified_wallets q ON q.wallet=p.wallet AND q.status='active'
+        WHERE p.ts_ms=(SELECT ts_ms FROM latest_ts)
         """
     ) or latest_positions
     latest_run = fetch_one('SELECT * FROM collector_runs ORDER BY ts_ms DESC LIMIT 1') or {}
@@ -334,18 +342,22 @@ def audit(live: bool = False, full: bool = False, max_wallets: int = 10, user: d
         ) or signal_rollup
         snapshot_rollup = fetch_one(
             """
-            SELECT COALESCE(sum(account_value_usd),0) AS tracked_total, count(DISTINCT wallet) AS wallets
-            FROM wallet_snapshots WHERE ts_ms=:ts
+            SELECT COALESCE(sum(ws.account_value_usd),0) AS tracked_total, count(DISTINCT ws.wallet) AS wallets
+            FROM wallet_snapshots ws
+            JOIN qualified_wallets q ON q.wallet=ws.wallet AND q.status='active'
+            WHERE ws.ts_ms=:ts
             """,
             {'ts': ts},
         ) or snapshot_rollup
         position_rollup = fetch_one(
             """
-            SELECT COALESCE(sum(position_value_usd),0) AS open_total,
+            SELECT COALESCE(sum(p.position_value_usd),0) AS open_total,
                    count(*) AS positions,
-                   count(DISTINCT coin) AS coins,
-                   count(DISTINCT wallet) AS wallets
-            FROM positions WHERE ts_ms=:ts
+                   count(DISTINCT p.coin) AS coins,
+                   count(DISTINCT p.wallet) AS wallets
+            FROM positions p
+            JOIN qualified_wallets q ON q.wallet=p.wallet AND q.status='active'
+            WHERE p.ts_ms=:ts
             """,
             {'ts': ts},
         ) or position_rollup
@@ -392,7 +404,9 @@ def audit(live: bool = False, full: bool = False, max_wallets: int = 10, user: d
                      COALESCE(sum(position_value_usd) FILTER (WHERE lower(side)='short'),0) AS pos_short,
                      count(*) FILTER (WHERE lower(side)='long') AS pos_wallets_long,
                      count(*) FILTER (WHERE lower(side)='short') AS pos_wallets_short
-              FROM positions WHERE ts_ms=:ts GROUP BY coin
+              FROM positions p
+              JOIN qualified_wallets q ON q.wallet=p.wallet AND q.status='active'
+              WHERE p.ts_ms=:ts GROUP BY p.coin
             )
             SELECT s.coin, s.value_long_usd AS signal_long, s.value_short_usd AS signal_short,
                    s.wallets_long AS signal_wallets_long, s.wallets_short AS signal_wallets_short,

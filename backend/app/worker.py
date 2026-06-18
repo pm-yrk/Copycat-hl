@@ -330,18 +330,64 @@ def collect_once() -> dict[str, Any]:
     return {'wallets_ok': ok, 'errors': errors[:5], 'positions': len(position_rows), 'signals': len(signals)}
 
 def latest_snapshot_maps(conn, target_ts: int | None = None):
+    # IMPORTANT: signal calculations must only use the current active 50-wallet
+    # cohort. Older wallet snapshots from previous cohorts can remain in the DB;
+    # using DISTINCT across the whole table would leak stale wallets into
+    # total_tracked_value_usd and make the dashboard/audit inconsistent.
     if target_ts is None:
-        snaps = conn.execute(text('''SELECT DISTINCT ON (wallet) wallet, account_value_usd FROM wallet_snapshots ORDER BY wallet, ts_ms DESC''')).mappings().all()
+        snaps = conn.execute(text('''
+            SELECT q.wallet, COALESCE(s.account_value_usd,0) AS account_value_usd
+            FROM qualified_wallets q
+            LEFT JOIN LATERAL (
+              SELECT ws.account_value_usd
+              FROM wallet_snapshots ws
+              WHERE ws.wallet=q.wallet
+              ORDER BY ws.ts_ms DESC
+              LIMIT 1
+            ) s ON TRUE
+            WHERE q.status='active'
+            ORDER BY q.rank
+        ''')).mappings().all()
     else:
-        snaps = conn.execute(text('''SELECT DISTINCT ON (wallet) wallet, account_value_usd FROM wallet_snapshots WHERE ts_ms <= :target_ts ORDER BY wallet, ts_ms DESC'''), {'target_ts': target_ts}).mappings().all()
-    return {r['wallet']: safe_float(r['account_value_usd']) for r in snaps}
+        snaps = conn.execute(text('''
+            SELECT q.wallet, COALESCE(s.account_value_usd,0) AS account_value_usd
+            FROM qualified_wallets q
+            LEFT JOIN LATERAL (
+              SELECT ws.account_value_usd
+              FROM wallet_snapshots ws
+              WHERE ws.wallet=q.wallet AND ws.ts_ms <= :target_ts
+              ORDER BY ws.ts_ms DESC
+              LIMIT 1
+            ) s ON TRUE
+            WHERE q.status='active'
+            ORDER BY q.rank
+        '''), {'target_ts': target_ts}).mappings().all()
+    return {r['wallet']: safe_float(r['account_value_usd']) for r in snaps if safe_float(r['account_value_usd']) > 0}
 
 
 def position_rows_at(conn, target_ts: int | None = None):
+    # Keep current and lookback positions restricted to the same active cohort.
+    # This prevents old positions from retired wallets influencing flow deltas.
     if target_ts is None:
-        return conn.execute(text('''WITH t AS (SELECT max(ts_ms) ts FROM positions) SELECT * FROM positions WHERE ts_ms=(SELECT ts FROM t)''')).mappings().all()
-    return conn.execute(text('''WITH nearest AS (SELECT max(ts_ms) ts FROM positions WHERE ts_ms <= :target_ts)
-        SELECT * FROM positions WHERE ts_ms=(SELECT ts FROM nearest)'''), {'target_ts': target_ts}).mappings().all()
+        return conn.execute(text('''
+            WITH t AS (
+              SELECT max(p.ts_ms) ts
+              FROM positions p JOIN qualified_wallets q ON q.wallet=p.wallet AND q.status='active'
+            )
+            SELECT p.*
+            FROM positions p JOIN qualified_wallets q ON q.wallet=p.wallet AND q.status='active'
+            WHERE p.ts_ms=(SELECT ts FROM t)
+        ''')).mappings().all()
+    return conn.execute(text('''
+        WITH nearest AS (
+          SELECT max(p.ts_ms) ts
+          FROM positions p JOIN qualified_wallets q ON q.wallet=p.wallet AND q.status='active'
+          WHERE p.ts_ms <= :target_ts
+        )
+        SELECT p.*
+        FROM positions p JOIN qualified_wallets q ON q.wallet=p.wallet AND q.status='active'
+        WHERE p.ts_ms=(SELECT ts FROM nearest)
+    '''), {'target_ts': target_ts}).mappings().all()
 
 
 def compute_signals() -> list[dict[str, Any]]:
