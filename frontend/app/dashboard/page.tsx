@@ -70,8 +70,6 @@ function AllocationDonut({ targets }: { targets: any[] }) {
       <svg viewBox="0 0 220 220" className="cc-donut-svg" aria-label="Portfolio target allocation">
         {parts.map(p => { const start = angle; angle += p.weight * 360; return <path key={p.coin} d={path(110, 110, 92, 58, start, angle - 1)} fill={p.color} onMouseEnter={() => setHovered(p)} onMouseLeave={() => setHovered(null)} onFocus={() => setHovered(p)} onBlur={() => setHovered(null)} tabIndex={0}><title>{p.coin}: {(p.originalWeight * 100).toFixed(1)}%</title></path> })}
         <circle cx="110" cy="110" r="52" />
-        <text x="110" y="106" textAnchor="middle">TARGETS</text>
-        <text x="110" y="132" textAnchor="middle">{parts.length}</text>
       </svg>
       <div className="cc-donut-tooltip">{hovered ? `${hovered.coin} ${(hovered.originalWeight * 100).toFixed(1)}% target` : 'Hover a segment for details'}</div>
     </div>
@@ -79,10 +77,56 @@ function AllocationDonut({ targets }: { targets: any[] }) {
   </div>
 }
 function ExposureBars({ signals, icons }: { signals: any[], icons: Record<string, string> }) {
-  const rows = (signals || []).slice(0, 8); const max = Math.max(1, ...rows.map(r => Number(r.value_long_usd || 0) + Number(r.value_short_usd || 0)))
+  const rows = (signals || []).slice(0, 8)
+  const max = Math.max(1, ...rows.map(r => Number(r.value_long_usd || 0) + Number(r.value_short_usd || 0)))
   if (!rows.length) return <div className="cc-empty-state">Exposure appears after refresh.</div>
-  return <div className="cc-exposure-list">{rows.map(r => { const l = Number(r.value_long_usd || 0), s = Number(r.value_short_usd || 0); const total = l + s || 1; return <div className="cc-ex-row" key={r.coin}><div className="cc-ex-name"><TokenLogo coin={r.coin} icons={icons} /><b>{r.coin}</b><span>{Number(r.signal).toFixed(2)}</span></div><div className="cc-ex-track"><div style={{ width: `${Math.max(7, ((l + s) / max) * 100)}%` }}><i style={{ width: `${(l / total) * 100}%` }} /><em style={{ width: `${(s / total) * 100}%` }} /></div></div><small>{compactMoney(l)}</small><small>{compactMoney(s)}</small></div> })}</div>
+  return <div className="cc-exposure-list">{rows.map(r => {
+    const l = Number(r.value_long_usd || 0), s = Number(r.value_short_usd || 0)
+    const total = l + s || 1
+    return <div className="cc-ex-row" key={r.coin}>
+      <div className="cc-ex-name"><TokenLogo coin={r.coin} icons={icons} /><b title={r.coin}>{r.coin}</b><span>{Number(r.signal).toFixed(2)}</span></div>
+      <div className="cc-ex-track"><div style={{ width: `${Math.max(8, ((l + s) / max) * 100)}%` }}><i style={{ width: `${(l / total) * 100}%` }} /><em style={{ width: `${(s / total) * 100}%` }} /></div></div>
+      <small>{compactMoney(l)}</small><small>{compactMoney(s)}</small>
+    </div>
+  })}</div>
 }
+
+type SortDir = 'asc' | 'desc'
+type SortState = { key: string, dir: SortDir }
+
+function nextSort(current: SortState, key: string): SortState {
+  if (current.key !== key) return { key, dir: 'desc' }
+  return { key, dir: current.dir === 'desc' ? 'asc' : 'desc' }
+}
+function sortArrow(current: SortState, key: string) {
+  if (current.key !== key) return '↕'
+  return current.dir === 'desc' ? '↓' : '↑'
+}
+function sorterValue(row: any, key: string) {
+  if (key === 'wallets') return Number(row.wallets_long || 0) + Number(row.wallets_short || 0)
+  if (key === 'value_ls') return Number(row.value_long_usd || 0) + Number(row.value_short_usd || 0)
+  if (key === 'pct_total') return Number(row.value_long_pct_total || 0) + Number(row.value_short_pct_total || 0)
+  if (key === 'asset') return String(row.coin || '').toUpperCase()
+  if (key === 'read') return flowRead(row.net_buyer_count)
+  if (key === 'bullish') return Number(row.bullish_flow_usd || 0)
+  if (key === 'bearish') return Number(row.bearish_flow_usd || 0)
+  if (key === 'net_buyers') return Number(row.net_buyer_count || 0)
+  const v = row[key]
+  const n = Number(v)
+  return Number.isFinite(n) && String(v ?? '').trim() !== '' ? n : String(v ?? '').toUpperCase()
+}
+function sortedRows(rows: any[], sort: SortState) {
+  const dir = sort.dir === 'desc' ? -1 : 1
+  return [...(rows || [])].sort((a, b) => {
+    const av = sorterValue(a, sort.key), bv = sorterValue(b, sort.key)
+    if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * dir
+    return String(av).localeCompare(String(bv)) * dir
+  })
+}
+function SortTh({ label, sortKey, sort, setSort }: { label: string, sortKey: string, sort: SortState, setSort: (s: SortState) => void }) {
+  return <th><button className="cc-sort-head" onClick={() => setSort(nextSort(sort, sortKey))}>{label}<span>{sortArrow(sort, sortKey)}</span></button></th>
+}
+
 
 export default function Dashboard() {
   const [summary, setSummary] = useState<any>({})
@@ -90,18 +134,27 @@ export default function Dashboard() {
   const [targets, setTargets] = useState<any[]>([])
   const [flow, setFlow] = useState<any[]>([])
   const [orders, setOrders] = useState<any[]>([])
+  const [showAllOrders, setShowAllOrders] = useState(false)
   const [icons, setIcons] = useState<Record<string, string>>({})
   const [err, setErr] = useState('')
+  const [signalSort, setSignalSort] = useState<SortState>({ key: 'signal', dir: 'desc' })
+  const [flowSortState, setFlowSortState] = useState<SortState>({ key: 'net_value_flow_usd', dir: 'desc' })
 
   async function load() {
     try {
       setErr('')
-      const [s, si, t, f, o] = await Promise.all([apiGet('/api/summary'), apiGet('/api/signals?limit=40'), apiGet('/api/targets'), apiGet('/api/flow?limit=40'), apiGet('/api/recent-orders?limit=3').catch(() => [])])
+      const [s, si, t, f, o] = await Promise.all([
+        apiGet('/api/summary'),
+        apiGet('/api/signals?limit=500'),
+        apiGet('/api/targets'),
+        apiGet('/api/flow?limit=500'),
+        apiGet('/api/recent-orders?limit=50').catch(() => []),
+      ])
       setSummary(s); setSignals(si); setTargets(t); setFlow(f); setOrders(o)
     } catch (e: any) { setErr(e.message) }
   }
 
-  useEffect(() => { window.history.scrollRestoration = 'manual'; window.scrollTo(0, 0); load(); const id = setInterval(load, 30000); return () => clearInterval(id) }, [])
+  useEffect(() => { window.history.scrollRestoration = 'manual'; window.scrollTo(0, 0); load(); const id = setInterval(load, 10000); return () => clearInterval(id) }, [])
   useEffect(() => {
     const symbols = Array.from(new Set([...signals.map(r => r.coin), ...targets.map(r => r.coin), ...flow.map(r => r.coin), ...orders.map((r: any) => r.coin)].filter(Boolean).map(x => String(x).toUpperCase())))
     if (!symbols.length) return
@@ -111,7 +164,10 @@ export default function Dashboard() {
   const longValue = signals.reduce((a, r) => a + Number(r.value_long_usd || 0), 0)
   const shortValue = signals.reduce((a, r) => a + Number(r.value_short_usd || 0), 0)
   const isLong = longValue >= shortValue
-  const orderRows = orders.length ? orders : flow.slice(0, 3).map((r: any) => ({ coin: r.coin, side: Number(r.net_value_flow_usd) >= 0 ? 'Long' : 'Short', wallet_label: 'Wallet 0x1A…7F3B', wallet: r.wallet, ts_ms: summary.latest_signal_ts_ms }))
+  const orderRows = orders.length ? orders : flow.slice(0, 12).map((r: any) => ({ coin: r.coin, side: Number(r.net_value_flow_usd) >= 0 ? 'Long' : 'Short', wallet_label: 'Wallet 0x1A…7F3B', wallet: r.wallet, ts_ms: summary.latest_signal_ts_ms }))
+  const visibleOrders = showAllOrders ? orderRows : orderRows.slice(0, 3)
+  const sortedSignals = sortedRows(signals, signalSort)
+  const sortedFlow = sortedRows(flow, flowSortState)
 
   return <><Nav /><main className="cc-dashboard-shell"><LineBackdrop variant="dashboard" />
     <section className="cc-dashboard-top">
@@ -121,10 +177,12 @@ export default function Dashboard() {
         <p>Value-weighted positioning from qualified Hyperliquid wallets.<br />Built to show what serious traders are leaning into.</p>
       </div>
       <div className="cc-bias-block"><span>Positioning bias</span><button className={`cc-bias-toggle ${isLong ? 'is-long' : 'is-short'}`}><i /><b>{isLong ? 'LONG' : 'SHORT'}</b></button></div>
-      <aside className="cc-orders-card">
+      <aside className={`cc-orders-card ${showAllOrders ? 'expanded' : ''}`}>
         <h3>Most recent orders</h3>
-        {orderRows.map((o: any, i: number) => <div className="cc-order-line" key={`${o.coin}-${i}`}><TokenLogo coin={o.coin} icons={icons} /><b>{o.coin}</b><span className={String(o.side).toLowerCase().includes('short') || String(o.side).toLowerCase().includes('reduce') ? 'negative' : 'positive'}>{o.side}</span><em>{o.wallet_label || maskWallet(o.wallet)}</em><small>{ago(o.ts_ms)}</small></div>)}
-        <button className="cc-small-action">View all orders →</button>
+        <div className="cc-order-list">
+          {visibleOrders.map((o: any, i: number) => <div className="cc-order-line" key={`${o.coin}-${i}-${o.wallet || ''}-${o.ts_ms || ''}`}><TokenLogo coin={o.coin} icons={icons} /><b>{o.coin}</b><span className={String(o.side).toLowerCase().includes('short') || String(o.side).toLowerCase().includes('reduce') ? 'negative' : 'positive'}>{o.side}</span><em>{o.wallet_label || maskWallet(o.wallet)}</em><small>{ago(o.ts_ms)}</small></div>)}
+        </div>
+        <button className="cc-small-action" onClick={() => setShowAllOrders(v => !v)}>{showAllOrders ? 'Show latest 3 ↑' : 'View all orders →'}</button>
       </aside>
     </section>
 
@@ -143,10 +201,26 @@ export default function Dashboard() {
     </section>
 
     <section className="cc-table-grid">
-      <div className="cc-card cc-table-card"><div className="cc-panel-title"><h3>Asset signal board</h3><span>value-weighted, not wallet-count only</span></div><div className="cc-scroll-table"><table><thead><tr><th>#</th><th>Asset</th><th>Signal</th><th>Confidence</th><th>Wallets</th><th>Value L/S</th><th>Net value</th><th>% total value</th></tr></thead><tbody>{signals.slice(0, 10).map((r, i) => <tr key={r.coin}><td>{i + 1}</td><td><span className="cc-asset-cell"><TokenLogo coin={r.coin} icons={icons} /><b>{r.coin}</b></span></td><td className={cls(r.signal)}>{Number(r.signal).toFixed(2)}</td><td><span className={`cc-confidence ${String(r.confidence).toLowerCase()}`}>{r.confidence}</span></td><td>{r.wallets_long} long / {r.wallets_short} short</td><td>{money(r.value_long_usd)} / {money(r.value_short_usd)}</td><td className={cls(r.net_value_usd)}>{money(r.net_value_usd)}</td><td>{pct(r.value_long_pct_total)} long / {pct(r.value_short_pct_total)} short</td></tr>)}</tbody></table></div></div>
-      <div className="cc-card cc-table-card"><div className="cc-panel-title"><h3>Recent buyer / seller pressure</h3><span>largest flow changes first</span></div><div className="cc-scroll-table"><table><thead><tr><th>Asset</th><th>Net buyers</th><th>Bullish flow</th><th>Bearish flow</th><th>Net value flow</th><th>Read</th></tr></thead><tbody>{flow.slice(0, 8).map((r) => { const read = flowRead(r.net_buyer_count); return <tr key={r.coin}><td><span className="cc-asset-cell"><TokenLogo coin={r.coin} icons={icons} /><b>{r.coin}</b></span></td><td className={cls(r.net_buyer_count)}>{r.net_buyer_count}</td><td>{money(r.bullish_flow_usd)}</td><td>{money(r.bearish_flow_usd)}</td><td className={cls(r.net_value_flow_usd)}>{money(r.net_value_flow_usd)}</td><td><span className={`cc-read ${read.toLowerCase()}`}>{read}</span></td></tr> })}</tbody></table></div></div>
+      <div className="cc-card cc-table-card">
+        <div className="cc-panel-title"><h3>Asset signal board</h3><span>value-weighted, not wallet-count only</span></div>
+        <div className="cc-scroll-table cc-scroll-y">
+          <table className="cc-signal-table">
+            <thead><tr><th>#</th><SortTh label="Asset" sortKey="asset" sort={signalSort} setSort={setSignalSort} /><SortTh label="Signal" sortKey="signal" sort={signalSort} setSort={setSignalSort} /><SortTh label="Confidence" sortKey="confidence" sort={signalSort} setSort={setSignalSort} /><SortTh label="Wallets" sortKey="wallets" sort={signalSort} setSort={setSignalSort} /><SortTh label="Value L/S" sortKey="value_ls" sort={signalSort} setSort={setSignalSort} /><SortTh label="Net value" sortKey="net_value_usd" sort={signalSort} setSort={setSignalSort} /><SortTh label="% total value" sortKey="pct_total" sort={signalSort} setSort={setSignalSort} /></tr></thead>
+            <tbody>{sortedSignals.map((r, i) => <tr key={`${r.coin}-${i}`}><td>{i + 1}</td><td><span className="cc-asset-cell"><TokenLogo coin={r.coin} icons={icons} /><b>{r.coin}</b></span></td><td className={cls(r.signal)}>{Number(r.signal).toFixed(2)}</td><td><span className={`cc-confidence ${String(r.confidence).toLowerCase()}`}>{r.confidence}</span></td><td>{r.wallets_long} long / {r.wallets_short} short</td><td>{money(r.value_long_usd)} / {money(r.value_short_usd)}</td><td className={cls(r.net_value_usd)}>{money(r.net_value_usd)}</td><td>{pct(r.value_long_pct_total)} long / {pct(r.value_short_pct_total)} short</td></tr>)}</tbody>
+          </table>
+        </div>
+      </div>
+      <div className="cc-card cc-table-card">
+        <div className="cc-panel-title"><h3>Recent buyer / seller pressure</h3><span>largest flow changes first</span></div>
+        <div className="cc-scroll-table cc-scroll-y">
+          <table className="cc-flow-table">
+            <thead><tr><SortTh label="Asset" sortKey="asset" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Net buyers" sortKey="net_buyers" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Bullish flow" sortKey="bullish" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Bearish flow" sortKey="bearish" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Net value flow" sortKey="net_value_flow_usd" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Read" sortKey="read" sort={flowSortState} setSort={setFlowSortState} /></tr></thead>
+            <tbody>{sortedFlow.map((r, i) => { const read = flowRead(r.net_buyer_count); return <tr key={`${r.coin}-${i}`}><td><span className="cc-asset-cell"><TokenLogo coin={r.coin} icons={icons} /><b>{r.coin}</b></span></td><td className={cls(r.net_buyer_count)}>{r.net_buyer_count}</td><td>{money(r.bullish_flow_usd)}</td><td>{money(r.bearish_flow_usd)}</td><td className={cls(r.net_value_flow_usd)}>{money(r.net_value_flow_usd)}</td><td><span className={`cc-read ${read.toLowerCase()}`}>{read}</span></td></tr> })}</tbody>
+          </table>
+        </div>
+      </div>
     </section>
 
-    <footer className="cc-warning-banner"><span className="cc-shield">♜</span><strong>Market intelligence only.</strong><em>Not financial advice. Crypto trading can result in loss.</em><small>Signal refresh: {fmtTime(summary.latest_signal_ts_ms)} UTC · Data updates every 30s</small></footer>
+    <footer className="cc-warning-banner"><span className="cc-shield">♜</span><strong>Market intelligence only.</strong><em>Not financial advice. Crypto trading can result in loss.</em><small>Signal refresh: {fmtTime(summary.latest_signal_ts_ms)} UTC · Data updates every 10s</small></footer>
   </main></>
 }
