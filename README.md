@@ -1,3 +1,5 @@
-# Copycat data consistency + visual polish patch
+# Copycat data audit layer
 
-Fixes dashboard data consistency by making summary metrics use the same completed asset_signals snapshot as the signal/flow tables. Also aligns new signal timestamps to the positions batch timestamp going forward, improves recent order deltas with full outer join, adds /api/data-health, fixes the short bias label, and softens the page background edges.
+Adds a private `/audit` page and `/api/audit` endpoint that reconciles dashboard values against database snapshots and optional live Hyperliquid account-state checks.
+
+Deploy API and frontend after applying.
