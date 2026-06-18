@@ -24,7 +24,7 @@ export default function Nav() {
     const onChange = () => {
       const saved = localStorage.getItem('copycat-theme')
       if (saved === 'dark' || saved === 'light') return
-      const next = mq.matches ? 'dark' : 'light'
+      const next: Theme = mq.matches ? 'dark' : 'light'
       setTheme(next)
       document.documentElement.dataset.theme = next
     }
@@ -44,13 +44,20 @@ export default function Nav() {
       <Link href="/" className="brand" aria-label="Copycat home">
         <span>Copy</span><em>cat</em>
       </Link>
-      <div className="nav-links">
-        <Link href="/pricing">Pricing</Link>
-        <Link href="/login">Login</Link>
-        <button className="theme-switch" onClick={toggleTheme} aria-label="Toggle light and dark mode">
-          <span>{theme === 'dark' ? 'Dark' : 'Light'}</span><i />
+
+      <div className="nav-menu-wrap">
+        <button className="nav-menu-trigger" aria-haspopup="true" aria-label="Open navigation menu">
+          <span>Menu</span>
+          <i />
         </button>
-        <Link className="dashboard-nav" href="/dashboard">Dashboard</Link>
+        <div className="nav-menu" role="menu">
+          <Link href="/pricing" role="menuitem">Pricing</Link>
+          <Link href="/login" role="menuitem">Login</Link>
+          <Link href="/dashboard" role="menuitem">Dashboard</Link>
+          <button className="theme-switch menu-theme" onClick={toggleTheme} aria-label="Toggle light and dark mode">
+            <span>{theme === 'dark' ? 'Dark mode' : 'Light mode'}</span><i />
+          </button>
+        </div>
       </div>
     </nav>
   )
