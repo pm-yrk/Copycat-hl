@@ -1,10 +1,11 @@
-# Copycat active-cohort data fix
+# copycat.hl parallel collector freshness fix
 
-Fixes the audit failure where `Tracked account value consistency` could fail because signal calculations included historical wallet snapshots from retired/previous cohorts.
+Keeps the UI unchanged.
 
 Changes:
-- `worker.py`: signal calculations now use only the current active 50 qualified wallets.
-- `worker.py`: current/lookback position rows are restricted to the same active cohort.
-- `main.py`: summary/audit rollups are restricted to active wallets.
+- Collects the active 50-wallet cohort concurrently instead of one wallet at a time.
+- Writes one completed batch with one timestamp, preserving data correctness.
+- Refuses to publish a new signal snapshot if fewer than 90% of wallets collect successfully.
+- Audit freshness now checks the latest completed `collect_once` run.
 
-After deploying, let the 10-second collector complete one full cycle, then rerun `/audit`.
+Redeploy `hwt-api` and `hwt-collector-live-10s`, then wait for one full collector cycle and rerun `/audit`.

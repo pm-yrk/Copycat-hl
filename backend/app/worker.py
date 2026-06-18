@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-import json, math, time, logging
+import json, math, time, logging, os
 from datetime import date, timedelta
 from typing import Any
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
 from sqlalchemy import text
@@ -293,27 +294,68 @@ def insert_run(conn, run_type: str, status: str, message: str=''):
     conn.execute(text('INSERT INTO collector_runs(ts_ms,run_type,status,message) VALUES(:ts,:type,:status,:message)'), {'ts': now_ms(), 'type': run_type, 'status': status, 'message': message})
 
 
+def collect_wallet_state(wallet: str, ts: int) -> tuple[str, dict[str, Any] | None, list[dict[str, Any]], str | None]:
+    '''Fetch one wallet. Created as a separate helper so the 50-wallet batch
+    can be collected concurrently without sharing a requests.Session between
+    threads.
+    '''
+    try:
+        hl = Hyperliquid()
+        state = hl.clearinghouse_state(wallet)
+        summary = extract_margin_summary(state)
+        snapshot = {'ts': ts, 'wallet': wallet, **summary, 'raw_json': json.dumps(state)}
+        positions = normalize_positions(wallet, ts, state)
+        return wallet, snapshot, positions, None
+    except Exception as exc:
+        log.exception('collect failed %s', wallet)
+        return wallet, None, [], f'{wallet}: {exc}'
+
+
 def collect_once() -> dict[str, Any]:
-    hl = Hyperliquid()
     ts = now_ms()
     with engine.begin() as conn:
         wallets = [r[0] for r in conn.execute(text("SELECT wallet FROM qualified_wallets WHERE status='active' ORDER BY rank")).fetchall()]
+
+    if not wallets:
+        with engine.begin() as conn:
+            insert_run(conn, 'collect_once', 'error', 'no active wallets')
+        return {'wallets_ok': 0, 'errors': ['no active wallets'], 'positions': 0, 'signals': 0}
+
+    # Sequentially fetching 50 wallets can take about a minute on Render, which
+    # makes the 10-second dashboard look stale. Fetch wallets in a bounded pool
+    # so a full, completed snapshot is written much more quickly while still
+    # keeping one consistent timestamp for the whole batch.
+    try:
+        max_workers = int(float(os.getenv('COLLECTOR_MAX_WORKERS', '12')))
+    except Exception:
+        max_workers = 12
+    max_workers = max(2, min(max_workers, 20, len(wallets)))
 
     ok, errors = 0, []
     snapshot_rows: list[dict[str, Any]] = []
     position_rows: list[dict[str, Any]] = []
 
-    for wallet in wallets:
-        try:
-            state = hl.clearinghouse_state(wallet)
-            summary = extract_margin_summary(state)
-            snapshot_rows.append({'ts': ts, 'wallet': wallet, **summary, 'raw_json': json.dumps(state)})
-            position_rows.extend(normalize_positions(wallet, ts, state))
-            ok += 1
-        except Exception as exc:
-            errors.append(f'{wallet}: {exc}')
-            log.exception('collect failed %s', wallet)
-        time.sleep(0.10)
+    started = time.time()
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        futures = [pool.submit(collect_wallet_state, wallet, ts) for wallet in wallets]
+        for fut in as_completed(futures):
+            wallet, snapshot, positions, error = fut.result()
+            if error:
+                errors.append(error)
+                continue
+            if snapshot is not None:
+                snapshot_rows.append(snapshot)
+                position_rows.extend(positions)
+                ok += 1
+
+    min_ok = max(1, int(len(wallets) * 0.90))
+    if ok < min_ok:
+        # Do not publish a bad/partial signal board. Keep the previous completed
+        # snapshot live and record the failure for the audit/logs.
+        elapsed = time.time() - started
+        with engine.begin() as conn:
+            insert_run(conn, 'collect_once', 'error', f'incomplete batch wallets_ok={ok}/{len(wallets)}; errors={len(errors)}; elapsed={elapsed:.1f}s')
+        return {'wallets_ok': ok, 'errors': errors[:5], 'positions': len(position_rows), 'signals': 0, 'elapsed_seconds': round(elapsed, 1)}
 
     with engine.begin() as conn:
         for row in snapshot_rows:
@@ -325,9 +367,10 @@ def collect_once() -> dict[str, Any]:
 
     signals = compute_signals()
     check_alerts()
+    elapsed = time.time() - started
     with engine.begin() as conn:
-        insert_run(conn, 'collect_once', 'ok' if errors == [] else 'partial', f'wallets_ok={ok}; errors={len(errors)}; positions={len(position_rows)}; signals={len(signals)}')
-    return {'wallets_ok': ok, 'errors': errors[:5], 'positions': len(position_rows), 'signals': len(signals)}
+        insert_run(conn, 'collect_once', 'ok' if errors == [] else 'partial', f'wallets_ok={ok}/{len(wallets)}; errors={len(errors)}; positions={len(position_rows)}; signals={len(signals)}; elapsed={elapsed:.1f}s; workers={max_workers}')
+    return {'wallets_ok': ok, 'errors': errors[:5], 'positions': len(position_rows), 'signals': len(signals), 'elapsed_seconds': round(elapsed, 1)}
 
 def latest_snapshot_maps(conn, target_ts: int | None = None):
     # IMPORTANT: signal calculations must only use the current active 50-wallet
@@ -393,7 +436,7 @@ def position_rows_at(conn, target_ts: int | None = None):
 def compute_signals() -> list[dict[str, Any]]:
     settings = get_settings()
     with engine.begin() as conn:
-        current_position_ts_row = conn.execute(text('SELECT max(ts_ms) AS ts_ms FROM positions')).mappings().first()
+        current_position_ts_row = conn.execute(text("""SELECT max(p.ts_ms) AS ts_ms FROM positions p JOIN qualified_wallets q ON q.wallet=p.wallet AND q.status='active'""")).mappings().first()
         current_position_ts = int(current_position_ts_row['ts_ms']) if current_position_ts_row and current_position_ts_row['ts_ms'] else now_ms()
         # Use the positions batch timestamp as the signal timestamp. This keeps
         # /api/summary, /api/signals, /api/flow, and /api/recent-orders aligned.

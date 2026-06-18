@@ -323,7 +323,7 @@ def audit(live: bool = False, full: bool = False, max_wallets: int = 10, user: d
     snapshot_rollup = {'tracked_total': 0, 'wallets': 0}
     position_rollup = {'open_total': 0, 'positions': 0, 'coins': 0, 'wallets': 0}
     target_rollup = {'target_sum': 0, 'targets': 0}
-    collector = fetch_one('SELECT * FROM collector_runs ORDER BY ts_ms DESC LIMIT 1') or {}
+    collector = fetch_one("SELECT * FROM collector_runs WHERE run_type='collect_once' ORDER BY ts_ms DESC LIMIT 1") or {}
     stale_seconds = None
 
     if ts:
@@ -374,7 +374,7 @@ def audit(live: bool = False, full: bool = False, max_wallets: int = 10, user: d
 
     _add_check(checks, 'Active wallet cohort', len(wallet_list) == 50, f'{len(wallet_list)} active wallets selected', 'warning' if len(wallet_list) > 0 else 'error')
     _add_check(checks, 'Completed signal snapshot exists', bool(ts), f'latest signal ts={ts}')
-    _add_check(checks, 'Collector freshness', stale_seconds is not None and stale_seconds <= 45, f'last collector run {stale_seconds:.1f}s ago' if stale_seconds is not None else 'no collector run found', 'warning')
+    _add_check(checks, 'Collector freshness', stale_seconds is not None and stale_seconds <= 35, f'last completed collector run {stale_seconds:.1f}s ago' if stale_seconds is not None else 'no collector run found', 'warning')
     _add_check(checks, 'Positions exist at signal timestamp', int(position_rollup.get('positions') or 0) > 0, f"{position_rollup.get('positions',0)} positions at latest signal timestamp")
     _add_check(checks, 'Snapshot wallet count matches cohort', int(snapshot_rollup.get('wallets') or 0) >= max(1, len(wallet_list) - 2), f"{snapshot_rollup.get('wallets',0)} wallet snapshots at latest timestamp", 'warning')
     _add_check(checks, 'Tracked account value consistency', _within_tolerance(snapshot_rollup.get('tracked_total'), signal_rollup.get('tracked_total'), pct=0.005, abs_tol=25000), 'wallet snapshots vs signal rollup', metrics=_delta_metrics(snapshot_rollup.get('tracked_total'), signal_rollup.get('tracked_total')))
