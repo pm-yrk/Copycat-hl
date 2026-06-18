@@ -135,6 +135,61 @@ def runs(limit: int = 30, user: dict = Depends(require_active_subscription)):
     return fetch_all('SELECT * FROM collector_runs ORDER BY ts_ms DESC LIMIT :limit', {'limit': limit})
 
 
+@app.get('/api/recent-orders')
+def recent_orders(limit: int = 3, user: dict = Depends(require_active_subscription)):
+    """Derived recent order tape.
+
+    Hyperliquid order events are not stored directly yet, so this endpoint derives the
+    customer-facing "recent orders" tape from the latest two position snapshots for
+    the active qualified wallet cohort. It surfaces the largest new/increased/reduced
+    exposures so the dashboard updates as the collector runs.
+    """
+    rows = fetch_all(
+        """
+        WITH ordered_ts AS (
+          SELECT DISTINCT ts_ms FROM positions ORDER BY ts_ms DESC LIMIT 2
+        ), latest_ts AS (
+          SELECT max(ts_ms) AS ts_ms FROM ordered_ts
+        ), previous_ts AS (
+          SELECT min(ts_ms) AS ts_ms FROM ordered_ts
+        ), latest AS (
+          SELECT p.* FROM positions p WHERE p.ts_ms=(SELECT ts_ms FROM latest_ts)
+        ), previous AS (
+          SELECT p.* FROM positions p WHERE p.ts_ms=(SELECT ts_ms FROM previous_ts)
+        )
+        SELECT l.ts_ms, l.wallet, l.coin, l.side,
+               COALESCE(l.position_value_usd,0) - COALESCE(p.position_value_usd,0) AS delta_value_usd,
+               COALESCE(l.position_value_usd,0) AS position_value_usd,
+               COALESCE(l.size,0) - COALESCE(p.size,0) AS delta_size
+        FROM latest l
+        LEFT JOIN previous p ON p.wallet=l.wallet AND p.coin=l.coin AND lower(p.side)=lower(l.side)
+        WHERE abs(COALESCE(l.position_value_usd,0) - COALESCE(p.position_value_usd,0)) > 0
+        ORDER BY abs(COALESCE(l.position_value_usd,0) - COALESCE(p.position_value_usd,0)) DESC NULLS LAST
+        LIMIT :limit
+        """,
+        {'limit': limit},
+    )
+    out = []
+    for r in rows:
+        side_raw = str(r.get('side') or '').lower()
+        delta = float(r.get('delta_value_usd') or 0)
+        if side_raw.startswith('short'):
+            side = 'Short' if delta >= 0 else 'Cover'
+        else:
+            side = 'Long' if delta >= 0 else 'Reduce'
+        wallet = r.get('wallet') or ''
+        out.append({
+            'ts_ms': r.get('ts_ms'),
+            'wallet': wallet,
+            'wallet_label': f"Wallet {wallet[:4]}…{wallet[-4:]}" if wallet else 'Wallet',
+            'coin': r.get('coin'),
+            'side': side,
+            'delta_value_usd': delta,
+            'position_value_usd': float(r.get('position_value_usd') or 0),
+        })
+    return out
+
+
 @app.post('/api/billing/create-checkout-session')
 def create_checkout_session(body: dict, user: dict = Depends(get_current_user)):
     if not settings.stripe_secret_key:

@@ -27,9 +27,6 @@ export async function getSupabase(): Promise<SupabaseClient> {
   if (!cfg.supabaseUrl || !cfg.supabaseAnonKey) {
     throw new Error('Supabase is not configured. Check frontend environment variables in Render.')
   }
-
-  // Import Supabase only in the browser/runtime path. This prevents Next.js Docker
-  // builds from trying to create a Supabase client while prerendering pages.
   const { createClient } = await import('@supabase/supabase-js')
   supabaseClient = createClient(cfg.supabaseUrl, cfg.supabaseAnonKey)
   return supabaseClient

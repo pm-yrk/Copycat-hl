@@ -1,7 +1,14 @@
 import './styles.css'
 
-export const metadata = { title: 'copycat.hl', description: 'Smart-wallet market intelligence for Hyperliquid traders' }
+export const metadata = {
+  title: 'Copycat',
+  description: 'Hyperliquid smart-wallet intelligence',
+}
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return <html lang="en"><body>{children}</body></html>
+  return (
+    <html lang="en" data-theme="dark">
+      <body>{children}</body>
+    </html>
+  )
 }
