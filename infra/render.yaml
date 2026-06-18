@@ -37,16 +37,17 @@ services:
       - key: NEXT_PUBLIC_API_BASE_URL
         sync: false
 
-  - type: cron
-    name: hwt-collector-15m
+  - type: worker
+    name: hwt-collector-live-10s
     runtime: docker
     dockerfilePath: ./backend/Dockerfile
     dockerContext: .
-    schedule: "*/15 * * * *"
-    dockerCommand: "python -m app.jobs.collect_once"
+    dockerCommand: "python -m app.jobs.collect_loop_local"
     envVars:
       - key: DATABASE_URL
         sync: false
+      - key: COLLECTOR_INTERVAL_SECONDS
+        value: "10"
       - key: TELEGRAM_BOT_TOKEN
         sync: false
       - key: TELEGRAM_CHAT_ID

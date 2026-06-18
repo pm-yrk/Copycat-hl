@@ -1,16 +1,13 @@
-# Copycat light/dark design patch
+# Copycat collector 10-second worker patch
 
-This patch updates the Copycat frontend with the approved dark design and a Financial-Times-inspired light mode.
+This patch changes the Render collector from a 15-minute cron job into an always-on background worker named `hwt-collector-live-10s`.
 
-Included:
-- Copycat wordmark only, no CC corner logo
-- Dark and light theme support with a small nav toggle
-- Premium landing, pricing, login, and dashboard styling
-- Dashboard positioning-bias LONG/SHORT toggle
-- Most recent orders panel
-- Token-style asset icons in signal and flow tables
-- Flowing Hyperliquid-green line backgrounds across all pages
-- Docker npm install fix retained
-- Backend `/api/recent-orders` endpoint derived from latest position changes
+Files changed:
+- `render.yaml`
+- `infra/render.yaml`
+- `backend/app/jobs/collect_loop_local.py`
+- `backend/app/settings.py`
 
-Apply with robocopy into the existing `hyper_wallet_tracker_saas_v1` repo, commit, push, then redeploy API and frontend on Render.
+After pushing this patch, run a Blueprint/manual sync in Render. If Render asks for environment variables for the new worker, copy the same `DATABASE_URL`, `TELEGRAM_BOT_TOKEN`, and `TELEGRAM_CHAT_ID` values from the old collector service.
+
+Once `hwt-collector-live-10s` is running, suspend or delete the old `hwt-collector-15m` cron job if it still appears, so the app does not collect twice.
