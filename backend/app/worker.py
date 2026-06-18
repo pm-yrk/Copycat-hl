@@ -329,8 +329,11 @@ def collect_once() -> dict[str, Any]:
         insert_run(conn, 'collect_once', 'ok' if errors == [] else 'partial', f'wallets_ok={ok}; errors={len(errors)}; positions={len(position_rows)}; signals={len(signals)}')
     return {'wallets_ok': ok, 'errors': errors[:5], 'positions': len(position_rows), 'signals': len(signals)}
 
-def latest_snapshot_maps(conn):
-    snaps = conn.execute(text('''SELECT DISTINCT ON (wallet) wallet, account_value_usd FROM wallet_snapshots ORDER BY wallet, ts_ms DESC''')).mappings().all()
+def latest_snapshot_maps(conn, target_ts: int | None = None):
+    if target_ts is None:
+        snaps = conn.execute(text('''SELECT DISTINCT ON (wallet) wallet, account_value_usd FROM wallet_snapshots ORDER BY wallet, ts_ms DESC''')).mappings().all()
+    else:
+        snaps = conn.execute(text('''SELECT DISTINCT ON (wallet) wallet, account_value_usd FROM wallet_snapshots WHERE ts_ms <= :target_ts ORDER BY wallet, ts_ms DESC'''), {'target_ts': target_ts}).mappings().all()
     return {r['wallet']: safe_float(r['account_value_usd']) for r in snaps}
 
 
@@ -343,12 +346,16 @@ def position_rows_at(conn, target_ts: int | None = None):
 
 def compute_signals() -> list[dict[str, Any]]:
     settings = get_settings()
-    ts = now_ms()
     with engine.begin() as conn:
-        account_values = latest_snapshot_maps(conn)
+        current_position_ts_row = conn.execute(text('SELECT max(ts_ms) AS ts_ms FROM positions')).mappings().first()
+        current_position_ts = int(current_position_ts_row['ts_ms']) if current_position_ts_row and current_position_ts_row['ts_ms'] else now_ms()
+        # Use the positions batch timestamp as the signal timestamp. This keeps
+        # /api/summary, /api/signals, /api/flow, and /api/recent-orders aligned.
+        ts = current_position_ts
+        account_values = latest_snapshot_maps(conn, ts)
         total_tracked = sum(v for v in account_values.values() if v > 0)
         scores = {r['wallet']: safe_float(r['score']) for r in conn.execute(text('''SELECT DISTINCT ON(wallet) wallet, score FROM wallet_scores ORDER BY wallet, ts_ms DESC''')).mappings().all()}
-        current = position_rows_at(conn)
+        current = position_rows_at(conn, ts)
         previous = position_rows_at(conn, ts - settings.signal_lookback_minutes * 60_000)
     current_by_coin, prev_by_coin = {}, {}
     for rows, dest in [(current, current_by_coin), (previous, prev_by_coin)]:

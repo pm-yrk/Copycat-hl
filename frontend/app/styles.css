@@ -1048,3 +1048,84 @@ html[data-theme='light'] .cc-donut-svg circle {
     height: 24px;
   }
 }
+
+/* --- Data consistency visual polish --- */
+.cc-bias-toggle {
+  width: 104px !important;
+  grid-template-columns: 34px 1fr !important;
+  padding: 3px 10px 3px 4px !important;
+  overflow: hidden;
+}
+.cc-bias-toggle.is-short {
+  grid-template-columns: 1fr 34px !important;
+  padding: 3px 4px 3px 10px !important;
+}
+.cc-bias-toggle.is-short b {
+  grid-column: 1;
+  grid-row: 1;
+  justify-self: start;
+}
+.cc-bias-toggle.is-short i {
+  grid-column: 2;
+  grid-row: 1;
+  transform: none !important;
+  justify-self: end;
+}
+.cc-bias-toggle b {
+  white-space: nowrap;
+  line-height: 1;
+}
+
+/* So ultra-wide screens do not show a hard cut-off at the shell edge. */
+html[data-theme='light'] body {
+  background:
+    radial-gradient(circle at 52% 10%, rgba(0,122,88,.10), transparent 34%),
+    linear-gradient(90deg, #f3e5d2 0%, #f8ecdb 12%, #f4e7d7 50%, #f8ecdb 88%, #f3e5d2 100%) !important;
+}
+html[data-theme='dark'] body {
+  background:
+    radial-gradient(circle at 58% 16%, rgba(33,230,162,.06), transparent 32%),
+    linear-gradient(90deg, #020711 0%, #030913 15%, #071321 50%, #030913 85%, #020711 100%) !important;
+}
+.cc-dashboard-shell {
+  max-width: 1510px;
+  box-shadow: 0 0 95px color-mix(in srgb, var(--page-bg) 58%, transparent);
+}
+.cc-dashboard-shell::before,
+.cc-dashboard-shell::after {
+  content: '';
+  position: fixed;
+  top: 74px;
+  bottom: 0;
+  width: max(9vw, 120px);
+  pointer-events: none;
+  z-index: 0;
+}
+.cc-dashboard-shell::before {
+  left: 0;
+  background: linear-gradient(90deg, var(--page-bg), transparent);
+}
+.cc-dashboard-shell::after {
+  right: 0;
+  background: linear-gradient(270deg, var(--page-bg), transparent);
+}
+
+/* Keep the exposure bars tidy without covering names. */
+.cc-ex-row {
+  grid-template-columns: 168px minmax(90px, .68fr) 62px 62px !important;
+  gap: 10px !important;
+}
+.cc-ex-name {
+  grid-template-columns: 30px minmax(82px,1fr) 42px !important;
+}
+.cc-ex-name b {
+  max-width: 96px !important;
+}
+.cc-ex-track {
+  min-width: 0;
+}
+@media (max-width: 900px) {
+  .cc-ex-row {
+    grid-template-columns: 148px minmax(72px,1fr) 52px 52px !important;
+  }
+}

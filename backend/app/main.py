@@ -45,21 +45,24 @@ def summary(user: dict = Depends(require_active_subscription)):
     latest_wallets = fetch_one("SELECT count(*) AS n FROM qualified_wallets WHERE status='active'") or {'n': 0}
 
     if stable_ts:
-        total_value = fetch_one(
+        # Read the headline numbers from the same completed signal snapshot used by
+        # /api/signals and /api/flow. This prevents the dashboard from mixing a
+        # partially-written positions batch with a completed signal batch.
+        rollup = fetch_one(
             """
-            SELECT COALESCE(max(total_tracked_value_usd),0) AS total
-            FROM asset_signals WHERE ts_ms=:ts
+            SELECT
+              COALESCE(max(total_tracked_value_usd),0) AS tracked_total,
+              COALESCE(sum(value_long_usd + value_short_usd),0) AS open_total,
+              COALESCE(sum(wallets_long + wallets_short),0) AS open_positions,
+              count(*) AS assets
+            FROM asset_signals
+            WHERE ts_ms=:ts
             """,
             {'ts': stable_ts},
-        ) or {'total': 0}
-        open_value = fetch_one(
-            """
-            SELECT COALESCE(sum(position_value_usd),0) AS total, count(*) AS positions
-            FROM positions WHERE ts_ms=:ts
-            """,
-            {'ts': stable_ts},
-        ) or {'total': 0, 'positions': 0}
-        assets = fetch_one('SELECT count(*) AS n FROM asset_signals WHERE ts_ms=:ts', {'ts': stable_ts}) or {'n': 0}
+        ) or {'tracked_total': 0, 'open_total': 0, 'open_positions': 0, 'assets': 0}
+        total_value = {'total': rollup['tracked_total']}
+        open_value = {'total': rollup['open_total'], 'positions': rollup['open_positions']}
+        assets = {'n': rollup['assets']}
     else:
         total_value = fetch_one(
             """
@@ -87,6 +90,49 @@ def summary(user: dict = Depends(require_active_subscription)):
         'tracked_open_position_value_usd': float(open_value['total'] or 0),
         'open_positions': int(open_value['positions'] or 0),
         'assets_with_signals': assets['n'],
+    }
+
+
+@app.get('/api/data-health')
+def data_health(user: dict = Depends(require_active_subscription)):
+    latest_signal = fetch_one('SELECT max(ts_ms) AS ts_ms FROM asset_signals') or {'ts_ms': None}
+    latest_position = fetch_one('SELECT max(ts_ms) AS ts_ms FROM positions') or {'ts_ms': None}
+    ts = latest_signal.get('ts_ms')
+    signal_rollup = {'tracked_total': 0, 'open_total': 0, 'open_positions': 0, 'assets': 0}
+    positions_at_signal = {'open_total': 0, 'open_positions': 0}
+    latest_positions = {'open_total': 0, 'open_positions': 0}
+    if ts:
+        signal_rollup = fetch_one(
+            """
+            SELECT COALESCE(max(total_tracked_value_usd),0) AS tracked_total,
+                   COALESCE(sum(value_long_usd + value_short_usd),0) AS open_total,
+                   COALESCE(sum(wallets_long + wallets_short),0) AS open_positions,
+                   count(*) AS assets
+            FROM asset_signals WHERE ts_ms=:ts
+            """, {'ts': ts}
+        ) or signal_rollup
+        positions_at_signal = fetch_one(
+            """
+            SELECT COALESCE(sum(position_value_usd),0) AS open_total, count(*) AS open_positions
+            FROM positions WHERE ts_ms=:ts
+            """, {'ts': ts}
+        ) or positions_at_signal
+    latest_positions = fetch_one(
+        """
+        WITH latest_ts AS (SELECT max(ts_ms) ts_ms FROM positions)
+        SELECT COALESCE(sum(position_value_usd),0) AS open_total, count(*) AS open_positions
+        FROM positions WHERE ts_ms=(SELECT ts_ms FROM latest_ts)
+        """
+    ) or latest_positions
+    latest_run = fetch_one('SELECT * FROM collector_runs ORDER BY ts_ms DESC LIMIT 1') or {}
+    return {
+        'latest_signal_ts_ms': ts,
+        'latest_position_ts_ms': latest_position.get('ts_ms'),
+        'signal_rollup': {k: float(v or 0) if k != 'assets' else int(v or 0) for k, v in dict(signal_rollup).items()},
+        'positions_at_signal_ts': {k: float(v or 0) for k, v in dict(positions_at_signal).items()},
+        'latest_positions': {k: float(v or 0) for k, v in dict(latest_positions).items()},
+        'latest_run': latest_run,
+        'summary_source': 'asset_signals_latest_completed_snapshot',
     }
 
 @app.get('/api/signals')
@@ -179,12 +225,15 @@ def recent_orders(limit: int = 50, user: dict = Depends(require_active_subscript
         ), previous AS (
           SELECT p.* FROM positions p WHERE p.ts_ms=(SELECT ts_ms FROM previous_ts)
         ), joined AS (
-          SELECT l.ts_ms, l.wallet, l.coin, l.side,
+          SELECT COALESCE(l.ts_ms, (SELECT ts_ms FROM latest_ts)) AS ts_ms,
+                 COALESCE(l.wallet, p.wallet) AS wallet,
+                 COALESCE(l.coin, p.coin) AS coin,
+                 COALESCE(l.side, p.side) AS side,
                  COALESCE(l.position_value_usd,0) - COALESCE(p.position_value_usd,0) AS delta_value_usd,
                  COALESCE(l.position_value_usd,0) AS position_value_usd,
                  COALESCE(l.size,0) - COALESCE(p.size,0) AS delta_size
           FROM latest l
-          LEFT JOIN previous p ON p.wallet=l.wallet AND p.coin=l.coin AND lower(p.side)=lower(l.side)
+          FULL OUTER JOIN previous p ON p.wallet=l.wallet AND p.coin=l.coin AND lower(p.side)=lower(l.side)
         )
         SELECT * FROM joined
         WHERE abs(delta_value_usd) > 1000
