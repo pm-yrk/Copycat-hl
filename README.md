@@ -1,4 +1,8 @@
-# copycat.hl Docker npm build fix
+# copycat.hl force frontend Dockerfile fix
 
-This patch changes the frontend Dockerfile to use Node 20 LTS and a more reliable npm install step.
-It keeps the build-time Supabase placeholders from the previous patch.
+This patch adds the same fixed frontend Dockerfile at BOTH:
+
+- `Dockerfile` at the repo root
+- `frontend/Dockerfile`
+
+This removes ambiguity if Render is accidentally building from the repo-root Dockerfile instead of `frontend/Dockerfile`.
