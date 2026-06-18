@@ -197,24 +197,40 @@ def recent_orders(limit: int = 3, user: dict = Depends(require_active_subscripti
 
 _ICON_CACHE: dict[str, tuple[float, str | None]] = {}
 _ICON_TTL_SECONDS = 60 * 60 * 24 * 7
-_CG_QUERY_OVERRIDES = {
-    # Major assets and common Hyperliquid perps. These are search terms, not hard-coded image URLs.
-    'BTC': 'bitcoin', 'WBTC': 'wrapped bitcoin', 'CBTC': 'coinbase wrapped btc',
+_CG_ID_OVERRIDES = {
+    'BTC': 'bitcoin', 'WBTC': 'wrapped-bitcoin', 'CBTC': 'coinbase-wrapped-btc',
     'ETH': 'ethereum', 'SOL': 'solana', 'HYPE': 'hyperliquid', 'ZEC': 'zcash',
-    'NEAR': 'near protocol', 'AAVE': 'aave', 'TRX': 'tron', 'XRP': 'xrp',
-    'USDC': 'usd coin', 'USDC/CASH': 'usd coin', 'USDT': 'tether', 'USDS': 'usds',
-    'WLD': 'worldcoin', 'ARB': 'arbitrum', 'AVAX': 'avalanche', 'BNB': 'bnb',
-    'DOGE': 'dogecoin', 'PENGU': 'pudgy penguins', 'ENA': 'ethena', 'ONDO': 'ondo',
-    'FET': 'artificial superintelligence alliance', 'LTC': 'litecoin', 'LINK': 'chainlink',
-    'UNI': 'uniswap', 'APT': 'aptos', 'OP': 'optimism', 'SUI': 'sui', 'DOT': 'polkadot',
-    'FIL': 'filecoin', 'ATOM': 'cosmos hub', 'INJ': 'injective', 'JUP': 'jupiter',
-    'KAITO': 'kaito', 'GRASS': 'grass', 'APE': 'apecoin', 'BERA': 'berachain',
-    'TAO': 'bittensor', 'MNT': 'mantle', 'SEI': 'sei network', 'BLUR': 'blur',
-    'LAYER': 'solayer', 'ZRO': 'layerzero', 'EIGEN': 'eigenlayer', 'STRK': 'starknet',
-    'XLM': 'stellar', 'XAI': 'xai', 'MELANIA': 'melania meme', 'MOODENG': 'moo deng',
-    'FARTCOIN': 'fartcoin', 'VIRTUAL': 'virtuals protocol', 'PENDLE': 'pendle',
-    'KAS': 'kaspa', 'DYDX': 'dydx', 'AERO': 'aerodrome finance',
+    'NEAR': 'near', 'AAVE': 'aave', 'TRX': 'tron', 'XRP': 'ripple',
+    'USDC': 'usd-coin', 'USDC/CASH': 'usd-coin', 'USDT': 'tether', 'USDS': 'usds',
+    'WLD': 'worldcoin-wld', 'ARB': 'arbitrum', 'AVAX': 'avalanche-2', 'BNB': 'binancecoin',
+    'DOGE': 'dogecoin', 'PENGU': 'pudgy-penguins', 'ENA': 'ethena', 'ONDO': 'ondo-finance',
+    'FET': 'fetch-ai', 'LTC': 'litecoin', 'LINK': 'chainlink', 'UNI': 'uniswap',
+    'APT': 'aptos', 'OP': 'optimism', 'SUI': 'sui', 'DOT': 'polkadot', 'FIL': 'filecoin',
+    'ATOM': 'cosmos', 'INJ': 'injective-protocol', 'JUP': 'jupiter-exchange-solana',
+    'TAO': 'bittensor', 'MNT': 'mantle', 'SEI': 'sei-network', 'BLUR': 'blur',
+    'ZRO': 'layerzero', 'EIGEN': 'eigenlayer', 'STRK': 'starknet', 'XLM': 'stellar',
+    'XAI': 'xai', 'FARTCOIN': 'fartcoin', 'VIRTUAL': 'virtual-protocol',
+    'PENDLE': 'pendle', 'KAS': 'kaspa', 'DYDX': 'dydx-chain', 'AERO': 'aerodrome-finance',
+    'BONK': 'bonk', 'KBONK': 'bonk', 'GRASS': 'grass', 'KAITO': 'kaito',
+    'MELANIA': 'melania-meme', 'MOODENG': 'moo-deng', 'BERA': 'berachain-bera',
 }
+_CG_QUERY_OVERRIDES = {
+    'HYPE': 'hyperliquid', 'MELANIA': 'melania meme', 'KBONK': 'bonk', 'BONK': 'bonk',
+    'WLD': 'worldcoin', 'PENGU': 'pudgy penguins', 'KAITO': 'kaito', 'GRASS': 'grass',
+    'MOODENG': 'moo deng', 'FARTCOIN': 'fartcoin', 'VIRTUAL': 'virtuals protocol',
+    'LAYER': 'solayer', 'USDC/CASH': 'usd coin', 'USDS': 'usds',
+}
+
+def _open_json(url: str) -> dict | list | None:
+    try:
+        req = urllib.request.Request(url, headers={
+            'User-Agent': 'Copycat/1.0 (+https://copycat.hl)',
+            'Accept': 'application/json',
+        })
+        with urllib.request.urlopen(req, timeout=6) as res:
+            return json.loads(res.read().decode('utf-8'))
+    except Exception:
+        return None
 
 def _coingecko_icon_for_symbol(symbol: str) -> str | None:
     symbol = (symbol or '').upper().strip()
@@ -224,27 +240,33 @@ def _coingecko_icon_for_symbol(symbol: str) -> str | None:
     cached = _ICON_CACHE.get(symbol)
     if cached and now - cached[0] < _ICON_TTL_SECONDS:
         return cached[1]
-    query = _CG_QUERY_OVERRIDES.get(symbol, symbol)
-    url = 'https://api.coingecko.com/api/v3/search?query=' + urllib.parse.quote(query)
+
     image = None
-    try:
-        req = urllib.request.Request(url, headers={'User-Agent': 'Copycat/1.0'})
-        with urllib.request.urlopen(req, timeout=5) as res:
-            payload = json.loads(res.read().decode('utf-8'))
-        coins = payload.get('coins') or []
-        def rank_key(coin: dict) -> int:
-            rank = coin.get('market_cap_rank')
-            return int(rank) if isinstance(rank, int) and rank > 0 else 10_000_000
-        exact = [coin for coin in coins if str(coin.get('symbol') or '').upper() == symbol]
-        chosen_pool = exact or coins
-        chosen = sorted(chosen_pool, key=rank_key)[0] if chosen_pool else None
-        if chosen:
-            image = chosen.get('large') or chosen.get('small') or chosen.get('thumb')
-    except Exception:
-        image = None
+    coin_id = _CG_ID_OVERRIDES.get(symbol)
+    if coin_id:
+        # Bulk market endpoint gives a canonical current image URL for a CoinGecko ID.
+        url = 'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=' + urllib.parse.quote(coin_id)
+        payload = _open_json(url)
+        if isinstance(payload, list) and payload:
+            image = payload[0].get('image')
+
+    if not image:
+        query = _CG_QUERY_OVERRIDES.get(symbol, symbol)
+        url = 'https://api.coingecko.com/api/v3/search?query=' + urllib.parse.quote(query)
+        payload = _open_json(url)
+        if isinstance(payload, dict):
+            coins = payload.get('coins') or []
+            def rank_key(coin: dict) -> int:
+                rank = coin.get('market_cap_rank')
+                return int(rank) if isinstance(rank, int) and rank > 0 else 10_000_000
+            exact = [coin for coin in coins if str(coin.get('symbol') or '').upper() == symbol]
+            chosen_pool = exact or coins
+            chosen = sorted(chosen_pool, key=rank_key)[0] if chosen_pool else None
+            if chosen:
+                image = chosen.get('large') or chosen.get('small') or chosen.get('thumb')
+
     _ICON_CACHE[symbol] = (now, image)
     return image
-
 
 @app.get('/api/token-icons')
 def token_icons(symbols: str = ''):
@@ -253,7 +275,7 @@ def token_icons(symbols: str = ''):
         sym = raw.strip().upper()
         if sym and sym not in requested:
             requested.append(sym)
-    requested = requested[:80]
+    requested = requested[:120]
     return {'icons': {sym: _coingecko_icon_for_symbol(sym) for sym in requested}}
 
 
