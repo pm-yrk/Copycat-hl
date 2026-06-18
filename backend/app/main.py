@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+import json
+import time
+import urllib.parse
+import urllib.request
+
 import stripe
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -188,6 +193,59 @@ def recent_orders(limit: int = 3, user: dict = Depends(require_active_subscripti
             'position_value_usd': float(r.get('position_value_usd') or 0),
         })
     return out
+
+
+_ICON_CACHE: dict[str, tuple[float, str | None]] = {}
+_ICON_TTL_SECONDS = 60 * 60 * 24 * 7
+_CG_QUERY_OVERRIDES = {
+    'BTC': 'bitcoin', 'ETH': 'ethereum', 'SOL': 'solana', 'HYPE': 'hyperliquid',
+    'ZEC': 'zcash', 'NEAR': 'near protocol', 'AAVE': 'aave', 'TRX': 'tron',
+    'XRP': 'xrp', 'USDC': 'usd coin', 'USDT': 'tether', 'WLD': 'worldcoin',
+    'ARB': 'arbitrum', 'AVAX': 'avalanche', 'BNB': 'bnb', 'DOGE': 'dogecoin',
+    'PENGU': 'pudgy penguins', 'ENA': 'ethena', 'ONDO': 'ondo', 'FET': 'artificial superintelligence alliance',
+    'LTC': 'litecoin', 'LINK': 'chainlink', 'UNI': 'uniswap', 'APT': 'aptos',
+    'OP': 'optimism', 'SUI': 'sui', 'DOT': 'polkadot', 'FIL': 'filecoin',
+}
+
+def _coingecko_icon_for_symbol(symbol: str) -> str | None:
+    symbol = (symbol or '').upper().strip()
+    if not symbol:
+        return None
+    now = time.time()
+    cached = _ICON_CACHE.get(symbol)
+    if cached and now - cached[0] < _ICON_TTL_SECONDS:
+        return cached[1]
+    query = _CG_QUERY_OVERRIDES.get(symbol, symbol)
+    url = 'https://api.coingecko.com/api/v3/search?query=' + urllib.parse.quote(query)
+    image = None
+    try:
+        req = urllib.request.Request(url, headers={'User-Agent': 'Copycat/1.0'})
+        with urllib.request.urlopen(req, timeout=5) as res:
+            payload = json.loads(res.read().decode('utf-8'))
+        coins = payload.get('coins') or []
+        exact = None
+        for coin in coins:
+            if str(coin.get('symbol') or '').upper() == symbol:
+                exact = coin
+                break
+        chosen = exact or (coins[0] if coins else None)
+        if chosen:
+            image = chosen.get('large') or chosen.get('small') or chosen.get('thumb')
+    except Exception:
+        image = None
+    _ICON_CACHE[symbol] = (now, image)
+    return image
+
+
+@app.get('/api/token-icons')
+def token_icons(symbols: str = '', user: dict = Depends(require_active_subscription)):
+    requested = []
+    for raw in symbols.split(','):
+        sym = raw.strip().upper()
+        if sym and sym not in requested:
+            requested.append(sym)
+    requested = requested[:80]
+    return {'icons': {sym: _coingecko_icon_for_symbol(sym) for sym in requested}}
 
 
 @app.post('/api/billing/create-checkout-session')

@@ -3,14 +3,6 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 
-function Brand() {
-  return (
-    <Link href="/" className="brand" aria-label="Copycat home">
-      <span className="brand-word"><span>Copy</span><em>cat</em></span>
-    </Link>
-  )
-}
-
 export default function Nav() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
 
@@ -30,15 +22,14 @@ export default function Nav() {
 
   return (
     <nav className="nav">
-      <Brand />
-      <div className="links nav-links">
+      <Link href="/" className="brand" aria-label="Copycat home">
+        <span>Copy</span><em>cat</em>
+      </Link>
+      <div className="nav-links">
         <Link href="/pricing">Pricing</Link>
         <Link href="/login">Login</Link>
-        <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle light and dark mode">
-          <span>{theme === 'dark' ? 'Dark' : 'Light'}</span>
-          <i />
-        </button>
-        <Link className="btn nav-dashboard" href="/dashboard">Dashboard</Link>
+        <button className="theme-switch" onClick={toggleTheme} aria-label="Toggle light and dark mode"><span>{theme === 'dark' ? 'Dark' : 'Light'}</span><i /></button>
+        <Link className="dashboard-nav" href="/dashboard">Dashboard</Link>
       </div>
     </nav>
   )
