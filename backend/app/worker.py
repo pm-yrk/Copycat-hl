@@ -298,31 +298,36 @@ def collect_once() -> dict[str, Any]:
     ts = now_ms()
     with engine.begin() as conn:
         wallets = [r[0] for r in conn.execute(text("SELECT wallet FROM qualified_wallets WHERE status='active' ORDER BY rank")).fetchall()]
+
     ok, errors = 0, []
+    snapshot_rows: list[dict[str, Any]] = []
+    position_rows: list[dict[str, Any]] = []
+
     for wallet in wallets:
         try:
             state = hl.clearinghouse_state(wallet)
             summary = extract_margin_summary(state)
-            positions = normalize_positions(wallet, ts, state)
-            with engine.begin() as conn:
-                conn.execute(text('''INSERT INTO wallet_snapshots(ts_ms,wallet,account_value_usd,total_margin_used_usd,withdrawable_usd,total_ntl_pos_usd,raw_json)
-                    VALUES(:ts,:wallet,:account_value_usd,:total_margin_used_usd,:withdrawable_usd,:total_ntl_pos_usd,CAST(:raw_json AS jsonb))'''), {
-                    'ts': ts, 'wallet': wallet, **summary, 'raw_json': json.dumps(state)
-                })
-                for p in positions:
-                    conn.execute(text('''INSERT INTO positions(ts_ms,wallet,coin,side,size,position_value_usd,entry_px,mark_px,unrealized_pnl_usd,return_on_equity,leverage,liquidation_px,raw_json)
-                    VALUES(:ts_ms,:wallet,:coin,:side,:size,:position_value_usd,:entry_px,:mark_px,:unrealized_pnl_usd,:return_on_equity,:leverage,:liquidation_px,CAST(:raw_json AS jsonb))'''), p)
+            snapshot_rows.append({'ts': ts, 'wallet': wallet, **summary, 'raw_json': json.dumps(state)})
+            position_rows.extend(normalize_positions(wallet, ts, state))
             ok += 1
         except Exception as exc:
             errors.append(f'{wallet}: {exc}')
             log.exception('collect failed %s', wallet)
-        time.sleep(0.25)
-    compute_signals()
+        time.sleep(0.10)
+
+    with engine.begin() as conn:
+        for row in snapshot_rows:
+            conn.execute(text('''INSERT INTO wallet_snapshots(ts_ms,wallet,account_value_usd,total_margin_used_usd,withdrawable_usd,total_ntl_pos_usd,raw_json)
+                VALUES(:ts,:wallet,:account_value_usd,:total_margin_used_usd,:withdrawable_usd,:total_ntl_pos_usd,CAST(:raw_json AS jsonb))'''), row)
+        for p in position_rows:
+            conn.execute(text('''INSERT INTO positions(ts_ms,wallet,coin,side,size,position_value_usd,entry_px,mark_px,unrealized_pnl_usd,return_on_equity,leverage,liquidation_px,raw_json)
+                VALUES(:ts_ms,:wallet,:coin,:side,:size,:position_value_usd,:entry_px,:mark_px,:unrealized_pnl_usd,:return_on_equity,:leverage,:liquidation_px,CAST(:raw_json AS jsonb))'''), p)
+
+    signals = compute_signals()
     check_alerts()
     with engine.begin() as conn:
-        insert_run(conn, 'collect_once', 'ok', f'wallets_ok={ok}; errors={len(errors)}')
-    return {'wallets_ok': ok, 'errors': errors[:5]}
-
+        insert_run(conn, 'collect_once', 'ok' if errors == [] else 'partial', f'wallets_ok={ok}; errors={len(errors)}; positions={len(position_rows)}; signals={len(signals)}')
+    return {'wallets_ok': ok, 'errors': errors[:5], 'positions': len(position_rows), 'signals': len(signals)}
 
 def latest_snapshot_maps(conn):
     snaps = conn.execute(text('''SELECT DISTINCT ON (wallet) wallet, account_value_usd FROM wallet_snapshots ORDER BY wallet, ts_ms DESC''')).mappings().all()
@@ -380,14 +385,14 @@ def compute_signals() -> list[dict[str, Any]]:
         prev_wallets = prev_by_coin.get(coin, {})
         net_buyer_count, bullish_flow, bearish_flow = 0, 0.0, 0.0
         for w in set(wallets) | set(prev_wallets):
-            cur_val = wallets.get(w, {}).get('exposure', 0.0)
-            old_val = prev_wallets.get(w, {}).get('exposure', 0.0)
-            delta = cur_val - old_val
+            cur_exp = wallets.get(w, {}).get('exposure', 0.0)
+            old_exp = prev_wallets.get(w, {}).get('exposure', 0.0)
             av = account_values.get(w, 0)
-            if delta > 0.01:
-                net_buyer_count += 1; bullish_flow += abs(delta) * av
-            elif delta < -0.01:
-                net_buyer_count -= 1; bearish_flow += abs(delta) * av
+            delta_usd = (cur_exp - old_exp) * av
+            if delta_usd > 1000:
+                net_buyer_count += 1; bullish_flow += delta_usd
+            elif delta_usd < -1000:
+                net_buyer_count -= 1; bearish_flow += abs(delta_usd)
         participation = active / max(1, len(wallets_all))
         consensus = (long_count - short_count) / max(1, active)
         signal = clamp(.55*weighted_net + .30*exposure_change + .15*consensus, -1, 1)

@@ -40,38 +40,54 @@ def me(user: dict = Depends(get_current_user)):
 
 @app.get('/api/summary')
 def summary(user: dict = Depends(require_active_subscription)):
-    latest_signal_ts = fetch_one('SELECT max(ts_ms) AS ts_ms FROM asset_signals') or {'ts_ms': None}
-    latest_pos_ts = fetch_one('SELECT max(ts_ms) AS ts_ms FROM positions') or {'ts_ms': None}
+    latest_signal = fetch_one('SELECT max(ts_ms) AS ts_ms FROM asset_signals') or {'ts_ms': None}
+    stable_ts = latest_signal.get('ts_ms')
     latest_wallets = fetch_one("SELECT count(*) AS n FROM qualified_wallets WHERE status='active'") or {'n': 0}
-    total_value = fetch_one(
-        """
-        WITH latest AS (
-          SELECT DISTINCT ON (wallet) wallet, account_value_usd
-          FROM wallet_snapshots ORDER BY wallet, ts_ms DESC
-        ) SELECT COALESCE(sum(account_value_usd),0) AS total FROM latest
-        """
-    ) or {'total': 0}
-    open_value = fetch_one(
-        """
-        WITH latest_ts AS (SELECT max(ts_ms) ts_ms FROM positions)
-        SELECT COALESCE(sum(position_value_usd),0) AS total, count(*) AS positions
-        FROM positions WHERE ts_ms=(SELECT ts_ms FROM latest_ts)
-        """
-    ) or {'total': 0, 'positions': 0}
-    assets = fetch_one(
-        """WITH latest_ts AS (SELECT max(ts_ms) ts_ms FROM asset_signals)
-        SELECT count(*) AS n FROM asset_signals WHERE ts_ms=(SELECT ts_ms FROM latest_ts)"""
-    ) or {'n': 0}
+
+    if stable_ts:
+        total_value = fetch_one(
+            """
+            SELECT COALESCE(max(total_tracked_value_usd),0) AS total
+            FROM asset_signals WHERE ts_ms=:ts
+            """,
+            {'ts': stable_ts},
+        ) or {'total': 0}
+        open_value = fetch_one(
+            """
+            SELECT COALESCE(sum(position_value_usd),0) AS total, count(*) AS positions
+            FROM positions WHERE ts_ms=:ts
+            """,
+            {'ts': stable_ts},
+        ) or {'total': 0, 'positions': 0}
+        assets = fetch_one('SELECT count(*) AS n FROM asset_signals WHERE ts_ms=:ts', {'ts': stable_ts}) or {'n': 0}
+    else:
+        total_value = fetch_one(
+            """
+            WITH latest AS (
+              SELECT DISTINCT ON (wallet) wallet, account_value_usd
+              FROM wallet_snapshots ORDER BY wallet, ts_ms DESC
+            ) SELECT COALESCE(sum(account_value_usd),0) AS total FROM latest
+            """
+        ) or {'total': 0}
+        open_value = fetch_one(
+            """
+            WITH latest_ts AS (SELECT max(ts_ms) ts_ms FROM positions)
+            SELECT COALESCE(sum(position_value_usd),0) AS total, count(*) AS positions
+            FROM positions WHERE ts_ms=(SELECT ts_ms FROM latest_ts)
+            """
+        ) or {'total': 0, 'positions': 0}
+        assets = {'n': 0}
+
+    latest_pos_ts = fetch_one('SELECT max(ts_ms) AS ts_ms FROM positions') or {'ts_ms': None}
     return {
-        'latest_signal_ts_ms': latest_signal_ts['ts_ms'],
+        'latest_signal_ts_ms': stable_ts,
         'latest_position_ts_ms': latest_pos_ts['ts_ms'],
         'qualified_wallets': latest_wallets['n'],
         'tracked_account_value_usd': float(total_value['total'] or 0),
         'tracked_open_position_value_usd': float(open_value['total'] or 0),
-        'open_positions': open_value['positions'],
+        'open_positions': int(open_value['positions'] or 0),
         'assets_with_signals': assets['n'],
     }
-
 
 @app.get('/api/signals')
 def signals(limit: int = 50, user: dict = Depends(require_active_subscription)):
@@ -100,14 +116,19 @@ def targets(user: dict = Depends(require_active_subscription)):
 
 
 @app.get('/api/flow')
-def flow(limit: int = 50, user: dict = Depends(require_active_subscription)):
+def flow(limit: int = 500, user: dict = Depends(require_active_subscription)):
     return fetch_all(
         """
         WITH latest_ts AS (SELECT max(ts_ms) AS ts_ms FROM asset_signals)
         SELECT coin, signal, confidence, wallets_long, wallets_short, wallets_flat,
                value_long_usd, value_short_usd, net_value_usd,
                value_long_pct_total, value_short_pct_total,
-               net_buyer_count, bullish_value_flow_usd, bearish_value_flow_usd, net_value_flow_usd
+               net_buyer_count,
+               bullish_value_flow_usd,
+               bearish_value_flow_usd,
+               bullish_value_flow_usd AS bullish_flow_usd,
+               bearish_value_flow_usd AS bearish_flow_usd,
+               net_value_flow_usd
         FROM asset_signals
         WHERE ts_ms=(SELECT ts_ms FROM latest_ts)
         ORDER BY abs(net_value_flow_usd) DESC NULLS LAST
@@ -115,7 +136,6 @@ def flow(limit: int = 50, user: dict = Depends(require_active_subscription)):
         """,
         {'limit': limit},
     )
-
 
 @app.get('/api/wallets')
 def wallets(limit: int = 100, user: dict = Depends(require_active_subscription)):
@@ -141,18 +161,15 @@ def runs(limit: int = 30, user: dict = Depends(require_active_subscription)):
 
 
 @app.get('/api/recent-orders')
-def recent_orders(limit: int = 3, user: dict = Depends(require_active_subscription)):
-    """Derived recent order tape.
-
-    Hyperliquid order events are not stored directly yet, so this endpoint derives the
-    customer-facing "recent orders" tape from the latest two position snapshots for
-    the active qualified wallet cohort. It surfaces the largest new/increased/reduced
-    exposures so the dashboard updates as the collector runs.
-    """
+def recent_orders(limit: int = 50, user: dict = Depends(require_active_subscription)):
     rows = fetch_all(
         """
-        WITH ordered_ts AS (
-          SELECT DISTINCT ts_ms FROM positions ORDER BY ts_ms DESC LIMIT 2
+        WITH completed AS (
+          SELECT max(ts_ms) AS latest_ts FROM asset_signals
+        ), ordered_ts AS (
+          SELECT DISTINCT ts_ms FROM positions
+          WHERE ts_ms <= COALESCE((SELECT latest_ts FROM completed), (SELECT max(ts_ms) FROM positions))
+          ORDER BY ts_ms DESC LIMIT 2
         ), latest_ts AS (
           SELECT max(ts_ms) AS ts_ms FROM ordered_ts
         ), previous_ts AS (
@@ -161,15 +178,17 @@ def recent_orders(limit: int = 3, user: dict = Depends(require_active_subscripti
           SELECT p.* FROM positions p WHERE p.ts_ms=(SELECT ts_ms FROM latest_ts)
         ), previous AS (
           SELECT p.* FROM positions p WHERE p.ts_ms=(SELECT ts_ms FROM previous_ts)
+        ), joined AS (
+          SELECT l.ts_ms, l.wallet, l.coin, l.side,
+                 COALESCE(l.position_value_usd,0) - COALESCE(p.position_value_usd,0) AS delta_value_usd,
+                 COALESCE(l.position_value_usd,0) AS position_value_usd,
+                 COALESCE(l.size,0) - COALESCE(p.size,0) AS delta_size
+          FROM latest l
+          LEFT JOIN previous p ON p.wallet=l.wallet AND p.coin=l.coin AND lower(p.side)=lower(l.side)
         )
-        SELECT l.ts_ms, l.wallet, l.coin, l.side,
-               COALESCE(l.position_value_usd,0) - COALESCE(p.position_value_usd,0) AS delta_value_usd,
-               COALESCE(l.position_value_usd,0) AS position_value_usd,
-               COALESCE(l.size,0) - COALESCE(p.size,0) AS delta_size
-        FROM latest l
-        LEFT JOIN previous p ON p.wallet=l.wallet AND p.coin=l.coin AND lower(p.side)=lower(l.side)
-        WHERE abs(COALESCE(l.position_value_usd,0) - COALESCE(p.position_value_usd,0)) > 0
-        ORDER BY abs(COALESCE(l.position_value_usd,0) - COALESCE(p.position_value_usd,0)) DESC NULLS LAST
+        SELECT * FROM joined
+        WHERE abs(delta_value_usd) > 1000
+        ORDER BY abs(delta_value_usd) DESC NULLS LAST
         LIMIT :limit
         """,
         {'limit': limit},
@@ -193,7 +212,6 @@ def recent_orders(limit: int = 3, user: dict = Depends(require_active_subscripti
             'position_value_usd': float(r.get('position_value_usd') or 0),
         })
     return out
-
 
 _ICON_CACHE: dict[str, tuple[float, str | None]] = {}
 _ICON_TTL_SECONDS = 60 * 60 * 24 * 7
