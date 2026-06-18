@@ -198,13 +198,22 @@ def recent_orders(limit: int = 3, user: dict = Depends(require_active_subscripti
 _ICON_CACHE: dict[str, tuple[float, str | None]] = {}
 _ICON_TTL_SECONDS = 60 * 60 * 24 * 7
 _CG_QUERY_OVERRIDES = {
-    'BTC': 'bitcoin', 'ETH': 'ethereum', 'SOL': 'solana', 'HYPE': 'hyperliquid',
-    'ZEC': 'zcash', 'NEAR': 'near protocol', 'AAVE': 'aave', 'TRX': 'tron',
-    'XRP': 'xrp', 'USDC': 'usd coin', 'USDT': 'tether', 'WLD': 'worldcoin',
-    'ARB': 'arbitrum', 'AVAX': 'avalanche', 'BNB': 'bnb', 'DOGE': 'dogecoin',
-    'PENGU': 'pudgy penguins', 'ENA': 'ethena', 'ONDO': 'ondo', 'FET': 'artificial superintelligence alliance',
-    'LTC': 'litecoin', 'LINK': 'chainlink', 'UNI': 'uniswap', 'APT': 'aptos',
-    'OP': 'optimism', 'SUI': 'sui', 'DOT': 'polkadot', 'FIL': 'filecoin',
+    # Major assets and common Hyperliquid perps. These are search terms, not hard-coded image URLs.
+    'BTC': 'bitcoin', 'WBTC': 'wrapped bitcoin', 'CBTC': 'coinbase wrapped btc',
+    'ETH': 'ethereum', 'SOL': 'solana', 'HYPE': 'hyperliquid', 'ZEC': 'zcash',
+    'NEAR': 'near protocol', 'AAVE': 'aave', 'TRX': 'tron', 'XRP': 'xrp',
+    'USDC': 'usd coin', 'USDC/CASH': 'usd coin', 'USDT': 'tether', 'USDS': 'usds',
+    'WLD': 'worldcoin', 'ARB': 'arbitrum', 'AVAX': 'avalanche', 'BNB': 'bnb',
+    'DOGE': 'dogecoin', 'PENGU': 'pudgy penguins', 'ENA': 'ethena', 'ONDO': 'ondo',
+    'FET': 'artificial superintelligence alliance', 'LTC': 'litecoin', 'LINK': 'chainlink',
+    'UNI': 'uniswap', 'APT': 'aptos', 'OP': 'optimism', 'SUI': 'sui', 'DOT': 'polkadot',
+    'FIL': 'filecoin', 'ATOM': 'cosmos hub', 'INJ': 'injective', 'JUP': 'jupiter',
+    'KAITO': 'kaito', 'GRASS': 'grass', 'APE': 'apecoin', 'BERA': 'berachain',
+    'TAO': 'bittensor', 'MNT': 'mantle', 'SEI': 'sei network', 'BLUR': 'blur',
+    'LAYER': 'solayer', 'ZRO': 'layerzero', 'EIGEN': 'eigenlayer', 'STRK': 'starknet',
+    'XLM': 'stellar', 'XAI': 'xai', 'MELANIA': 'melania meme', 'MOODENG': 'moo deng',
+    'FARTCOIN': 'fartcoin', 'VIRTUAL': 'virtuals protocol', 'PENDLE': 'pendle',
+    'KAS': 'kaspa', 'DYDX': 'dydx', 'AERO': 'aerodrome finance',
 }
 
 def _coingecko_icon_for_symbol(symbol: str) -> str | None:
@@ -223,12 +232,12 @@ def _coingecko_icon_for_symbol(symbol: str) -> str | None:
         with urllib.request.urlopen(req, timeout=5) as res:
             payload = json.loads(res.read().decode('utf-8'))
         coins = payload.get('coins') or []
-        exact = None
-        for coin in coins:
-            if str(coin.get('symbol') or '').upper() == symbol:
-                exact = coin
-                break
-        chosen = exact or (coins[0] if coins else None)
+        def rank_key(coin: dict) -> int:
+            rank = coin.get('market_cap_rank')
+            return int(rank) if isinstance(rank, int) and rank > 0 else 10_000_000
+        exact = [coin for coin in coins if str(coin.get('symbol') or '').upper() == symbol]
+        chosen_pool = exact or coins
+        chosen = sorted(chosen_pool, key=rank_key)[0] if chosen_pool else None
         if chosen:
             image = chosen.get('large') or chosen.get('small') or chosen.get('thumb')
     except Exception:
@@ -238,7 +247,7 @@ def _coingecko_icon_for_symbol(symbol: str) -> str | None:
 
 
 @app.get('/api/token-icons')
-def token_icons(symbols: str = '', user: dict = Depends(require_active_subscription)):
+def token_icons(symbols: str = ''):
     requested = []
     for raw in symbols.split(','):
         sym = raw.strip().upper()

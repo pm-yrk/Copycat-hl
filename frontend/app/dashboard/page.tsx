@@ -17,12 +17,46 @@ function maskWallet(w:string){return w?`Wallet ${w.slice(0,4)}…${w.slice(-4)}`
 const palette=['#43E8D0','#8057FF','#44BDEC','#FFB020','#25D366','#F35EA6','#A6E22E','#FF5B72']
 const fallbackColours:Record<string,string>={HYPE:'#43E8D0',ETH:'#627EEA',BTC:'#F7931A',SOL:'#14F195',ZEC:'#F4B728',NEAR:'#00EC97',AAVE:'#8B7DFF',TRX:'#FF4B4B',XRP:'#4B9FFF',USDC:'#2775CA'}
 
+const staticLogoUrls: Record<string, string> = {
+  BTC:'https://cryptologos.cc/logos/bitcoin-btc-logo.svg?v=040', ETH:'https://cryptologos.cc/logos/ethereum-eth-logo.svg?v=040',
+  SOL:'https://cryptologos.cc/logos/solana-sol-logo.svg?v=040', USDC:'https://cryptologos.cc/logos/usd-coin-usdc-logo.svg?v=040',
+  USDT:'https://cryptologos.cc/logos/tether-usdt-logo.svg?v=040', DOGE:'https://cryptologos.cc/logos/dogecoin-doge-logo.svg?v=040',
+  AAVE:'https://cryptologos.cc/logos/aave-aave-logo.svg?v=040', TRX:'https://cryptologos.cc/logos/tron-trx-logo.svg?v=040',
+  XRP:'https://cryptologos.cc/logos/xrp-xrp-logo.svg?v=040', AVAX:'https://cryptologos.cc/logos/avalanche-avax-logo.svg?v=040',
+  BNB:'https://cryptologos.cc/logos/bnb-bnb-logo.svg?v=040', LINK:'https://cryptologos.cc/logos/chainlink-link-logo.svg?v=040',
+  UNI:'https://cryptologos.cc/logos/uniswap-uni-logo.svg?v=040', LTC:'https://cryptologos.cc/logos/litecoin-ltc-logo.svg?v=040',
+  DOT:'https://cryptologos.cc/logos/polkadot-new-dot-logo.svg?v=040', FIL:'https://cryptologos.cc/logos/filecoin-fil-logo.svg?v=040',
+  ATOM:'https://cryptologos.cc/logos/cosmos-atom-logo.svg?v=040', NEAR:'https://cryptologos.cc/logos/near-protocol-near-logo.svg?v=040',
+  ZEC:'https://cryptologos.cc/logos/zcash-zec-logo.svg?v=040', ARB:'https://cryptologos.cc/logos/arbitrum-arb-logo.svg?v=040',
+  SUI:'https://cryptologos.cc/logos/sui-sui-logo.svg?v=040', OP:'https://cryptologos.cc/logos/optimism-ethereum-op-logo.svg?v=040',
+  APE:'https://cryptologos.cc/logos/apecoin-ape-ape-logo.svg?v=040', INJ:'https://cryptologos.cc/logos/injective-inj-logo.svg?v=040',
+  FET:'https://cryptologos.cc/logos/artificial-superintelligence-alliance-fet-logo.svg?v=040',
+}
+
+function iconSources(symbol: string, apiUrl?: string) {
+  const clean = String(symbol || '').toUpperCase().replace(/[^A-Z0-9]/g, '')
+  const lower = clean.toLowerCase()
+  const sources = [
+    apiUrl,
+    staticLogoUrls[clean],
+    // broad public icon set, good for large caps and many majors
+    `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/svg/color/${lower}.svg`,
+    // second public icon set used by several crypto dashboards
+    `https://assets.coincap.io/assets/icons/${lower}@2x.png`,
+  ].filter(Boolean) as string[]
+  return sources
+}
+
 function TokenLogo({ coin, icons }: { coin:string, icons:Record<string,string> }) {
   const symbol=String(coin||'').toUpperCase()
-  const [broken,setBroken]=useState(false)
-  const url=icons[symbol]
+  const [sourceIndex,setSourceIndex]=useState(0)
   const color=fallbackColours[symbol] || '#35f1cf'
-  return <span className="token-logo" style={{['--coin' as any]:color}}>{url && !broken ? <img src={url} alt={`${symbol} logo`} onError={()=>setBroken(true)}/> : <b>{symbol.slice(0,2)}</b>}</span>
+  const sources=iconSources(symbol, icons[symbol])
+  useEffect(()=>setSourceIndex(0),[symbol, icons[symbol]])
+  const src=sources[sourceIndex]
+  return <span className="token-logo" style={{['--coin' as any]:color}}>
+    {src ? <img src={src} alt={`${symbol} logo`} onError={()=>setSourceIndex(i => i + 1)}/> : <span className="token-fallback-mark"><i/><b>{symbol.slice(0,2)}</b></span>}
+  </span>
 }
 
 function Spark(){return <svg viewBox="0 0 92 32" className="mini-spark" aria-hidden="true"><path d="M2 25 L15 22 L27 24 L39 14 L51 20 L62 9 L74 12 L90 7"/></svg>}
