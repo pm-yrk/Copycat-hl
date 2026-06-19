@@ -134,6 +134,7 @@ export default function Dashboard() {
   const [targets, setTargets] = useState<any[]>([])
   const [flow, setFlow] = useState<any[]>([])
   const [orders, setOrders] = useState<any[]>([])
+  const [insights, setInsights] = useState<any[]>([])
   const [showAllOrders, setShowAllOrders] = useState(false)
   const [icons, setIcons] = useState<Record<string, string>>({})
   const [err, setErr] = useState('')
@@ -143,14 +144,15 @@ export default function Dashboard() {
   async function load() {
     try {
       setErr('')
-      const [s, si, t, f, o] = await Promise.all([
+      const [s, si, t, f, o, ins] = await Promise.all([
         apiGet('/api/summary'),
         apiGet('/api/signals?limit=500'),
         apiGet('/api/targets'),
         apiGet('/api/flow?limit=500'),
         apiGet('/api/recent-orders?limit=50').catch(() => []),
+        apiGet('/api/insights').catch(() => ({ insights: [] })),
       ])
-      setSummary(s); setSignals(si); setTargets(t); setFlow(f); setOrders(o)
+      setSummary(s); setSignals(si); setTargets(t); setFlow(f); setOrders(o); setInsights(ins?.insights || [])
     } catch (e: any) { setErr(e.message) }
   }
 
@@ -177,12 +179,24 @@ export default function Dashboard() {
         <p>Value-weighted positioning from qualified Hyperliquid wallets.<br />Built to show what serious traders are leaning into.</p>
       </div>
       <div className="cc-bias-block"><span>Positioning bias</span><button className={`cc-bias-toggle ${isLong ? 'is-long' : 'is-short'}`}><i /><b>{isLong ? 'LONG' : 'SHORT'}</b></button></div>
-      <aside className={`cc-orders-card ${showAllOrders ? 'expanded' : ''}`}>
-        <h3>Most recent orders</h3>
-        <div className="cc-order-list">
-          {visibleOrders.map((o: any, i: number) => <div className="cc-order-line" key={`${o.coin}-${i}-${o.wallet || ''}-${o.ts_ms || ''}`}><TokenLogo coin={o.coin} icons={icons} /><b>{o.coin}</b><span className={String(o.side).toLowerCase().includes('short') || String(o.side).toLowerCase().includes('reduce') ? 'negative' : 'positive'}>{o.side}</span><em>{o.wallet_label || maskWallet(o.wallet)}</em><small>{ago(o.ts_ms)}</small></div>)}
+      <aside className="cc-top-rail">
+        <div className={`cc-orders-card ${showAllOrders ? 'expanded' : ''}`}>
+          <h3>Most recent orders</h3>
+          <div className="cc-order-list">
+            {visibleOrders.map((o: any, i: number) => <div className="cc-order-line" key={`${o.coin}-${i}-${o.wallet || ''}-${o.ts_ms || ''}`}><TokenLogo coin={o.coin} icons={icons} /><b>{o.coin}</b><span className={String(o.side).toLowerCase().includes('short') || String(o.side).toLowerCase().includes('reduce') ? 'negative' : 'positive'}>{o.side}</span><em>{o.wallet_label || maskWallet(o.wallet)}</em><small>{ago(o.ts_ms)}</small></div>)}
+          </div>
+          <button className="cc-small-action" onClick={() => setShowAllOrders(v => !v)}>{showAllOrders ? 'Show latest 3 ↑' : 'View all orders →'}</button>
         </div>
-        <button className="cc-small-action" onClick={() => setShowAllOrders(v => !v)}>{showAllOrders ? 'Show latest 3 ↑' : 'View all orders →'}</button>
+        <div className={`cc-data-quality ${summary.data_quality_status === 'healthy' ? 'healthy' : 'checking'}`}>
+          <span className="cc-pulse-dot" />
+          <div><b>{summary.data_quality_status === 'healthy' ? 'Data quality: healthy' : 'Data quality: checking'}</b><small>{summary.data_quality_message || 'Waiting for data audit'}</small></div>
+        </div>
+        <div className="cc-insights-card">
+          <h3>At a glance</h3>
+          {(insights || []).slice(0, 4).map((x: any) => <div className="cc-insight-line" key={`${x.type}-${x.coin}`}>
+            <span>{x.label}</span><b>{x.coin || '—'}</b><em>{x.detail}</em>
+          </div>)}
+        </div>
       </aside>
     </section>
 

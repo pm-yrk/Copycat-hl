@@ -1,11 +1,12 @@
-# copycat.hl parallel collector freshness fix
+Copycat ranking + insight polish patch
 
-Keeps the UI unchanged.
+Includes:
+- Ranking V2 backend scoring: positive real PnL only, no volume-as-PnL fallback, ROI, consistency, drawdown, account size, activity and anti-fluke scoring.
+- Private /api/ranking-audit and /ranking-audit page for checking the active top-50 wallet cohort.
+- /api/signal-explain endpoint for per-asset wallet-contributor explainability.
+- /api/insights endpoint and dashboard “At a glance” rail.
+- Dashboard data-quality badge with pulsing green indicator.
+- Token icon presentation cleaned up: no cheap circular chip background around logos.
+- Recent-orders card pulled together with the right-side insight/data-quality rail.
 
-Changes:
-- Collects the active 50-wallet cohort concurrently instead of one wallet at a time.
-- Writes one completed batch with one timestamp, preserving data correctness.
-- Refuses to publish a new signal snapshot if fewer than 90% of wallets collect successfully.
-- Audit freshness now checks the latest completed `collect_once` run.
-
-Redeploy `hwt-api` and `hwt-collector-live-10s`, then wait for one full collector cycle and rerun `/audit`.
+After deployment, run the daily refresh once to rebuild the active top 50 using Ranking V2.

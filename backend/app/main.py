@@ -108,6 +108,11 @@ def summary(user: dict = Depends(require_active_subscription)):
         assets = {'n': 0}
 
     latest_pos_ts = fetch_one('SELECT max(ts_ms) AS ts_ms FROM positions') or {'ts_ms': None}
+    latest_run = fetch_one("SELECT ts_ms,status,message FROM collector_runs WHERE run_type='collect_once' ORDER BY ts_ms DESC LIMIT 1") or {}
+    collector_age_seconds = None
+    if latest_run.get('ts_ms'):
+        collector_age_seconds = max(0, (_now_ms() - int(latest_run['ts_ms'])) / 1000)
+    data_quality_ok = bool(stable_ts) and int(latest_wallets.get('n') or 0) >= 50 and (collector_age_seconds is None or collector_age_seconds <= 90)
     return {
         'latest_signal_ts_ms': stable_ts,
         'latest_position_ts_ms': latest_pos_ts['ts_ms'],
@@ -116,6 +121,9 @@ def summary(user: dict = Depends(require_active_subscription)):
         'tracked_open_position_value_usd': float(open_value['total'] or 0),
         'open_positions': int(open_value['positions'] or 0),
         'assets_with_signals': assets['n'],
+        'data_quality_status': 'healthy' if data_quality_ok else 'checking',
+        'data_quality_age_seconds': collector_age_seconds,
+        'data_quality_message': '50-wallet snapshot healthy' if data_quality_ok else 'Waiting for a fresh completed collector snapshot',
     }
 
 
@@ -490,6 +498,121 @@ def targets(user: dict = Depends(require_active_subscription)):
         ORDER BY target_weight DESC
         """
     )
+
+
+
+@app.get('/api/insights')
+def insights(user: dict = Depends(require_active_subscription)):
+    # At-a-glance trader/analyst insights from the latest completed snapshot.
+    ts_row = fetch_one('SELECT max(ts_ms) AS ts_ms FROM asset_signals') or {'ts_ms': None}
+    ts = ts_row.get('ts_ms')
+    if not ts:
+        return {'status': 'empty', 'insights': []}
+    rows = fetch_all("""
+        SELECT coin, signal, confidence, wallets_long, wallets_short,
+               value_long_usd, value_short_usd, net_value_usd,
+               net_buyer_count, bullish_value_flow_usd, bearish_value_flow_usd,
+               net_value_flow_usd, total_tracked_value_usd
+        FROM asset_signals
+        WHERE ts_ms=:ts
+        ORDER BY abs(signal) DESC
+    """, {'ts': ts})
+    if not rows:
+        return {'status': 'empty', 'insights': []}
+    top_signal = max(rows, key=lambda r: abs(_safe_float(r.get('signal'))))
+    accumulation = max(rows, key=lambda r: _safe_float(r.get('net_value_flow_usd')))
+    distribution = min(rows, key=lambda r: _safe_float(r.get('net_value_flow_usd')))
+    def disagreement_score(r: dict[str, Any]) -> float:
+        long_w = _safe_float(r.get('wallets_long'))
+        short_w = _safe_float(r.get('wallets_short'))
+        wallet_bias = (long_w - short_w) / max(1.0, long_w + short_w)
+        value_bias = _safe_float(r.get('net_value_usd')) / max(1.0, _safe_float(r.get('value_long_usd')) + _safe_float(r.get('value_short_usd')))
+        return abs(wallet_bias - value_bias)
+    disagreement = max(rows, key=disagreement_score)
+    return {
+        'status': 'ok',
+        'ts_ms': ts,
+        'insights': [
+            {'type': 'top_signal', 'label': 'Top conviction asset', 'coin': top_signal.get('coin'), 'detail': f"Signal {float(top_signal.get('signal') or 0):.2f} · {top_signal.get('confidence')}", 'row': top_signal},
+            {'type': 'accumulation', 'label': 'Biggest accumulation', 'coin': accumulation.get('coin'), 'detail': f"Net flow ${float(accumulation.get('net_value_flow_usd') or 0):,.0f}", 'row': accumulation},
+            {'type': 'distribution', 'label': 'Biggest distribution', 'coin': distribution.get('coin'), 'detail': f"Net flow ${float(distribution.get('net_value_flow_usd') or 0):,.0f}", 'row': distribution},
+            {'type': 'disagreement', 'label': 'Wallet count vs value disagreement', 'coin': disagreement.get('coin'), 'detail': f"{disagreement.get('wallets_long')} long / {disagreement.get('wallets_short')} short · net ${float(disagreement.get('net_value_usd') or 0):,.0f}", 'row': disagreement},
+        ]
+    }
+
+
+@app.get('/api/ranking-audit')
+def ranking_audit(limit: int = 50, user: dict = Depends(require_active_subscription)):
+    rows = fetch_all("""
+        SELECT q.rank, q.wallet, q.score AS active_score, q.qualified_at_ms,
+               s.ts_ms, s.score, s.qualifies, s.account_value_usd, s.pnl_30d_usd,
+               s.pnl_all_time_usd, s.max_drawdown_pct, s.consistency_score,
+               s.anti_fluke_score, s.metrics_json
+        FROM qualified_wallets q
+        LEFT JOIN LATERAL (
+          SELECT * FROM wallet_scores ws WHERE ws.wallet=q.wallet ORDER BY ws.ts_ms DESC LIMIT 1
+        ) s ON true
+        WHERE q.status='active'
+        ORDER BY q.rank ASC
+        LIMIT :limit
+    """, {'limit': limit})
+    out = []
+    for r in rows:
+        metrics = r.get('metrics_json') or {}
+        if isinstance(metrics, str):
+            try: metrics = json.loads(metrics)
+            except Exception: metrics = {}
+        out.append({
+            **{k: v for k, v in dict(r).items() if k != 'metrics_json'},
+            'score_components': metrics.get('score_components') or {},
+            'ranking_formula': metrics.get('ranking_formula') or 'unknown',
+            'disqualifiers': metrics.get('disqualifiers') or [],
+            'position_count': metrics.get('position_count'),
+            'largest_position_share': metrics.get('largest_position_share'),
+            'real_pnl_windows': metrics.get('real_pnl_windows'),
+            'active_days_observed': metrics.get('active_days_observed'),
+        })
+    return {'status': 'ok', 'method': 'v2_profit_quality', 'wallets': out}
+
+
+@app.get('/api/signal-explain')
+def signal_explain(coin: str, limit: int = 15, user: dict = Depends(require_active_subscription)):
+    coin = coin.upper().strip()
+    latest_signal = fetch_one('SELECT max(ts_ms) AS ts_ms FROM asset_signals') or {'ts_ms': None}
+    ts = latest_signal.get('ts_ms')
+    if not ts:
+        return {'status': 'empty', 'coin': coin, 'contributors': []}
+    rows = fetch_all("""
+        SELECT p.wallet, p.coin, p.side, p.position_value_usd, p.size, p.unrealized_pnl_usd,
+               COALESCE(ws.account_value_usd,0) AS account_value_usd,
+               COALESCE(score.score,50) AS wallet_score
+        FROM positions p
+        JOIN qualified_wallets q ON q.wallet=p.wallet AND q.status='active'
+        LEFT JOIN wallet_snapshots ws ON ws.wallet=p.wallet AND ws.ts_ms=p.ts_ms
+        LEFT JOIN LATERAL (
+          SELECT s.score FROM wallet_scores s WHERE s.wallet=p.wallet ORDER BY s.ts_ms DESC LIMIT 1
+        ) score ON true
+        WHERE p.ts_ms=:ts AND upper(p.coin)=:coin
+        ORDER BY p.position_value_usd DESC
+        LIMIT :limit
+    """, {'ts': ts, 'coin': coin, 'limit': limit})
+    total_value = sum(_safe_float(r.get('position_value_usd')) for r in rows)
+    contributors = []
+    for r in rows:
+        wallet = r.get('wallet') or ''
+        value = _safe_float(r.get('position_value_usd'))
+        contributors.append({
+            'wallet': wallet,
+            'wallet_label': f"Wallet {wallet[:4]}…{wallet[-4:]}" if wallet else 'Wallet',
+            'side': r.get('side'),
+            'position_value_usd': value,
+            'share_of_coin_value': value / max(total_value, 1),
+            'account_value_usd': _safe_float(r.get('account_value_usd')),
+            'wallet_score': _safe_float(r.get('wallet_score')),
+            'unrealized_pnl_usd': _safe_float(r.get('unrealized_pnl_usd')),
+        })
+    concentration = max([c['share_of_coin_value'] for c in contributors] or [0])
+    return {'status': 'ok', 'coin': coin, 'ts_ms': ts, 'total_explained_value_usd': total_value, 'top_wallet_concentration': concentration, 'contributors': contributors}
 
 
 @app.get('/api/flow')

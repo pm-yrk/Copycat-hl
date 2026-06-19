@@ -196,36 +196,104 @@ def normalize_positions(wallet: str, ts: int, state: dict[str, Any]) -> list[dic
     return out
 
 
+def _extract_pnl_value(data: Any) -> float | None:
+    """Return only real PnL fields. Never fall back to volume or account value.
+    Ranking credibility depends on not mistaking turnover for profit.
+    """
+    if isinstance(data, dict):
+        for key in ('pnl', 'totalPnl', 'total_pnl', 'profit', 'netPnl', 'net_pnl'):
+            if key in data and data.get(key) is not None:
+                return safe_float(data.get(key))
+        # Hyperliquid portfolio responses commonly expose cumulative PnL as
+        # pnlHistory rather than a direct pnl field. This is still real PnL; it
+        # is safe to use. We intentionally do NOT use volume or account value.
+        hist = data.get('pnlHistory') or data.get('pnl_history') or []
+        if isinstance(hist, list) and hist:
+            last = hist[-1]
+            if isinstance(last, (list, tuple)) and len(last) >= 2:
+                return safe_float(last[1])
+            if isinstance(last, dict):
+                return safe_float(last.get('pnl') or last.get('value'))
+    elif isinstance(data, (int, float)):
+        return float(data)
+    return None
+
+
+def _history_values(data: Any) -> list[float]:
+    if not isinstance(data, dict):
+        return []
+    hist = data.get('accountValueHistory') or data.get('account_value_history') or []
+    vals: list[float] = []
+    if isinstance(hist, list):
+        for item in hist:
+            if isinstance(item, (list, tuple)) and len(item) >= 2:
+                vals.append(safe_float(item[1], None))
+            elif isinstance(item, dict):
+                vals.append(safe_float(item.get('value') or item.get('accountValue'), None))
+    return [v for v in vals if v is not None and v > 0]
+
+
+def _max_drawdown(vals: list[float]) -> float:
+    peak = 0.0
+    dd = 0.0
+    for v in vals:
+        peak = max(peak, v)
+        if peak > 0:
+            dd = max(dd, (peak - v) / peak)
+    return dd
+
+
 def portfolio_pnl(portfolio: Any) -> dict[str, float]:
-    # Defensive extraction: Hyperliquid portfolio response shape can vary.
-    windows = {'day':0.0, 'week':0.0, 'month':0.0, 'allTime':0.0}
+    """Extract real Hyperliquid PnL windows and basic risk metrics.
+
+    Older builds were deliberately defensive and could fall back to volume or
+    account-value history if a PnL field was missing. That is unsafe for a paid
+    product because volume is not profit. This version ranks only on actual PnL
+    fields and treats missing PnL as missing, not as zero profit.
+    """
+    windows: dict[str, float | None] = {'day': None, 'week': None, 'month': None, 'allTime': None}
+    history: list[float] = []
+
+    def store(key: Any, data: Any):
+        k = str(key or '')
+        pnl = _extract_pnl_value(data)
+        if pnl is not None:
+            windows[k] = pnl
+        history.extend(_history_values(data))
+
     if isinstance(portfolio, list):
         for row in portfolio:
             if isinstance(row, list) and len(row) >= 2:
-                key, data = row[0], row[1]
-                if isinstance(data, dict):
-                    windows[str(key)] = safe_float(data.get('pnl') or data.get('vlm') or data.get('accountValueHistory', [[0,0]])[-1][-1])
+                store(row[0], row[1])
             elif isinstance(row, dict):
-                key = row.get('period') or row.get('window') or row.get('name')
-                if key: windows[str(key)] = safe_float(row.get('pnl') or row.get('profit') or row.get('totalPnl'))
+                key = row.get('period') or row.get('window') or row.get('name') or row.get('timeframe')
+                if key:
+                    store(key, row)
     elif isinstance(portfolio, dict):
         for k, v in portfolio.items():
-            if isinstance(v, dict): windows[str(k)] = safe_float(v.get('pnl') or v.get('totalPnl'))
-            else: windows[str(k)] = safe_float(v)
-    vals = [v for v in windows.values()]
-    positive = sum(1 for v in vals if v > 0)
-    max_share = max([abs(v) for v in vals] or [0]) / max(1.0, sum(abs(v) for v in vals))
+            store(k, v)
+
+    real_vals = [v for v in windows.values() if v is not None]
+    positive = sum(1 for v in real_vals if v > 0)
+    max_share = max([abs(v) for v in real_vals] or [0]) / max(1.0, sum(abs(v) for v in real_vals))
+    active_days = 0
+    if history:
+        active_days = max(1, min(3650, len(history)))
     return {
-        'pnl_day_usd': windows.get('day', 0.0),
-        'pnl_30d_usd': windows.get('month', windows.get('30d', 0.0)),
-        'pnl_all_time_usd': windows.get('allTime', windows.get('all_time', 0.0)),
-        'positive_windows': positive,
+        'pnl_day_usd': windows.get('day') or 0.0,
+        'pnl_30d_usd': windows.get('month') if windows.get('month') is not None else (windows.get('30d') or 0.0),
+        'pnl_all_time_usd': windows.get('allTime') if windows.get('allTime') is not None else (windows.get('all_time') or 0.0),
+        'positive_windows': float(positive),
+        'real_pnl_windows': float(len(real_vals)),
         'max_single_window_pnl_share': max_share,
-        'max_drawdown_pct': 0.0,
+        'max_drawdown_pct': _max_drawdown(history),
+        'active_days_observed': float(active_days),
+        'has_real_pnl': 1.0 if len(real_vals) >= 2 else 0.0,
     }
 
 
 def wallet_score(wallet: str, state: dict[str, Any], portfolio: Any) -> dict[str, Any]:
+    """Ranking V2: score profit quality rather than raw PnL only."""
     ts = now_ms()
     summary = extract_margin_summary(state)
     account_value = summary['account_value_usd']
@@ -233,23 +301,76 @@ def wallet_score(wallet: str, state: dict[str, Any], portfolio: Any) -> dict[str
     pnl = portfolio_pnl(portfolio)
     pnl30 = pnl['pnl_30d_usd']
     pnlall = pnl['pnl_all_time_usd']
-    pnl_pct = (0.65 * pnl30 + 0.35 * pnlall) / max(account_value, 1)
-    pnl_score = clamp(50 + 50 * math.tanh(pnl_pct * 4), 0, 100)
-    consistency = clamp((pnl['positive_windows'] / 4) * 100, 0, 100)
-    capital = clamp(20 * math.log10(max(account_value, 1)) - 60, 0, 100)
-    recency = clamp(50 + 50 * math.tanh((pnl30 / max(account_value, 1)) * 5), 0, 100)
+
+    real_windows = max(1.0, pnl.get('real_pnl_windows', 0.0))
+    positive_window_ratio = pnl['positive_windows'] / real_windows
+    consistency = clamp(positive_window_ratio * 100, 0, 100)
+
+    weighted_pnl = 0.70 * pnl30 + 0.30 * pnlall
+    pnl_quality_score = clamp(50 + 50 * math.tanh((weighted_pnl / max(account_value, 1)) * 4), 0, 100)
+    roi_score = clamp(50 + 50 * math.tanh((pnl30 / max(account_value, 1)) * 8), 0, 100)
+    drawdown_pct = pnl['max_drawdown_pct']
+    drawdown_score = 55.0 if drawdown_pct <= 0 else clamp(100 * (1 - drawdown_pct / 0.50), 0, 100)
+    capital_score = clamp(20 * math.log10(max(account_value, 1)) - 60, 0, 100)
+
     largest = max([p['position_value_usd'] for p in positions] or [0])
     total_pos = sum(p['position_value_usd'] for p in positions) or 1
-    anti_fluke = 100
-    if pnl['max_single_window_pnl_share'] > 0.70: anti_fluke -= 35
-    if largest / total_pos > 0.80: anti_fluke -= 30
-    score = .30*pnl_score + .20*consistency + .15*capital + .15*recency + .10*100 + .10*anti_fluke
-    qualifies = account_value >= 50_000 and abs(pnl30) >= 1_000 and consistency >= 25 and score >= 35
+    largest_position_share = largest / total_pos
+    active_days = pnl.get('active_days_observed', 0.0)
+    activity_score = clamp((len(positions) / 8) * 60 + min(active_days, 30) / 30 * 40, 0, 100)
+
+    anti_fluke = 100.0
+    if pnl['max_single_window_pnl_share'] > 0.70:
+        anti_fluke -= 35
+    if largest_position_share > 0.80:
+        anti_fluke -= 30
+    if real_windows < 2:
+        anti_fluke -= 30
+    anti_fluke = clamp(anti_fluke, 0, 100)
+
+    components = {
+        'net_pnl_quality': pnl_quality_score,
+        'roi_capital_efficiency': roi_score,
+        'consistency': consistency,
+        'drawdown_risk_control': drawdown_score,
+        'account_size_liquidity': capital_score,
+        'recent_activity': activity_score,
+        'anti_fluke': anti_fluke,
+    }
+    score = (
+        .30 * components['net_pnl_quality'] +
+        .20 * components['roi_capital_efficiency'] +
+        .15 * components['consistency'] +
+        .15 * components['drawdown_risk_control'] +
+        .10 * components['account_size_liquidity'] +
+        .05 * components['recent_activity'] +
+        .05 * components['anti_fluke']
+    )
+
+    disqualifiers: list[str] = []
+    if account_value < 50_000: disqualifiers.append('account_value_below_50k')
+    if pnl30 <= 1_000: disqualifiers.append('30d_pnl_not_positive_enough')
+    if pnlall <= 0: disqualifiers.append('all_time_pnl_not_positive')
+    if real_windows < 2: disqualifiers.append('insufficient_real_pnl_windows')
+    if consistency < 40: disqualifiers.append('low_consistency')
+    if largest_position_share > 0.90: disqualifiers.append('single_position_dominates')
+    if score < 45: disqualifiers.append('score_below_threshold')
+    qualifies = len(disqualifiers) == 0
+
+    metrics = {
+        **summary,
+        **pnl,
+        'position_count': len(positions),
+        'largest_position_share': largest_position_share,
+        'score_components': components,
+        'ranking_formula': 'v2_profit_quality',
+        'disqualifiers': disqualifiers,
+    }
     return {
         'ts_ms': ts, 'wallet': wallet, 'score': round(score,3), 'qualifies': qualifies,
         'account_value_usd': account_value, 'pnl_30d_usd': pnl30, 'pnl_all_time_usd': pnlall,
-        'max_drawdown_pct': pnl['max_drawdown_pct'], 'consistency_score': consistency,
-        'anti_fluke_score': anti_fluke, 'metrics_json': json.dumps({**summary, **pnl, 'position_count': len(positions)})
+        'max_drawdown_pct': drawdown_pct, 'consistency_score': consistency,
+        'anti_fluke_score': anti_fluke, 'metrics_json': json.dumps(metrics)
     }
 
 

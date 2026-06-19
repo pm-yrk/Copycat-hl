@@ -1340,3 +1340,154 @@ html[data-theme='light'] .audit-muted {
   .audit-shell { padding: 46px 18px; }
   .audit-check-row { grid-template-columns: 1fr; }
 }
+
+/* --- Copycat insight + ranking V2 polish patch --- */
+body:has(.cc-dashboard-shell), body:has(.cc-audit-shell) {
+  background:
+    radial-gradient(circle at 74% 18%, rgba(33,230,162,.10), transparent 30%),
+    radial-gradient(circle at 8% 60%, rgba(33,230,162,.055), transparent 36%),
+    var(--page-bg, #f4e7d7);
+}
+html[data-theme='dark'] body:has(.cc-dashboard-shell),
+html[data-theme='dark'] body:has(.cc-audit-shell) {
+  background:
+    radial-gradient(circle at 72% 14%, rgba(33,230,162,.10), transparent 30%),
+    linear-gradient(145deg, #020711 0%, #071321 100%);
+}
+.cc-dashboard-shell { max-width: none; }
+.cc-dashboard-shell > section,
+.cc-dashboard-shell > footer,
+.cc-dashboard-shell > .notice { max-width: 1510px; margin-left: auto; margin-right: auto; }
+.cc-dashboard-top {
+  grid-template-columns: minmax(0, 1fr) 382px;
+  grid-template-areas: 'copy rail' 'bias rail';
+  align-items: start;
+}
+.cc-top-rail {
+  grid-area: rail;
+  display: grid;
+  gap: 12px;
+  align-self: start;
+  min-width: 0;
+}
+.cc-orders-card { grid-area: auto; }
+.cc-insights-card,
+.cc-data-quality {
+  border-radius: 18px;
+  padding: 14px 16px;
+  background: var(--panel);
+  color: var(--panel-text);
+  border: 1px solid var(--panel-line);
+  box-shadow: var(--shadow-heavy);
+}
+.cc-insights-card h3 {
+  margin: 0 0 10px;
+  text-transform: uppercase;
+  letter-spacing: .22em;
+  font-size: 11px;
+  color: var(--panel-text);
+}
+.cc-insight-line {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) auto;
+  gap: 5px 12px;
+  padding: 9px 0;
+  border-top: 1px solid var(--panel-line);
+}
+.cc-insight-line:first-of-type { border-top: 0; }
+.cc-insight-line span {
+  color: var(--panel-muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  font-weight: 900;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cc-insight-line b { color: var(--cc-green); font-size: 13px; }
+.cc-insight-line em {
+  grid-column: 1 / -1;
+  color: var(--panel-text);
+  font-style: normal;
+  font-size: 12px;
+}
+.cc-data-quality {
+  display: flex;
+  gap: 11px;
+  align-items: center;
+  min-height: 58px;
+}
+.cc-data-quality b { display:block; font-size: 12px; text-transform: uppercase; letter-spacing: .12em; }
+.cc-data-quality small { display:block; color: var(--panel-muted); margin-top: 2px; font-size: 11px; }
+.cc-pulse-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--cc-green);
+  box-shadow: 0 0 0 0 rgba(33,230,162,.66), 0 0 18px rgba(33,230,162,.55);
+  animation: ccPulse 1.6s ease-out infinite;
+  flex: none;
+}
+.cc-data-quality.checking .cc-pulse-dot { background: var(--cc-orange); box-shadow: 0 0 0 0 rgba(246,163,38,.55), 0 0 18px rgba(246,163,38,.48); }
+@keyframes ccPulse { 0% { box-shadow: 0 0 0 0 rgba(33,230,162,.65), 0 0 18px rgba(33,230,162,.55); } 70% { box-shadow: 0 0 0 10px rgba(33,230,162,0), 0 0 18px rgba(33,230,162,.55); } 100% { box-shadow: 0 0 0 0 rgba(33,230,162,0), 0 0 18px rgba(33,230,162,.55); } }
+
+/* Remove the cheap-looking token chip backgrounds while keeping real token artwork visible. */
+.cc-token-logo {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+}
+.cc-token-logo img {
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 50%;
+  object-fit: contain;
+  filter: drop-shadow(0 0 7px color-mix(in srgb, var(--coin) 26%, transparent));
+}
+.cc-token-fallback {
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--coin) 82%, #081421);
+  border: 1px solid color-mix(in srgb, var(--coin) 45%, rgba(255,255,255,.20));
+}
+
+/* Make exposure rows read cleanly with full token names before the bar starts. */
+.cc-ex-row { grid-template-columns: minmax(145px, 168px) minmax(120px, 1fr) 58px 58px; }
+.cc-ex-name { grid-template-columns: 28px minmax(60px, 1fr) 40px; }
+.cc-ex-track > div { max-width: 100%; }
+
+/* Keep SHORT label visible in the positioning bias switch. */
+.cc-bias-toggle { position: relative; overflow: hidden; display: flex; justify-content: space-between; }
+.cc-bias-toggle b { position: relative; z-index: 2; min-width: 38px; text-align: center; }
+.cc-bias-toggle i { position: relative; z-index: 1; flex: none; transition: transform .18s ease; }
+.cc-bias-toggle.is-short { flex-direction: row-reverse; padding: 3px 3px 3px 8px; }
+.cc-bias-toggle.is-short i { transform: none; }
+
+/* Make the hover menu blend into the bar. */
+.nav-menu-trigger {
+  background: color-mix(in srgb, var(--page-bg) 74%, transparent) !important;
+  border-color: color-mix(in srgb, var(--green) 22%, transparent) !important;
+  box-shadow: none !important;
+  color: color-mix(in srgb, var(--text) 55%, var(--green)) !important;
+  padding: 7px 11px !important;
+  min-width: 48px;
+}
+.nav-menu-trigger span { display: none; }
+.nav-menu-trigger::before { content: '•••'; letter-spacing: .14em; font-weight: 900; }
+
+/* Private ranking audit page. */
+.cc-ranking-audit-shell { max-width: 1510px; margin: 0 auto; padding: 56px 30px 46px; color: var(--hero-text, var(--text)); font-family: var(--cc-font); }
+.cc-audit-hero { max-width: 880px; margin-bottom: 24px; }
+.cc-audit-hero h1 { margin: 0 0 12px; font-size: clamp(40px, 4vw, 72px); line-height: .95; letter-spacing: -.055em; }
+.cc-audit-hero p:not(.eyebrow) { color: var(--hero-muted, var(--muted)); line-height: 1.5; }
+.cc-ranking-method { margin-bottom: 14px; }
+.cc-method-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.cc-method-grid span { border: 1px solid var(--panel-line); border-radius: 10px; padding: 10px; color: var(--panel-text); background: rgba(9,22,37,.38); font-size: 12px; font-weight: 850; }
+.cc-ranking-table-wrap { max-height: 650px; }
+@media (max-width: 1320px) {
+  .cc-dashboard-top { grid-template-columns: 1fr; grid-template-areas: 'copy' 'bias' 'rail'; }
+  .cc-top-rail { grid-template-columns: 1fr; }
+  .cc-dashboard-shell > section, .cc-dashboard-shell > footer, .cc-dashboard-shell > .notice { max-width: none; }
+}
+@media (max-width: 900px) { .cc-method-grid { grid-template-columns: 1fr; } }
