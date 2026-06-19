@@ -1994,3 +1994,64 @@ html[data-theme='light'] .cc-confidence,
 html[data-theme='light'] .cc-read {
   background: rgba(239, 231, 221, .72) !important;
 }
+
+/* --- Bias toggle uniform knob + centered label hotfix --- */
+.cc-bias-toggle {
+  width: 94px !important;
+  height: 34px !important;
+  padding: 0 !important;
+  border-radius: 999px !important;
+  overflow: hidden !important;
+}
+.cc-bias-toggle b,
+.cc-bias-toggle.is-short b,
+.cc-bias-toggle.is-long b {
+  position: absolute !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  transform: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: calc(100% - 34px) !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 0 6px !important;
+  font-size: 11px !important;
+  font-weight: 950 !important;
+  letter-spacing: .08em !important;
+  line-height: 1 !important;
+  color: #ffffff !important;
+  text-transform: uppercase !important;
+  white-space: nowrap !important;
+  z-index: 2 !important;
+  pointer-events: none !important;
+}
+.cc-bias-toggle.is-long b {
+  left: 0 !important;
+  right: auto !important;
+  padding-left: 8px !important;
+}
+.cc-bias-toggle.is-short b {
+  right: 0 !important;
+  left: auto !important;
+  padding-right: 8px !important;
+}
+.cc-bias-toggle i,
+.cc-bias-toggle.is-long i,
+.cc-bias-toggle.is-short i {
+  position: absolute !important;
+  top: 3px !important;
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 50% !important;
+  border: 1px solid rgba(150,150,150,.56) !important;
+  background:
+    radial-gradient(circle at 34% 30%, rgba(255,255,255,.96), rgba(255,255,255,.18) 35%, transparent 36%),
+    repeating-linear-gradient(100deg, rgba(255,255,255,.16) 0 2px, rgba(145,145,145,.07) 2px 4px),
+    linear-gradient(180deg, #fafafa 0%, #cfd5dc 22%, #f3f5f7 48%, #b8c0c8 72%, #eff3f5 100%) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.92), inset 0 -1px 1px rgba(90,99,108,.52), 0 3px 10px rgba(0,0,0,.24) !important;
+  z-index: 3 !important;
+}
+.cc-bias-toggle.is-short i { left: 3px !important; right: auto !important; }
+.cc-bias-toggle.is-long i { right: 3px !important; left: auto !important; }
