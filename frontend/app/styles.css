@@ -2266,3 +2266,66 @@ html[data-theme='dark'] .cc-donut-svg .cc-donut-hole {
   .cc-bias-block { transform: none !important; margin-right: 0 !important; }
   .cc-order-line { grid-template-columns: 28px 44px 78px minmax(54px,1fr) 38px !important; gap: 6px !important; }
 }
+
+/* --- Portfolio / data correctness polish patch --- */
+/* Portfolio allocation should scroll vertically only, never sideways. */
+.cc-donut-legend,
+.cc-donut-legend.cc-scroll-y,
+.cc-scroll-y {
+  overflow-x: hidden !important;
+}
+.cc-donut-legend.cc-scroll-y {
+  scrollbar-gutter: auto !important;
+}
+.cc-donut-legend div {
+  width: 100% !important;
+  max-width: 100% !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+html[data-theme='light'] .cc-donut-legend div {
+  border-color: transparent !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+.cc-allocation-description {
+  grid-column: 1 / -1;
+  margin: 7px 0 0;
+  max-width: 360px;
+  color: var(--panel-muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+/* Extra clarity in the tracked account value card. */
+.cc-kpi-grid article.cc-tracked-value-card em {
+  display: block;
+  margin-top: 4px;
+  color: var(--panel-muted);
+  font-style: normal;
+  font-size: 10.5px;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+html[data-theme='light'] .cc-kpi-grid article.cc-tracked-value-card em {
+  color: color-mix(in srgb, var(--panel-muted) 86%, #111);
+}
+
+/* At-a-glance can now hold five rows cleanly. */
+.cc-insights-card { min-height: 214px; }
+.cc-insight-line { padding: 10px 0 !important; }
+.cc-insight-line em { font-size: 11px !important; }
+
+/* Make the signal numbers tabular and aligned with the long/short exposure logic. */
+.cc-signal-table td:nth-child(3),
+.cc-ex-name span {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Keep allocation/legend compact on narrower screens. */
+@media (max-width: 900px) {
+  .cc-allocation-description { max-width: none; }
+}

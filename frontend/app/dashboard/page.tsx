@@ -33,8 +33,26 @@ function longSharePct(longUsd: any, shortUsd: any) {
   const share = (l / total) * 100
   return `${Math.round(share)}%`
 }
+function displaySignalValue(row: any) {
+  // Customer-facing signal = value-weighted directional majority.
+  // If an asset is mostly long, show the long share. If mostly short, show the
+  // short share as a negative number. This keeps the signal board, at-a-glance
+  // card, and long/short exposure bars mathematically aligned.
+  const l = Number(row?.value_long_usd || 0)
+  const sh = Number(row?.value_short_usd || 0)
+  const total = l + sh
+  if (total <= 0) return Number(row?.signal || 0)
+  return l >= sh ? l / total : -(sh / total)
+}
+function displaySignalPct(row: any) {
+  const v = displaySignalValue(row) * 100
+  return `${Math.round(v)}%`
+}
 function cls(n: any) { return Number(n) >= 0 ? 'positive' : 'negative' }
-function flowRead(n: any) { return Number(n) > 3 ? 'Accumulation' : Number(n) < -3 ? 'Distribution' : 'Neutral' }
+function flowRead(netValueFlowUsd: any) {
+  const n = Number(netValueFlowUsd || 0)
+  return n > 1000 ? 'Accumulation' : n < -1000 ? 'Distribution' : 'Neutral'
+}
 function orderActionClass(side: any) {
   const s = String(side || '').toLowerCase()
   if (s.includes('open short') || s.includes('add short') || s.includes('reduce long') || s.includes('close long')) return 'negative'
@@ -135,6 +153,7 @@ function AllocationDonut({ targets, signals, trackedValue, icons }: { targets: a
       <div className="cc-donut-tooltip">{hovered ? `${displayToken(hovered.coin)} ${Math.round(hovered.originalWeight * 100)}% allocation` : 'Hover a segment for details'}</div>
     </div>
     <div className="cc-donut-legend cc-scroll-y">{parts.map(p => <div key={p.coin}><TokenLogo coin={p.coin} icons={icons} /><b>{displayToken(p.coin)}</b><span>{Math.round(p.originalWeight * 100)}%</span></div>)}</div>
+    <p className="cc-allocation-description">Value-weighted index of what the current top 50 wallet cohort is long or holding.</p>
   </div>
 }
 function ExposureBars({ signals, icons }: { signals: any[], icons: Record<string, string> }) {
@@ -159,7 +178,7 @@ function ExposureBars({ signals, icons }: { signals: any[], icons: Record<string
 function formatInsightDetail(x: any) {
   if (x?.type === 'top_signal') {
     const confidence = x?.row?.confidence || x?.detail?.split('·')?.[1]?.trim() || ''
-    return `Signal ${signalPct(x?.row?.signal)}${confidence ? ` · ${confidence}` : ''}`
+    return `Signal ${displaySignalPct(x?.row)}${confidence ? ` · ${confidence}` : ''}`
   }
   return String(x?.detail || '').replace(/Signal\s+(-?\d+(?:\.\d+)?)/i, (_, raw) => `Signal ${signalPct(Number(raw))}`)
 }
@@ -180,13 +199,14 @@ function sorterValue(row: any, key: string) {
   if (key === 'value_ls') return Number(row.value_long_usd || 0) + Number(row.value_short_usd || 0)
   if (key === 'pct_total') return Number(row.value_long_pct_total || 0) + Number(row.value_short_pct_total || 0)
   if (key === 'asset') return String(row.coin || '').toUpperCase()
+  if (key === 'signal') return displaySignalValue(row)
   if (key === 'confidence') {
     const rank: Record<string, number> = { high: 3, medium: 2, med: 2, low: 1, reserve: 0 }
     return rank[String(row.confidence || '').toLowerCase()] ?? -1
   }
   if (key === 'read') {
     const rank: Record<string, number> = { Accumulation: 2, Neutral: 1, Distribution: 0 }
-    return rank[flowRead(row.net_buyer_count)] ?? 0
+    return rank[flowRead(row.net_value_flow_usd)] ?? 0
   }
   if (key === 'bullish') return Number(row.bullish_flow_usd || 0)
   if (key === 'bearish') return Number(row.bearish_flow_usd || 0)
@@ -269,7 +289,7 @@ export default function Dashboard() {
         </div>
         <div className="cc-insights-card">
           <h3>At a glance</h3>
-          {(insights || []).slice(0, 4).map((x: any) => <div className="cc-insight-line" key={`${x.type}-${x.coin}`}>
+          {(insights || []).slice(0, 5).map((x: any) => <div className="cc-insight-line" key={`${x.type}-${x.coin}`}>
             <span>{x.label}</span><b>{x.coin || '—'}</b><em>{formatInsightDetail(x)}</em>
           </div>)}
         </div>
@@ -280,7 +300,7 @@ export default function Dashboard() {
 
     <section className="cc-kpi-grid">
       <article><small>Qualified wallets</small><b>{summary.qualified_wallets || 0}</b><span>ranked daily</span></article>
-      <article><small>Tracked account value</small><b>{money(summary.tracked_account_value_usd)}</b><span>latest snapshots</span></article>
+      <article className="cc-tracked-value-card"><small>Tracked account value</small><b>{money(summary.tracked_account_value_usd)}</b><span>latest snapshots</span>{summary.largest_account_value_usd ? <em>Largest account: {money(summary.largest_account_value_usd)}</em> : null}</article>
       <article><small>Open position value</small><b>{money(summary.tracked_open_position_value_usd)}</b><span>{summary.open_positions || 0} live positions</span></article>
       <article><small>Assets with signals</small><b>{summary.assets_with_signals || 0}</b><span>cross-asset breadth</span></article>
     </section>
@@ -296,7 +316,7 @@ export default function Dashboard() {
         <div className="cc-scroll-table cc-scroll-y">
           <table className="cc-signal-table">
             <thead><tr><th>#</th><SortTh label="Asset" sortKey="asset" sort={signalSort} setSort={setSignalSort} /><SortTh label="Signal" sortKey="signal" sort={signalSort} setSort={setSignalSort} /><SortTh label="Confidence" sortKey="confidence" sort={signalSort} setSort={setSignalSort} /><SortTh label="Wallets" sortKey="wallets" sort={signalSort} setSort={setSignalSort} /><SortTh label="Value L/S" sortKey="value_ls" sort={signalSort} setSort={setSignalSort} /><SortTh label="Net value" sortKey="net_value_usd" sort={signalSort} setSort={setSignalSort} /><SortTh label="% total value" sortKey="pct_total" sort={signalSort} setSort={setSignalSort} /></tr></thead>
-            <tbody>{sortedSignals.map((r, i) => <tr key={`${r.coin}-${i}`}><td>{i + 1}</td><td><span className="cc-asset-cell"><TokenLogo coin={r.coin} icons={icons} /><b>{displayToken(r.coin)}</b></span></td><td className={cls(r.signal)}>{signalPct(r.signal)}</td><td><span className={`cc-confidence ${String(r.confidence).toLowerCase()}`}>{r.confidence}</span></td><td>{r.wallets_long} long / {r.wallets_short} short</td><td>{money(r.value_long_usd)} / {money(r.value_short_usd)}</td><td className={cls(r.net_value_usd)}>{money(r.net_value_usd)}</td><td>{pct(r.value_long_pct_total)} long / {pct(r.value_short_pct_total)} short</td></tr>)}</tbody>
+            <tbody>{sortedSignals.map((r, i) => <tr key={`${r.coin}-${i}`}><td>{i + 1}</td><td><span className="cc-asset-cell"><TokenLogo coin={r.coin} icons={icons} /><b>{displayToken(r.coin)}</b></span></td><td className={cls(displaySignalValue(r))}>{displaySignalPct(r)}</td><td><span className={`cc-confidence ${String(r.confidence).toLowerCase()}`}>{r.confidence}</span></td><td>{r.wallets_long} long / {r.wallets_short} short</td><td>{money(r.value_long_usd)} / {money(r.value_short_usd)}</td><td className={cls(r.net_value_usd)}>{money(r.net_value_usd)}</td><td>{pct(r.value_long_pct_total)} long / {pct(r.value_short_pct_total)} short</td></tr>)}</tbody>
           </table>
         </div>
       </div>
@@ -305,7 +325,7 @@ export default function Dashboard() {
         <div className="cc-scroll-table cc-scroll-y">
           <table className="cc-flow-table">
             <thead><tr><SortTh label="Asset" sortKey="asset" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Net buyers" sortKey="net_buyers" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Bullish flow" sortKey="bullish" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Bearish flow" sortKey="bearish" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Net value flow" sortKey="net_value_flow_usd" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Read" sortKey="read" sort={flowSortState} setSort={setFlowSortState} /></tr></thead>
-            <tbody>{sortedFlow.map((r, i) => { const read = flowRead(r.net_buyer_count); return <tr key={`${r.coin}-${i}`}><td><span className="cc-asset-cell"><TokenLogo coin={r.coin} icons={icons} /><b>{displayToken(r.coin)}</b></span></td><td className={cls(r.net_buyer_count)}>{r.net_buyer_count}</td><td>{money(r.bullish_flow_usd)}</td><td>{money(r.bearish_flow_usd)}</td><td className={cls(r.net_value_flow_usd)}>{money(r.net_value_flow_usd)}</td><td><span className={`cc-read ${read.toLowerCase()}`}>{read}</span></td></tr> })}</tbody>
+            <tbody>{sortedFlow.map((r, i) => { const read = flowRead(r.net_value_flow_usd); return <tr key={`${r.coin}-${i}`}><td><span className="cc-asset-cell"><TokenLogo coin={r.coin} icons={icons} /><b>{displayToken(r.coin)}</b></span></td><td className={cls(r.net_buyer_count)}>{r.net_buyer_count}</td><td>{money(r.bullish_flow_usd)}</td><td>{money(r.bearish_flow_usd)}</td><td className={cls(r.net_value_flow_usd)}>{money(r.net_value_flow_usd)}</td><td><span className={`cc-read ${read.toLowerCase()}`}>{read}</span></td></tr> })}</tbody>
           </table>
         </div>
       </div>

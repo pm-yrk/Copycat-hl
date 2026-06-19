@@ -70,13 +70,15 @@ def summary(user: dict = Depends(require_active_subscription)):
         ) or {'tracked_total': 0, 'signal_open_total': 0, 'signal_positions': 0, 'assets': 0}
         snapshot_rollup = fetch_one(
             """
-            SELECT COALESCE(sum(ws.account_value_usd),0) AS tracked_total, count(DISTINCT ws.wallet) AS wallets
+            SELECT COALESCE(sum(ws.account_value_usd),0) AS tracked_total,
+                   COALESCE(max(ws.account_value_usd),0) AS largest_account_value_usd,
+                   count(DISTINCT ws.wallet) AS wallets
             FROM wallet_snapshots ws
             JOIN qualified_wallets q ON q.wallet=ws.wallet AND q.status='active'
             WHERE ws.ts_ms=:ts
             """,
             {'ts': stable_ts},
-        ) or {'tracked_total': 0, 'wallets': 0}
+        ) or {'tracked_total': 0, 'largest_account_value_usd': 0, 'wallets': 0}
         position_rollup = fetch_one(
             """
             SELECT COALESCE(sum(p.position_value_usd),0) AS open_total, count(*) AS positions
@@ -92,10 +94,11 @@ def summary(user: dict = Depends(require_active_subscription)):
         # that pass the signal filters, so the headline open-position value must
         # use the raw positions table instead of summing only signal rows.
         tracked_total = snapshot_rollup['tracked_total'] if int(snapshot_rollup.get('wallets') or 0) > 0 else signal_rollup['tracked_total']
+        largest_account_value_usd = snapshot_rollup.get('largest_account_value_usd') or 0
         open_total = position_rollup['open_total'] if int(position_rollup.get('positions') or 0) > 0 else signal_rollup['signal_open_total']
         open_positions = position_rollup['positions'] if int(position_rollup.get('positions') or 0) > 0 else signal_rollup['signal_positions']
         assets = {'n': signal_rollup['assets']}
-        total_value = {'total': tracked_total}
+        total_value = {'total': tracked_total, 'largest_account_value_usd': largest_account_value_usd}
         open_value = {'total': open_total, 'positions': open_positions}
     else:
         total_value = fetch_one(
@@ -103,9 +106,11 @@ def summary(user: dict = Depends(require_active_subscription)):
             WITH latest AS (
               SELECT DISTINCT ON (wallet) wallet, account_value_usd
               FROM wallet_snapshots ORDER BY wallet, ts_ms DESC
-            ) SELECT COALESCE(sum(account_value_usd),0) AS total FROM latest
+            ) SELECT COALESCE(sum(account_value_usd),0) AS total,
+                     COALESCE(max(account_value_usd),0) AS largest_account_value_usd
+              FROM latest
             """
-        ) or {'total': 0}
+        ) or {'total': 0, 'largest_account_value_usd': 0}
         open_value = fetch_one(
             """
             WITH latest_ts AS (SELECT max(ts_ms) ts_ms FROM positions)
@@ -128,6 +133,7 @@ def summary(user: dict = Depends(require_active_subscription)):
         'latest_position_ts_ms': latest_pos_ts['ts_ms'],
         'qualified_wallets': latest_wallets['n'],
         'tracked_account_value_usd': float(total_value['total'] or 0),
+        'largest_account_value_usd': float(total_value.get('largest_account_value_usd') or 0),
         'tracked_open_position_value_usd': float(open_value['total'] or 0),
         'open_positions': int(open_value['positions'] or 0),
         'assets_with_signals': assets['n'],
@@ -412,6 +418,32 @@ def audit(live: bool = False, full: bool = False, max_wallets: int = 10, user: d
     ) or {'n': 0}
     _add_check(checks, 'Buyer/seller flow fields populated', int(bad_flow.get('n') or 0) == 0, f"{bad_flow.get('n',0)} rows have net flow but zero bullish/bearish flow")
 
+    display_bad = fetch_one(
+        """
+        WITH latest AS (SELECT max(ts_ms) AS ts_ms FROM asset_signals)
+        SELECT count(*) AS n FROM asset_signals
+        WHERE ts_ms=(SELECT ts_ms FROM latest)
+          AND (value_long_usd + value_short_usd) > 0
+          AND (
+            ((value_long_usd >= value_short_usd) AND (value_long_usd / NULLIF(value_long_usd + value_short_usd,0)) NOT BETWEEN 0 AND 1)
+            OR
+            ((value_short_usd > value_long_usd) AND (value_short_usd / NULLIF(value_long_usd + value_short_usd,0)) NOT BETWEEN 0 AND 1)
+          )
+        """
+    ) or {'n': 0}
+    _add_check(checks, 'Display signal percentages are bounded', int(display_bad.get('n') or 0) == 0, f"{display_bad.get('n',0)} rows have invalid display percentages")
+
+    flow_direction_bad = fetch_one(
+        """
+        WITH latest AS (SELECT max(ts_ms) AS ts_ms FROM asset_signals)
+        SELECT count(*) AS n FROM asset_signals
+        WHERE ts_ms=(SELECT ts_ms FROM latest)
+          AND abs(net_value_flow_usd) > 1000
+          AND sign(net_value_flow_usd) <> sign(COALESCE(bullish_value_flow_usd,0) - COALESCE(bearish_value_flow_usd,0))
+        """
+    ) or {'n': 0}
+    _add_check(checks, 'Flow read direction matches net value flow', int(flow_direction_bad.get('n') or 0) == 0, f"{flow_direction_bad.get('n',0)} rows have inconsistent flow direction")
+
     mismatches = []
     if ts:
         asset_compare = fetch_all(
@@ -514,6 +546,8 @@ def targets(user: dict = Depends(require_active_subscription)):
 @app.get('/api/insights')
 def insights(user: dict = Depends(require_active_subscription)):
     # At-a-glance trader/analyst insights from the latest completed snapshot.
+    # Customer-facing signal strength is the signed value-weighted directional
+    # majority so it aligns with the long-vs-short exposure bars.
     ts_row = fetch_one('SELECT max(ts_ms) AS ts_ms FROM asset_signals') or {'ts_ms': None}
     ts = ts_row.get('ts_ms')
     if not ts:
@@ -525,27 +559,39 @@ def insights(user: dict = Depends(require_active_subscription)):
                net_value_flow_usd, total_tracked_value_usd
         FROM asset_signals
         WHERE ts_ms=:ts
-        ORDER BY abs(signal) DESC
     """, {'ts': ts})
     if not rows:
         return {'status': 'empty', 'insights': []}
-    top_signal = max(rows, key=lambda r: abs(_safe_float(r.get('signal'))))
+
+    def display_signal(r: dict[str, Any]) -> float:
+        long_v = _safe_float(r.get('value_long_usd'))
+        short_v = _safe_float(r.get('value_short_usd'))
+        total = long_v + short_v
+        if total <= 0:
+            return _safe_float(r.get('signal'))
+        return long_v / total if long_v >= short_v else -(short_v / total)
+
+    top_signal = max(rows, key=lambda r: abs(display_signal(r)))
     accumulation = max(rows, key=lambda r: _safe_float(r.get('net_value_flow_usd')))
     distribution = min(rows, key=lambda r: _safe_float(r.get('net_value_flow_usd')))
+    most_traded = max(rows, key=lambda r: _safe_float(r.get('bullish_value_flow_usd')) + _safe_float(r.get('bearish_value_flow_usd')))
+
     def disagreement_score(r: dict[str, Any]) -> float:
         long_w = _safe_float(r.get('wallets_long'))
         short_w = _safe_float(r.get('wallets_short'))
         wallet_bias = (long_w - short_w) / max(1.0, long_w + short_w)
         value_bias = _safe_float(r.get('net_value_usd')) / max(1.0, _safe_float(r.get('value_long_usd')) + _safe_float(r.get('value_short_usd')))
         return abs(wallet_bias - value_bias)
+
     disagreement = max(rows, key=disagreement_score)
     return {
         'status': 'ok',
         'ts_ms': ts,
         'insights': [
-            {'type': 'top_signal', 'label': 'Top conviction asset', 'coin': top_signal.get('coin'), 'detail': f"Signal {float(top_signal.get('signal') or 0):.2f} · {top_signal.get('confidence')}", 'row': top_signal},
+            {'type': 'top_signal', 'label': 'Top conviction asset', 'coin': top_signal.get('coin'), 'detail': f"Signal {display_signal(top_signal):.4f} · {top_signal.get('confidence')}", 'row': top_signal},
             {'type': 'accumulation', 'label': 'Biggest accumulation', 'coin': accumulation.get('coin'), 'detail': f"Net flow ${float(accumulation.get('net_value_flow_usd') or 0):,.0f}", 'row': accumulation},
             {'type': 'distribution', 'label': 'Biggest distribution', 'coin': distribution.get('coin'), 'detail': f"Net flow ${float(distribution.get('net_value_flow_usd') or 0):,.0f}", 'row': distribution},
+            {'type': 'most_traded', 'label': 'Most traded asset', 'coin': most_traded.get('coin'), 'detail': f"Gross flow ${float((_safe_float(most_traded.get('bullish_value_flow_usd')) + _safe_float(most_traded.get('bearish_value_flow_usd')))):,.0f}", 'row': most_traded},
             {'type': 'disagreement', 'label': 'Wallet count vs value disagreement', 'coin': disagreement.get('coin'), 'detail': f"{disagreement.get('wallets_long')} long / {disagreement.get('wallets_short')} short · net ${float(disagreement.get('net_value_usd') or 0):,.0f}", 'row': disagreement},
         ]
     }
