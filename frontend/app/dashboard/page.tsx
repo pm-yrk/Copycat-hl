@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Nav from '../../components/Nav'
 import LineBackdrop from '../../components/LineBackdrop'
 import { apiGet } from '../../lib/api'
@@ -240,27 +240,55 @@ export default function Dashboard() {
   const [signalSort, setSignalSort] = useState<SortState>({ key: 'signal', dir: 'desc' })
   const [flowSortState, setFlowSortState] = useState<SortState>({ key: 'net_value_flow_usd', dir: 'desc' })
 
+  const inFlight = useRef(false)
+  const failureCount = useRef(0)
+  const hasLoaded = useRef(false)
+
   async function load() {
+    // One browser tab should never stack multiple refreshes. When a mobile tab
+    // and desktop tab are open together, this prevents request pile-ups that
+    // can make Render/Supabase briefly refuse connections and show "Failed to fetch".
+    if (inFlight.current) return
+    inFlight.current = true
     try {
+      const feed = await apiGet('/api/dashboard-feed')
+      failureCount.current = 0
+      hasLoaded.current = true
       setErr('')
-      const [s, si, t, f, o, ins] = await Promise.all([
-        apiGet('/api/summary'),
-        apiGet('/api/signals?limit=500'),
-        apiGet('/api/targets'),
-        apiGet('/api/flow?limit=500'),
-        apiGet('/api/recent-orders?limit=50').catch(() => []),
-        apiGet('/api/insights').catch(() => ({ insights: [] })),
-      ])
-      setSummary(s); setSignals(si); setTargets(t); setFlow(f); setOrders(o); setInsights(ins?.insights || [])
-    } catch (e: any) { setErr(e.message) }
+      setSummary(feed.summary || {})
+      setSignals(feed.signals || [])
+      setTargets(feed.targets || [])
+      setFlow(feed.flow || [])
+      setOrders(feed.orders || [])
+      setInsights(feed.insights || [])
+    } catch (e: any) {
+      failureCount.current += 1
+      // Keep the last good dashboard on screen during transient network blips.
+      // Only show an error if the page has never loaded successfully.
+      if (!hasLoaded.current && failureCount.current >= 3) {
+        setErr('Live data connection interrupted. Retrying…')
+      }
+    } finally {
+      inFlight.current = false
+    }
   }
 
   useEffect(() => { window.history.scrollRestoration = 'manual'; window.scrollTo(0, 0); load(); const id = setInterval(load, 1000); return () => clearInterval(id) }, [])
+
+  const symbolKey = useMemo(() => Array.from(new Set([...signals.map(r => r.coin), ...targets.map(r => r.coin), ...flow.map(r => r.coin), ...orders.map((r: any) => r.coin)].filter(Boolean).map(x => canonicalToken(String(x).toUpperCase())))).sort().join(','), [signals, targets, flow, orders])
   useEffect(() => {
-    const symbols = Array.from(new Set([...signals.map(r => r.coin), ...targets.map(r => r.coin), ...flow.map(r => r.coin), ...orders.map((r: any) => r.coin)].filter(Boolean).map(x => String(x).toUpperCase())))
-    if (!symbols.length) return
-    apiGet('/api/token-icons?symbols=' + encodeURIComponent(symbols.join(','))).then((r: any) => setIcons(r.icons || {})).catch(() => {})
-  }, [signals, targets, flow, orders])
+    if (!symbolKey) return
+    const cacheKey = 'copycat-token-icons:' + symbolKey
+    try {
+      const cached = localStorage.getItem(cacheKey)
+      if (cached) setIcons(JSON.parse(cached))
+    } catch {}
+    apiGet('/api/token-icons?symbols=' + encodeURIComponent(symbolKey)).then((r: any) => {
+      const nextIcons = r.icons || {}
+      setIcons(nextIcons)
+      try { localStorage.setItem(cacheKey, JSON.stringify(nextIcons)) } catch {}
+    }).catch(() => {})
+  }, [symbolKey])
 
   const longValue = signals.reduce((a, r) => a + Number(r.value_long_usd || 0), 0)
   const shortValue = signals.reduce((a, r) => a + Number(r.value_short_usd || 0), 0)

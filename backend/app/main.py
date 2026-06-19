@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import threading
 import time
 import urllib.parse
 import urllib.request
@@ -22,6 +23,7 @@ app = FastAPI(title='Hyper Wallet Tracker SaaS API')
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[settings.public_site_url, 'http://localhost:3000'],
+    allow_origin_regex=r'https://.*(onrender\.com|copycat\.hl)$',
     allow_credentials=True,
     allow_methods=['*'],
     allow_headers=['*'],
@@ -47,6 +49,59 @@ def health():
 @app.get('/api/me')
 def me(user: dict = Depends(get_current_user)):
     return user
+
+
+_DASHBOARD_FEED_CACHE: dict[str, Any] = {'ts': 0.0, 'data': None}
+_DASHBOARD_FEED_LOCK = threading.Lock()
+_DASHBOARD_FEED_TTL_SECONDS = 0.85
+
+
+@app.get('/api/dashboard-feed')
+def dashboard_feed(user: dict = Depends(require_active_subscription)):
+    """Single live dashboard payload.
+
+    The customer dashboard polls once per second. Previously each browser tab
+    made 6+ separate API/database calls every second. Two devices open at once
+    could therefore create overlapping request bursts and intermittent browser
+    "Failed to fetch" errors. This endpoint aggregates the whole dashboard
+    and keeps a sub-second in-memory cache so multiple open devices share one
+    database read cycle.
+    """
+    now = time.time()
+    cached = _DASHBOARD_FEED_CACHE.get('data')
+    if cached and now - float(_DASHBOARD_FEED_CACHE.get('ts') or 0) < _DASHBOARD_FEED_TTL_SECONDS:
+        return cached
+
+    with _DASHBOARD_FEED_LOCK:
+        now = time.time()
+        cached = _DASHBOARD_FEED_CACHE.get('data')
+        if cached and now - float(_DASHBOARD_FEED_CACHE.get('ts') or 0) < _DASHBOARD_FEED_TTL_SECONDS:
+            return cached
+        try:
+            insight_result = insights(user)
+            feed = {
+                'summary': summary(user),
+                'signals': signals(limit=500, user=user),
+                'targets': targets(user),
+                'flow': flow(limit=500, user=user),
+                'orders': recent_orders(limit=50, user=user),
+                'insights': (insight_result.get('insights') if isinstance(insight_result, dict) else []) or [],
+                'server_time_ms': _now_ms(),
+                'cache_ttl_ms': int(_DASHBOARD_FEED_TTL_SECONDS * 1000),
+            }
+            _DASHBOARD_FEED_CACHE['ts'] = time.time()
+            _DASHBOARD_FEED_CACHE['data'] = feed
+            return feed
+        except Exception:
+            # If a transient database/network error happens, serve the most
+            # recent good payload instead of making every open dashboard jump.
+            cached = _DASHBOARD_FEED_CACHE.get('data')
+            if cached:
+                stale = dict(cached)
+                stale['stale'] = True
+                stale['warning'] = 'Serving last good dashboard payload while the live feed reconnects.'
+                return stale
+            raise
 
 
 @app.get('/api/summary')
