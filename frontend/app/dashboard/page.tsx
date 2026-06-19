@@ -18,6 +18,12 @@ function compactMoney(n: any) {
   return `${sign}$${v.toFixed(0)}`
 }
 function pct(n: any) { return (Number(n || 0) * 100).toFixed(1) + '%' }
+function signalPct(n: any) {
+  const num = Number(n || 0)
+  const abs = Math.abs(num) * 100
+  const digits = abs >= 10 ? 0 : 1
+  return `${num < 0 ? '-' : ''}${abs.toFixed(digits)}%`
+}
 function cls(n: any) { return Number(n) >= 0 ? 'positive' : 'negative' }
 function flowRead(n: any) { return Number(n) > 3 ? 'Accumulation' : Number(n) < -3 ? 'Distribution' : 'Neutral' }
 function ago(ms: any) { const m = Math.max(0, Math.round((Date.now() - Number(ms || Date.now())) / 60000)); if (m < 1) return 'just now'; if (m < 60) return `${m}m ago`; return `${Math.round(m / 60)}h ago` }
@@ -28,7 +34,7 @@ function fmtTime(ms: any) {
 function maskWallet(w: string) { return w ? `Wallet ${w.slice(0, 4)}…${w.slice(-4)}` : 'Wallet 0x…' }
 
 const palette = ['#43E8D0', '#8057FF', '#44BDEC', '#FFB020', '#25D366', '#F35EA6', '#A6E22E', '#FF5B72', '#38BDF8', '#F97316']
-const fallbackColours: Record<string, string> = { HYPE:'#43E8D0', ETH:'#627EEA', BTC:'#F7931A', SOL:'#14F195', ZEC:'#F4B728', NEAR:'#00EC97', AAVE:'#8B7DFF', TRX:'#FF4B4B', XRP:'#4B9FFF', USDC:'#2775CA', 'USDC/CASH':'#2775CA', MELANIA:'#D7A785', WLD:'#8492A6' }
+const fallbackColours: Record<string, string> = { HYPE:'#43E8D0', ETH:'#627EEA', BTC:'#F7931A', SOL:'#14F195', ZEC:'#F4B728', NEAR:'#00EC97', AAVE:'#8B7DFF', TRX:'#FF4B4B', XRP:'#4B9FFF', USDC:'#2775CA', 'USDC/CASH':'#2775CA', MELANIA:'#D7A785', WLD:'#8492A6', PAXG:'#F0C419', PUMP:'#61C685', LIT:'#35D0B4', BNB:'#F3BA2F', XLM:'#44BDEC', PENGU:'#A0D7F8' }
 const staticLogoUrls: Record<string, string> = {
   BTC:'https://cryptologos.cc/logos/bitcoin-btc-logo.svg?v=040', ETH:'https://cryptologos.cc/logos/ethereum-eth-logo.svg?v=040', SOL:'https://cryptologos.cc/logos/solana-sol-logo.svg?v=040', USDC:'https://cryptologos.cc/logos/usd-coin-usdc-logo.svg?v=040', USDT:'https://cryptologos.cc/logos/tether-usdt-logo.svg?v=040', DOGE:'https://cryptologos.cc/logos/dogecoin-doge-logo.svg?v=040',
   AAVE:'https://cryptologos.cc/logos/aave-aave-logo.svg?v=040', TRX:'https://cryptologos.cc/logos/tron-trx-logo.svg?v=040', XRP:'https://cryptologos.cc/logos/xrp-xrp-logo.svg?v=040', AVAX:'https://cryptologos.cc/logos/avalanche-avax-logo.svg?v=040', BNB:'https://cryptologos.cc/logos/bnb-bnb-logo.svg?v=040', LINK:'https://cryptologos.cc/logos/chainlink-link-logo.svg?v=040', UNI:'https://cryptologos.cc/logos/uniswap-uni-logo.svg?v=040', LTC:'https://cryptologos.cc/logos/litecoin-ltc-logo.svg?v=040', DOT:'https://cryptologos.cc/logos/polkadot-new-dot-logo.svg?v=040', FIL:'https://cryptologos.cc/logos/filecoin-fil-logo.svg?v=040', ATOM:'https://cryptologos.cc/logos/cosmos-atom-logo.svg?v=040', NEAR:'https://cryptologos.cc/logos/near-protocol-near-logo.svg?v=040', ZEC:'https://cryptologos.cc/logos/zcash-zec-logo.svg?v=040', ARB:'https://cryptologos.cc/logos/arbitrum-arb-logo.svg?v=040', SUI:'https://cryptologos.cc/logos/sui-sui-logo.svg?v=040', OP:'https://cryptologos.cc/logos/optimism-ethereum-op-logo.svg?v=040', APE:'https://cryptologos.cc/logos/apecoin-ape-ape-logo.svg?v=040', INJ:'https://cryptologos.cc/logos/injective-inj-logo.svg?v=040', FET:'https://cryptologos.cc/logos/artificial-superintelligence-alliance-fet-logo.svg?v=040'
@@ -50,13 +56,17 @@ function TokenLogo({ coin, icons }: { coin: string, icons: Record<string, string
   </span>
 }
 
+function tokenColour(symbol: string, index: number) {
+  return fallbackColours[String(symbol || '').toUpperCase()] || palette[index % palette.length]
+}
+
 type Segment = { coin: string; weight: number; color: string; originalWeight: number }
-function AllocationDonut({ targets }: { targets: any[] }) {
+function AllocationDonut({ targets, icons }: { targets: any[]; icons: Record<string, string> }) {
   const [hovered, setHovered] = useState<Segment | null>(null)
   const parts: Segment[] = useMemo(() => {
     const clean = (targets || []).filter(t => Number(t.target_weight) > 0).slice(0, 10)
     const total = clean.reduce((a, t) => a + Number(t.target_weight || 0), 0) || 1
-    return clean.map((t, i) => ({ coin: t.coin, originalWeight: Number(t.target_weight || 0), weight: Number(t.target_weight || 0) / total, color: palette[i % palette.length] }))
+    return clean.map((t, i) => ({ coin: t.coin, originalWeight: Number(t.target_weight || 0), weight: Number(t.target_weight || 0) / total, color: tokenColour(t.coin, i) }))
   }, [targets])
   let angle = -90
   const path = (cx: number, cy: number, r1: number, r2: number, a0: number, a1: number) => {
@@ -73,22 +83,32 @@ function AllocationDonut({ targets }: { targets: any[] }) {
       </svg>
       <div className="cc-donut-tooltip">{hovered ? `${hovered.coin} ${(hovered.originalWeight * 100).toFixed(1)}% target` : 'Hover a segment for details'}</div>
     </div>
-    <div className="cc-donut-legend">{parts.map(p => <div key={p.coin}><i style={{ background: p.color }} /><b>{p.coin}</b><span>{(p.originalWeight * 100).toFixed(1)}%</span></div>)}</div>
+    <div className="cc-donut-legend">{parts.map(p => <div key={p.coin}><TokenLogo coin={p.coin} icons={icons} /><b>{p.coin}</b><span>{(p.originalWeight * 100).toFixed(1)}%</span></div>)}</div>
   </div>
 }
 function ExposureBars({ signals, icons }: { signals: any[], icons: Record<string, string> }) {
-  const rows = (signals || []).slice(0, 8)
-  const max = Math.max(1, ...rows.map(r => Number(r.value_long_usd || 0) + Number(r.value_short_usd || 0)))
+  const rows = useMemo(() => ([...(signals || [])]
+    .filter(r => Number(r.value_long_usd || 0) + Number(r.value_short_usd || 0) > 0)
+    .sort((a, b) => (Number(b.value_long_usd || 0) + Number(b.value_short_usd || 0)) - (Number(a.value_long_usd || 0) + Number(a.value_short_usd || 0)))
+  ), [signals])
   if (!rows.length) return <div className="cc-empty-state">Exposure appears after refresh.</div>
-  return <div className="cc-exposure-list">{rows.map(r => {
+  return <div className="cc-exposure-list cc-scroll-y">{rows.map(r => {
     const l = Number(r.value_long_usd || 0), s = Number(r.value_short_usd || 0)
     const total = l + s || 1
     return <div className="cc-ex-row" key={r.coin}>
-      <div className="cc-ex-name"><TokenLogo coin={r.coin} icons={icons} /><b title={r.coin}>{r.coin}</b><span>{Number(r.signal).toFixed(2)}</span></div>
-      <div className="cc-ex-track"><div style={{ width: `${Math.max(8, ((l + s) / max) * 100)}%` }}><i style={{ width: `${(l / total) * 100}%` }} /><em style={{ width: `${(s / total) * 100}%` }} /></div></div>
+      <div className="cc-ex-name"><TokenLogo coin={r.coin} icons={icons} /><b title={r.coin}>{r.coin}</b><span>{signalPct(r.signal)}</span></div>
+      <div className="cc-ex-track"><div><i style={{ width: `${(l / total) * 100}%` }} /><em style={{ width: `${(s / total) * 100}%` }} /></div></div>
       <small>{compactMoney(l)}</small><small>{compactMoney(s)}</small>
     </div>
   })}</div>
+}
+
+function formatInsightDetail(x: any) {
+  if (x?.type === 'top_signal') {
+    const confidence = x?.row?.confidence || x?.detail?.split('·')?.[1]?.trim() || ''
+    return `Signal ${signalPct(x?.row?.signal)}${confidence ? ` · ${confidence}` : ''}`
+  }
+  return String(x?.detail || '').replace(/Signal\s+(-?\d+(?:\.\d+)?)/i, (_, raw) => `Signal ${signalPct(Number(raw))}`)
 }
 
 type SortDir = 'asc' | 'desc'
@@ -126,7 +146,6 @@ function sortedRows(rows: any[], sort: SortState) {
 function SortTh({ label, sortKey, sort, setSort }: { label: string, sortKey: string, sort: SortState, setSort: (s: SortState) => void }) {
   return <th><button className="cc-sort-head" onClick={() => setSort(nextSort(sort, sortKey))}>{label}<span>{sortArrow(sort, sortKey)}</span></button></th>
 }
-
 
 export default function Dashboard() {
   const [summary, setSummary] = useState<any>({})
@@ -166,6 +185,7 @@ export default function Dashboard() {
   const longValue = signals.reduce((a, r) => a + Number(r.value_long_usd || 0), 0)
   const shortValue = signals.reduce((a, r) => a + Number(r.value_short_usd || 0), 0)
   const isLong = longValue >= shortValue
+  const dataHealthy = summary.data_quality_status === 'healthy'
   const orderRows = orders.length ? orders : flow.slice(0, 12).map((r: any) => ({ coin: r.coin, side: Number(r.net_value_flow_usd) >= 0 ? 'Long' : 'Short', wallet_label: 'Wallet 0x1A…7F3B', wallet: r.wallet, ts_ms: summary.latest_signal_ts_ms }))
   const visibleOrders = showAllOrders ? orderRows : orderRows.slice(0, 3)
   const sortedSignals = sortedRows(signals, signalSort)
@@ -178,7 +198,7 @@ export default function Dashboard() {
         <h1>Market intelligence.<br /><em>Follow the best.</em></h1>
         <p>Value-weighted positioning from qualified Hyperliquid wallets.<br />Built to show what serious traders are leaning into.</p>
       </div>
-      <div className="cc-bias-block"><span>Positioning bias</span><button className={`cc-bias-toggle ${isLong ? 'is-long' : 'is-short'}`}><i /><b>{isLong ? 'LONG' : 'SHORT'}</b></button></div>
+      <div className="cc-bias-block"><span>Positioning bias</span><button className={`cc-bias-toggle ${isLong ? 'is-long' : 'is-short'}`}><i aria-hidden /><b>{isLong ? 'LONG' : 'SHORT'}</b></button></div>
       <aside className="cc-top-rail">
         <div className={`cc-orders-card ${showAllOrders ? 'expanded' : ''}`}>
           <h3>Most recent orders</h3>
@@ -187,14 +207,14 @@ export default function Dashboard() {
           </div>
           <button className="cc-small-action" onClick={() => setShowAllOrders(v => !v)}>{showAllOrders ? 'Show latest 3 ↑' : 'View all orders →'}</button>
         </div>
-        <div className={`cc-data-quality ${summary.data_quality_status === 'healthy' ? 'healthy' : 'checking'}`}>
+        <div className={`cc-data-quality ${dataHealthy ? 'healthy' : 'checking'}`}>
           <span className="cc-pulse-dot" />
-          <div><b>{summary.data_quality_status === 'healthy' ? 'Data quality: healthy' : 'Data quality: checking'}</b><small>{summary.data_quality_message || 'Waiting for data audit'}</small></div>
+          <div><b>{dataHealthy ? 'Data quality: healthy' : 'Data quality: checking'}</b><small>{summary.data_quality_message || 'Waiting for data audit'}</small></div>
         </div>
         <div className="cc-insights-card">
           <h3>At a glance</h3>
           {(insights || []).slice(0, 4).map((x: any) => <div className="cc-insight-line" key={`${x.type}-${x.coin}`}>
-            <span>{x.label}</span><b>{x.coin || '—'}</b><em>{x.detail}</em>
+            <span>{x.label}</span><b>{x.coin || '—'}</b><em>{formatInsightDetail(x)}</em>
           </div>)}
         </div>
       </aside>
@@ -210,7 +230,7 @@ export default function Dashboard() {
     </section>
 
     <section className="cc-chart-grid">
-      <div className="cc-card cc-allocation-card"><h3>Portfolio allocation</h3><AllocationDonut targets={targets} /></div>
+      <div className="cc-card cc-allocation-card"><h3>Portfolio allocation</h3><AllocationDonut targets={targets} icons={icons} /></div>
       <div className="cc-card cc-exposure-card"><div className="cc-panel-title"><h3>Long vs short exposure</h3><span><i />Long <em />Short</span></div><ExposureBars signals={signals} icons={icons} /></div>
     </section>
 
@@ -235,6 +255,6 @@ export default function Dashboard() {
       </div>
     </section>
 
-    <footer className="cc-warning-banner"><span className="cc-shield">♜</span><strong>Market intelligence only.</strong><em>Not financial advice. Crypto trading can result in loss.</em><small>Signal refresh: {fmtTime(summary.latest_signal_ts_ms)} UTC · Data updates every 10s</small></footer>
+    <footer className="cc-warning-banner"><span className="cc-shield" aria-hidden>🛡</span><strong>Market intelligence only.</strong><em>Not financial advice. Crypto trading can result in loss.</em><div className={`cc-footer-meta ${dataHealthy ? 'healthy' : 'checking'}`}><span className="cc-footer-quality"><span className="cc-pulse-dot" /><b>{dataHealthy ? 'Data quality healthy' : 'Data quality checking'}</b></span><small>Signal refresh: {fmtTime(summary.latest_signal_ts_ms)} UTC · Data updates every 10s</small></div></footer>
   </main></>
 }
