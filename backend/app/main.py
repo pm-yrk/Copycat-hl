@@ -933,6 +933,340 @@ def token_icons(symbols: str = ''):
     return {'icons': {sym: _coingecko_icon_for_symbol(sym) for sym in requested}}
 
 
+
+# -------------------------
+# Copycat Live Strategy Index
+# -------------------------
+_INDEX_LOCK = threading.Lock()
+_INDEX_CACHE: dict[str, Any] = {'ts': 0.0, 'data': None}
+_INDEX_CACHE_TTL_SECONDS = 5.0
+_INDEX_WRITE_INTERVAL_MS = 60_000
+_INDEX_METHOD_VERSION = 'copycat_live_index_v1_long_only'
+_FEE_SLIPPAGE_RATE = 0.0015  # 15 bps round-trip buffer on rebalance turnover.
+
+def _normalise_index_symbol(symbol: str) -> str:
+    s = str(symbol or '').upper().strip()
+    if s in ('USDC/CASH', 'USDCCASH', 'USDCASH', 'CASH', 'USD'):
+        return 'USDC'
+    return ''.join(ch for ch in s if ch.isalnum())
+
+
+def _ensure_index_table() -> None:
+    execute("""
+        CREATE TABLE IF NOT EXISTS strategy_index_points (
+          id bigserial PRIMARY KEY,
+          ts_ms bigint NOT NULL UNIQUE,
+          ts timestamptz NOT NULL DEFAULT now(),
+          copycat_nav double precision NOT NULL,
+          btc_nav double precision NOT NULL,
+          eth_nav double precision NOT NULL,
+          copycat_return_pct double precision NOT NULL,
+          btc_return_pct double precision NOT NULL,
+          eth_return_pct double precision NOT NULL,
+          method text NOT NULL,
+          weights_json jsonb NOT NULL,
+          prices_json jsonb NOT NULL,
+          benchmark_prices_json jsonb NOT NULL,
+          metadata_json jsonb NOT NULL
+        )
+    """)
+    execute("CREATE INDEX IF NOT EXISTS idx_strategy_index_points_ts ON strategy_index_points(ts_ms DESC)")
+
+
+def _hl_all_mids() -> dict[str, float]:
+    payload = _hl_info({'type': 'allMids'})
+    if not isinstance(payload, dict):
+        return {}
+    out: dict[str, float] = {'USDC': 1.0}
+    for k, v in payload.items():
+        sym = _normalise_index_symbol(k)
+        px = _safe_float(v)
+        if sym and px > 0:
+            out[sym] = px
+    return out
+
+
+def _latest_index_weights() -> tuple[int | None, dict[str, float]]:
+    latest = fetch_one('SELECT max(ts_ms) AS ts_ms FROM portfolio_targets') or {'ts_ms': None}
+    ts = latest.get('ts_ms')
+    if not ts:
+        return None, {'USDC': 1.0}
+    rows = fetch_all('SELECT coin,target_weight FROM portfolio_targets WHERE ts_ms=:ts ORDER BY target_weight DESC', {'ts': ts})
+    weights: dict[str, float] = {}
+    for r in rows:
+        sym = _normalise_index_symbol(r.get('coin'))
+        w = max(0.0, _safe_float(r.get('target_weight')))
+        if not sym or w <= 0:
+            continue
+        weights[sym] = weights.get(sym, 0.0) + w
+    total = sum(weights.values())
+    if total <= 0:
+        return ts, {'USDC': 1.0}
+    weights = {k: v / total for k, v in weights.items()}
+    return ts, weights
+
+
+def _prices_for_symbols(mids: dict[str, float], symbols: list[str] | set[str]) -> dict[str, float]:
+    out: dict[str, float] = {}
+    for raw in symbols:
+        sym = _normalise_index_symbol(raw)
+        if sym == 'USDC':
+            out[sym] = 1.0
+            continue
+        px = mids.get(sym)
+        if px and px > 0:
+            out[sym] = float(px)
+    return out
+
+
+def _portfolio_return(prev_weights: dict[str, float], prev_prices: dict[str, float], current_prices: dict[str, float]) -> tuple[float, list[str]]:
+    ret = 0.0
+    missing: list[str] = []
+    for sym, w in prev_weights.items():
+        p0 = _safe_float(prev_prices.get(sym))
+        p1 = _safe_float(current_prices.get(sym))
+        if sym == 'USDC':
+            continue
+        if p0 <= 0 or p1 <= 0:
+            missing.append(sym)
+            continue
+        ret += w * ((p1 / p0) - 1.0)
+    return ret, missing
+
+
+def _turnover(prev_weights: dict[str, float], next_weights: dict[str, float]) -> float:
+    keys = set(prev_weights) | set(next_weights)
+    return 0.5 * sum(abs(_safe_float(next_weights.get(k)) - _safe_float(prev_weights.get(k))) for k in keys)
+
+
+def _insert_index_point(ts_ms: int, copycat_nav: float, btc_nav: float, eth_nav: float, weights: dict[str, float], prices: dict[str, float], benchmark_prices: dict[str, float], metadata: dict[str, Any]) -> None:
+    execute("""
+        INSERT INTO strategy_index_points(ts_ms, copycat_nav, btc_nav, eth_nav, copycat_return_pct, btc_return_pct, eth_return_pct, method, weights_json, prices_json, benchmark_prices_json, metadata_json)
+        VALUES (:ts_ms, :copycat_nav, :btc_nav, :eth_nav, :copycat_return_pct, :btc_return_pct, :eth_return_pct, :method, CAST(:weights AS jsonb), CAST(:prices AS jsonb), CAST(:benchmarks AS jsonb), CAST(:metadata AS jsonb))
+        ON CONFLICT (ts_ms) DO NOTHING
+    """, {
+        'ts_ms': ts_ms,
+        'copycat_nav': copycat_nav,
+        'btc_nav': btc_nav,
+        'eth_nav': eth_nav,
+        'copycat_return_pct': copycat_nav - 100.0,
+        'btc_return_pct': btc_nav - 100.0,
+        'eth_return_pct': eth_nav - 100.0,
+        'method': _INDEX_METHOD_VERSION,
+        'weights': json.dumps(weights),
+        'prices': json.dumps(prices),
+        'benchmarks': json.dumps(benchmark_prices),
+        'metadata': json.dumps(metadata),
+    })
+
+
+def _load_index_points(limit: int = 500) -> list[dict[str, Any]]:
+    rows = fetch_all("""
+        SELECT ts_ms, copycat_nav, btc_nav, eth_nav, copycat_return_pct, btc_return_pct, eth_return_pct, method, weights_json, prices_json, benchmark_prices_json, metadata_json
+        FROM strategy_index_points
+        ORDER BY ts_ms DESC
+        LIMIT :limit
+    """, {'limit': limit})
+    rows = list(reversed(rows))
+    for r in rows:
+        for key in ('weights_json', 'prices_json', 'benchmark_prices_json', 'metadata_json'):
+            val = r.get(key)
+            if isinstance(val, str):
+                try:
+                    r[key] = json.loads(val)
+                except Exception:
+                    r[key] = {}
+    return rows
+
+
+def _update_strategy_index_locked(force: bool = False) -> dict[str, Any]:
+    _ensure_index_table()
+    now_ms = _now_ms()
+    target_ts, weights = _latest_index_weights()
+    needed_symbols = set(weights) | {'BTC', 'ETH'}
+    mids = _hl_all_mids()
+    current_prices = _prices_for_symbols(mids, needed_symbols)
+    benchmark_prices = {'BTC': current_prices.get('BTC'), 'ETH': current_prices.get('ETH')}
+
+    rows = _load_index_points(limit=500)
+    if not rows:
+        # Baseline starts at 100.00 using the first live target/price snapshot.
+        seed_prices = _prices_for_symbols(mids, set(weights))
+        _insert_index_point(
+            now_ms,
+            100.0,
+            100.0,
+            100.0,
+            weights,
+            seed_prices,
+            {'BTC': benchmark_prices.get('BTC') or 0, 'ETH': benchmark_prices.get('ETH') or 0},
+            {
+                'target_ts_ms': target_ts,
+                'event': 'baseline',
+                'fee_slippage_rate': _FEE_SLIPPAGE_RATE,
+                'note': 'Copycat Live Index baseline. No historical backfill or hindsight.',
+            },
+        )
+        rows = _load_index_points(limit=500)
+
+    last = rows[-1]
+    last_ts = int(last.get('ts_ms') or 0)
+    if force or now_ms - last_ts >= _INDEX_WRITE_INTERVAL_MS:
+        prev_weights = last.get('weights_json') or {'USDC': 1.0}
+        prev_prices = last.get('prices_json') or {}
+        prev_benchmarks = last.get('benchmark_prices_json') or {}
+        current_target_prices = _prices_for_symbols(mids, set(prev_weights) | set(weights))
+        raw_return, missing = _portfolio_return(prev_weights, prev_prices, current_target_prices)
+        turn = _turnover(prev_weights, weights)
+        net_return = raw_return - (turn * _FEE_SLIPPAGE_RATE)
+        copycat_nav = max(0.0, _safe_float(last.get('copycat_nav')) * (1.0 + net_return))
+        btc_px0 = _safe_float(prev_benchmarks.get('BTC'))
+        eth_px0 = _safe_float(prev_benchmarks.get('ETH'))
+        btc_px1 = _safe_float(benchmark_prices.get('BTC'))
+        eth_px1 = _safe_float(benchmark_prices.get('ETH'))
+        btc_nav = _safe_float(last.get('btc_nav')) * ((btc_px1 / btc_px0) if btc_px0 > 0 and btc_px1 > 0 else 1.0)
+        eth_nav = _safe_float(last.get('eth_nav')) * ((eth_px1 / eth_px0) if eth_px0 > 0 and eth_px1 > 0 else 1.0)
+        next_prices = _prices_for_symbols(mids, set(weights))
+        _insert_index_point(
+            now_ms,
+            copycat_nav,
+            btc_nav,
+            eth_nav,
+            weights,
+            next_prices,
+            {'BTC': btc_px1 or btc_px0 or 0, 'ETH': eth_px1 or eth_px0 or 0},
+            {
+                'target_ts_ms': target_ts,
+                'event': 'mark_and_rebalance',
+                'raw_return': raw_return,
+                'turnover': turn,
+                'fee_slippage_cost': turn * _FEE_SLIPPAGE_RATE,
+                'missing_prices': missing,
+                'fee_slippage_rate': _FEE_SLIPPAGE_RATE,
+            },
+        )
+        rows = _load_index_points(limit=500)
+        last = rows[-1]
+
+    # Add a non-persisted live mark so the chart is current between stored points.
+    prev_weights = last.get('weights_json') or {'USDC': 1.0}
+    prev_prices = last.get('prices_json') or {}
+    prev_benchmarks = last.get('benchmark_prices_json') or {}
+    live_prices = _prices_for_symbols(mids, set(prev_weights))
+    live_return, missing_live = _portfolio_return(prev_weights, prev_prices, live_prices)
+    live_copycat_nav = max(0.0, _safe_float(last.get('copycat_nav')) * (1.0 + live_return))
+    btc_px0 = _safe_float(prev_benchmarks.get('BTC'))
+    eth_px0 = _safe_float(prev_benchmarks.get('ETH'))
+    btc_px1 = _safe_float(benchmark_prices.get('BTC'))
+    eth_px1 = _safe_float(benchmark_prices.get('ETH'))
+    live_btc_nav = _safe_float(last.get('btc_nav')) * ((btc_px1 / btc_px0) if btc_px0 > 0 and btc_px1 > 0 else 1.0)
+    live_eth_nav = _safe_float(last.get('eth_nav')) * ((eth_px1 / eth_px0) if eth_px0 > 0 and eth_px1 > 0 else 1.0)
+    live_point = {
+        'ts_ms': now_ms,
+        'copycat_nav': live_copycat_nav,
+        'btc_nav': live_btc_nav,
+        'eth_nav': live_eth_nav,
+        'copycat_return_pct': live_copycat_nav - 100.0,
+        'btc_return_pct': live_btc_nav - 100.0,
+        'eth_return_pct': live_eth_nav - 100.0,
+        'live': True,
+    }
+    points = rows + ([live_point] if now_ms > int(rows[-1].get('ts_ms') or 0) else [])
+    start = points[0] if points else live_point
+    latest = points[-1] if points else live_point
+    daily_returns = []
+    for i in range(1, len(points)):
+        prev = _safe_float(points[i - 1].get('copycat_nav'))
+        cur = _safe_float(points[i].get('copycat_nav'))
+        if prev > 0:
+            daily_returns.append((cur / prev) - 1.0)
+    peak = -1.0
+    max_drawdown = 0.0
+    for p in points:
+        nav = _safe_float(p.get('copycat_nav'))
+        peak = max(peak, nav)
+        if peak > 0:
+            max_drawdown = min(max_drawdown, (nav / peak) - 1.0)
+    weights_sorted = sorted((weights or {}).items(), key=lambda kv: kv[1], reverse=True)[:10]
+    return {
+        'status': 'ok',
+        'method': _INDEX_METHOD_VERSION,
+        'start_ts_ms': start.get('ts_ms'),
+        'latest_ts_ms': latest.get('ts_ms'),
+        'copycat_nav': latest.get('copycat_nav'),
+        'btc_nav': latest.get('btc_nav'),
+        'eth_nav': latest.get('eth_nav'),
+        'copycat_return_pct': latest.get('copycat_return_pct'),
+        'btc_return_pct': latest.get('btc_return_pct'),
+        'eth_return_pct': latest.get('eth_return_pct'),
+        'max_drawdown_pct': max_drawdown * 100.0,
+        'points_count': len(points),
+        'current_weights': [{'coin': k, 'weight': v} for k, v in weights_sorted],
+        'points': [
+            {
+                'ts_ms': p.get('ts_ms'),
+                'copycat_nav': p.get('copycat_nav'),
+                'btc_nav': p.get('btc_nav'),
+                'eth_nav': p.get('eth_nav'),
+                'copycat_return_pct': p.get('copycat_return_pct'),
+                'btc_return_pct': p.get('btc_return_pct'),
+                'eth_return_pct': p.get('eth_return_pct'),
+                'live': bool(p.get('live')),
+            } for p in points
+        ],
+        'metadata': {
+            'benchmark_assets': ['BTC', 'ETH'],
+            'fee_slippage_rate': _FEE_SLIPPAGE_RATE,
+            'write_interval_ms': _INDEX_WRITE_INTERVAL_MS,
+            'target_ts_ms': target_ts,
+            'missing_live_prices': missing_live,
+            'note': 'Live model index only. Uses published Copycat targets from the time they exist; no historical backfill or hindsight.',
+        },
+    }
+
+
+@app.get('/api/performance-index')
+def performance_index(force: bool = False):
+    now = time.time()
+    if not force and _INDEX_CACHE.get('data') and now - float(_INDEX_CACHE.get('ts') or 0) < _INDEX_CACHE_TTL_SECONDS:
+        return _INDEX_CACHE['data']
+    with _INDEX_LOCK:
+        now = time.time()
+        if not force and _INDEX_CACHE.get('data') and now - float(_INDEX_CACHE.get('ts') or 0) < _INDEX_CACHE_TTL_SECONDS:
+            return _INDEX_CACHE['data']
+        try:
+            data = _update_strategy_index_locked(force=force)
+        except Exception as exc:
+            cached = _INDEX_CACHE.get('data')
+            if cached:
+                stale = dict(cached)
+                stale['stale'] = True
+                stale['warning'] = f'Performance index using last good value while live price feed reconnects: {str(exc)[:180]}'
+                return stale
+            raise HTTPException(status_code=503, detail=f'Performance index is not ready: {str(exc)[:220]}') from exc
+        _INDEX_CACHE['ts'] = time.time()
+        _INDEX_CACHE['data'] = data
+        return data
+
+
+@app.get('/api/performance-index/audit')
+def performance_index_audit():
+    try:
+        data = performance_index(force=True)
+        checks = []
+        points = data.get('points') or []
+        checks.append({'name': 'Index has baseline point', 'status': 'pass' if len(points) >= 1 else 'fail', 'detail': f'{len(points)} points'})
+        checks.append({'name': 'BTC benchmark present', 'status': 'pass' if data.get('btc_nav') else 'fail', 'detail': f"BTC NAV {data.get('btc_nav')}"})
+        checks.append({'name': 'ETH benchmark present', 'status': 'pass' if data.get('eth_nav') else 'fail', 'detail': f"ETH NAV {data.get('eth_nav')}"})
+        weights = data.get('current_weights') or []
+        checks.append({'name': 'Current Copycat weights available', 'status': 'pass' if weights else 'fail', 'detail': f'{len(weights)} top weights returned'})
+        missing = (data.get('metadata') or {}).get('missing_live_prices') or []
+        checks.append({'name': 'Live prices available for current weights', 'status': 'pass' if not missing else 'warning', 'detail': f"missing: {', '.join(missing[:8])}" if missing else 'all live prices available'})
+        overall = 'pass' if all(c['status'] == 'pass' for c in checks) else 'warning' if any(c['status'] == 'warning' for c in checks) else 'fail'
+        return {'status': overall, 'checks': checks, 'index': data}
+    except Exception as exc:
+        return {'status': 'fail', 'checks': [{'name': 'Performance index audit', 'status': 'fail', 'detail': str(exc)[:300]}]}
+
 @app.post('/api/billing/create-checkout-session')
 def create_checkout_session(body: dict, user: dict = Depends(get_current_user)):
     if not settings.stripe_secret_key:

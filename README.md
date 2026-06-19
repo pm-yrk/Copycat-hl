@@ -1,13 +1,20 @@
-# Copycat mobile/desktop fetch stability patch
+# Copycat Live Strategy Index patch
 
-This patch fixes the issue where opening the dashboard on mobile can make the desktop dashboard jump or show "Failed to fetch".
+This patch fixes the frontend build error caused by `lib/api.ts` importing a removed `supabase` export, then adds the Copycat Live Strategy Index.
 
-What changed:
-- Frontend now requests one combined `/api/dashboard-feed` payload every second instead of 6+ separate API calls every second.
-- Frontend prevents overlapping refreshes from the same tab.
-- Frontend keeps the last good dashboard data on screen during tiny network blips instead of showing a visible error and moving the layout.
-- Token logo lookups are cached and only requested when the token set changes.
-- Backend serves a sub-second shared dashboard cache so desktop + mobile tabs do not overload the API/database.
-- Backend CORS now accepts Render URLs and copycat.hl-style domains more safely.
+What it adds:
+- Public `/api/performance-index` endpoint.
+- `/api/performance-index/audit` sanity-check endpoint.
+- Automatic `strategy_index_points` table creation.
+- Copycat Index starting at 100 with no hindsight backfill.
+- BTC and ETH benchmark lines.
+- Homepage live index widget replacing the fake hero chart.
+- Dashboard/deep performance widget.
+- `/performance` page for testing the deeper index view.
 
-Apply this patch, push to GitHub, let Render redeploy both API and frontend, then hard-refresh the dashboard on desktop and mobile.
+Method:
+- Uses latest published Copycat portfolio targets.
+- Marks the model against live Hyperliquid `allMids` prices.
+- Persists index points at most once per minute.
+- Adds a 15 bps fee/slippage buffer on rebalance turnover.
+- Shows a live non-persisted mark between stored points.

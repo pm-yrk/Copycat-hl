@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Nav from '../../components/Nav'
 import LineBackdrop from '../../components/LineBackdrop'
 import { apiGet } from '../../lib/api'
+import PerformanceIndex from '../../components/PerformanceIndex'
 
 function money(n: any) {
   return '$' + Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })
@@ -337,6 +338,8 @@ export default function Dashboard() {
       <div className="cc-card cc-allocation-card"><h3>Portfolio allocation</h3><AllocationDonut targets={targets} signals={signals} trackedValue={Number(summary.tracked_account_value_usd || 0)} icons={icons} /></div>
       <div className="cc-card cc-exposure-card"><div className="cc-panel-title"><h3>Long vs short exposure</h3><span><i />Long <em />Short</span></div><ExposureBars signals={signals} icons={icons} /></div>
     </section>
+
+    <PerformanceIndex variant="dashboard" />
 
     <section className="cc-table-grid">
       <div className="cc-card cc-table-card">

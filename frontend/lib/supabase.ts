@@ -34,5 +34,5 @@ export async function getSupabase(): Promise<SupabaseClient> {
 
 export async function getApiBaseUrl(): Promise<string> {
   const cfg = await getRuntimeConfig()
-  return cfg.apiBaseUrl || 'https://hwt-api.onrender.com'
+  return cfg.apiBaseUrl || process.env.NEXT_PUBLIC_API_BASE_URL || 'https://hwt-api.onrender.com'
 }
