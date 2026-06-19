@@ -1704,3 +1704,175 @@ html[data-theme='light'] .cc-bias-toggle {
   }
 }
 .cc-footer-meta small { margin-left: 0 !important; }
+
+/* --- Copycat percentage, token, and final interaction polish --- */
+/* Most recent orders: make the action a subtle text link, not a pale button. */
+.cc-small-action {
+  height: auto !important;
+  margin: 11px auto 0 !important;
+  padding: 3px 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--panel-muted) !important;
+  box-shadow: none !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  letter-spacing: .01em !important;
+  opacity: .92;
+}
+.cc-small-action:hover { color: var(--panel-text) !important; opacity: 1; text-decoration: underline; text-underline-offset: 4px; }
+html[data-theme='light'] .cc-small-action { color: #6f6558 !important; }
+html[data-theme='light'] .cc-small-action:hover { color: #1d1914 !important; }
+
+/* Use real token art without synthetic badge/chip styling. */
+.cc-token-logo,
+.cc-donut-legend .cc-token-logo {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+}
+.cc-token-logo img,
+.cc-donut-legend .cc-token-logo img {
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 0 !important;
+  object-fit: contain !important;
+  filter: drop-shadow(0 2px 7px color-mix(in srgb, var(--coin) 30%, transparent));
+}
+.cc-token-fallback {
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--coin) 84%, #081421);
+  border: 1px solid color-mix(in srgb, var(--coin) 44%, rgba(255,255,255,.2));
+  overflow: hidden;
+}
+
+/* Exposure rows: percent is long-share only; keep it away from the bar; bar always fills 100%. */
+.cc-ex-row {
+  grid-template-columns: minmax(160px, 190px) minmax(170px, 1fr) 64px 64px !important;
+  gap: 14px !important;
+}
+.cc-ex-name {
+  grid-template-columns: 30px minmax(72px, 1fr) 54px !important;
+  gap: 9px !important;
+}
+.cc-ex-name span {
+  text-align: right !important;
+  padding-right: 8px;
+  color: var(--cc-green) !important;
+  font-variant-numeric: tabular-nums;
+}
+.cc-ex-track,
+.cc-ex-track > div {
+  width: 100% !important;
+  max-width: none !important;
+}
+.cc-ex-track i,
+.cc-ex-track em {
+  display: block !important;
+  flex: 0 0 auto !important;
+}
+.cc-exposure-list {
+  max-height: 318px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+/* Signal board values are percentages now; give the column just enough breathing room. */
+.cc-signal-table th:nth-child(3), .cc-signal-table td:nth-child(3) { width: 8.5% !important; }
+
+/* Premium positioning bias pill: coloured inset track + brushed silver slider + readable label. */
+.cc-bias-toggle {
+  position: relative !important;
+  width: 86px !important;
+  height: 32px !important;
+  padding: 3px !important;
+  display: flex !important;
+  align-items: center !important;
+  border-radius: 999px !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(255,255,255,.14) !important;
+  box-shadow: inset 0 2px 9px rgba(0,0,0,.36), inset 0 -1px 0 rgba(255,255,255,.04), 0 8px 18px rgba(0,0,0,.12) !important;
+}
+.cc-bias-toggle.is-long {
+  flex-direction: row-reverse !important;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--cc-green) 72%, #06151f), color-mix(in srgb, var(--cc-green) 34%, #06151f)) !important;
+}
+.cc-bias-toggle.is-short {
+  flex-direction: row !important;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--cc-red) 72%, #1b0c14), color-mix(in srgb, var(--cc-red) 34%, #06151f)) !important;
+}
+.cc-bias-toggle b,
+.cc-bias-toggle.is-short b {
+  flex: 1 1 auto;
+  min-width: 44px !important;
+  padding: 0 5px !important;
+  color: #fff !important;
+  font-size: 9.5px !important;
+  line-height: 1 !important;
+  letter-spacing: .10em !important;
+  text-align: center !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,.35);
+}
+.cc-bias-toggle i,
+.cc-bias-toggle.is-short i {
+  flex: 0 0 28px !important;
+  width: 28px !important;
+  height: 26px !important;
+  border-radius: 999px !important;
+  transform: none !important;
+  border: 1px solid rgba(255,255,255,.72) !important;
+  background:
+    linear-gradient(104deg, rgba(255,255,255,.42) 0%, rgba(255,255,255,.07) 12%, rgba(255,255,255,.34) 27%, rgba(255,255,255,.08) 43%, rgba(255,255,255,.32) 58%, rgba(255,255,255,.06) 74%, rgba(255,255,255,.36) 88%, rgba(255,255,255,.12) 100%),
+    radial-gradient(circle at 45% 35%, #ffffff 0%, #f0f3f5 22%, #bfc7cf 47%, #f8fafb 58%, #aab2bb 100%) !important;
+  box-shadow: inset 0 1px 1px rgba(255,255,255,.95), inset 0 -1px 1px rgba(92,98,107,.55), 0 3px 10px rgba(0,0,0,.28) !important;
+}
+html[data-theme='light'] .cc-bias-toggle { border-color: rgba(37,37,37,.10) !important; }
+
+/* Hide the top data-quality card if an older bundle still renders it; footer remains source of truth. */
+.cc-top-rail > .cc-data-quality { display: none !important; }
+
+/* Footer shield should be an actual shield, not emoji-like artwork. */
+.cc-warning-banner .cc-shield svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+.cc-warning-banner .cc-shield path:first-child {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+}
+.cc-warning-banner .cc-shield path:last-child {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Light mode: make bubbles premium beige-on-beige, not stark white. */
+html[data-theme='light'] .cc-card,
+html[data-theme='light'] .cc-kpi-grid article,
+html[data-theme='light'] .cc-orders-card,
+html[data-theme='light'] .cc-insights-card {
+  background: linear-gradient(180deg, rgba(246,238,227,.88), rgba(232,221,207,.84)) !important;
+  color: #171411 !important;
+  border-color: rgba(102, 78, 49, .18) !important;
+}
+html[data-theme='light'] .cc-scroll-y thead th {
+  background: rgba(237, 226, 212, .98) !important;
+}
+html[data-theme='light'] .cc-donut-svg circle { fill: transparent !important; }
+
+@media (max-width: 900px) {
+  .cc-ex-row {
+    grid-template-columns: minmax(132px, 152px) minmax(86px, 1fr) 52px 52px !important;
+    gap: 8px !important;
+  }
+  .cc-ex-name {
+    grid-template-columns: 24px minmax(50px,1fr) 44px !important;
+  }
+}

@@ -17,12 +17,23 @@ function compactMoney(n: any) {
   if (v >= 1_000) return `${sign}$${(v / 1_000).toFixed(1)}k`
   return `${sign}$${v.toFixed(0)}`
 }
-function pct(n: any) { return (Number(n || 0) * 100).toFixed(1) + '%' }
+function pct(n: any, digits = 1) { return (Number(n || 0) * 100).toFixed(digits) + '%' }
+function uiPct(n: any, digits = 0) {
+  const num = Number(n || 0) * 100
+  return `${num.toFixed(digits)}%`
+}
 function signalPct(n: any) {
   const num = Number(n || 0)
-  const abs = Math.abs(num) * 100
-  const digits = abs >= 10 ? 0 : 1
-  return `${num < 0 ? '-' : ''}${abs.toFixed(digits)}%`
+  const signed = num * 100
+  const digits = Math.abs(signed) >= 10 ? 0 : 1
+  return `${signed.toFixed(digits)}%`
+}
+function longSharePct(longUsd: any, shortUsd: any) {
+  const l = Number(longUsd || 0)
+  const sh = Number(shortUsd || 0)
+  const total = l + sh
+  if (total <= 0) return '0%'
+  return `${((l / total) * 100).toFixed(0)}%`
 }
 function cls(n: any) { return Number(n) >= 0 ? 'positive' : 'negative' }
 function flowRead(n: any) { return Number(n) > 3 ? 'Accumulation' : Number(n) < -3 ? 'Distribution' : 'Neutral' }
@@ -39,17 +50,23 @@ const staticLogoUrls: Record<string, string> = {
   BTC:'https://cryptologos.cc/logos/bitcoin-btc-logo.svg?v=040', ETH:'https://cryptologos.cc/logos/ethereum-eth-logo.svg?v=040', SOL:'https://cryptologos.cc/logos/solana-sol-logo.svg?v=040', USDC:'https://cryptologos.cc/logos/usd-coin-usdc-logo.svg?v=040', USDT:'https://cryptologos.cc/logos/tether-usdt-logo.svg?v=040', DOGE:'https://cryptologos.cc/logos/dogecoin-doge-logo.svg?v=040',
   AAVE:'https://cryptologos.cc/logos/aave-aave-logo.svg?v=040', TRX:'https://cryptologos.cc/logos/tron-trx-logo.svg?v=040', XRP:'https://cryptologos.cc/logos/xrp-xrp-logo.svg?v=040', AVAX:'https://cryptologos.cc/logos/avalanche-avax-logo.svg?v=040', BNB:'https://cryptologos.cc/logos/bnb-bnb-logo.svg?v=040', LINK:'https://cryptologos.cc/logos/chainlink-link-logo.svg?v=040', UNI:'https://cryptologos.cc/logos/uniswap-uni-logo.svg?v=040', LTC:'https://cryptologos.cc/logos/litecoin-ltc-logo.svg?v=040', DOT:'https://cryptologos.cc/logos/polkadot-new-dot-logo.svg?v=040', FIL:'https://cryptologos.cc/logos/filecoin-fil-logo.svg?v=040', ATOM:'https://cryptologos.cc/logos/cosmos-atom-logo.svg?v=040', NEAR:'https://cryptologos.cc/logos/near-protocol-near-logo.svg?v=040', ZEC:'https://cryptologos.cc/logos/zcash-zec-logo.svg?v=040', ARB:'https://cryptologos.cc/logos/arbitrum-arb-logo.svg?v=040', SUI:'https://cryptologos.cc/logos/sui-sui-logo.svg?v=040', OP:'https://cryptologos.cc/logos/optimism-ethereum-op-logo.svg?v=040', APE:'https://cryptologos.cc/logos/apecoin-ape-ape-logo.svg?v=040', INJ:'https://cryptologos.cc/logos/injective-inj-logo.svg?v=040', FET:'https://cryptologos.cc/logos/artificial-superintelligence-alliance-fet-logo.svg?v=040'
 }
+function canonicalToken(symbol: string) {
+  const clean = String(symbol || '').toUpperCase().trim()
+  if (clean === 'USDC/CASH' || clean === 'USDCCASH' || clean === 'USDCASH' || clean === 'CASH') return 'USDC'
+  return clean.replace(/[^A-Z0-9]/g, '')
+}
 function iconSources(symbol: string, apiUrl?: string) {
-  const clean = String(symbol || '').toUpperCase().replace(/[^A-Z0-9]/g, '')
+  const clean = canonicalToken(symbol)
   const lower = clean.toLowerCase()
   return [apiUrl, staticLogoUrls[clean], `https://assets.coincap.io/assets/icons/${lower}@2x.png`, `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/svg/color/${lower}.svg`, `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/128/color/${lower}.png`, `https://s3-symbol-logo.tradingview.com/crypto/XTVC${clean}.svg`].filter(Boolean) as string[]
 }
 function TokenLogo({ coin, icons }: { coin: string, icons: Record<string, string> }) {
   const symbol = String(coin || '').toUpperCase()
+  const canonical = canonicalToken(symbol)
   const [sourceIndex, setSourceIndex] = useState(0)
-  const color = fallbackColours[symbol] || '#35f1cf'
-  const sources = iconSources(symbol, icons[symbol])
-  useEffect(() => setSourceIndex(0), [symbol, icons[symbol]])
+  const color = fallbackColours[symbol] || fallbackColours[canonical] || '#35f1cf'
+  const sources = iconSources(canonical, icons[symbol] || icons[canonical])
+  useEffect(() => setSourceIndex(0), [symbol, canonical, icons[symbol], icons[canonical]])
   const src = sources[sourceIndex]
   return <span className="cc-token-logo" style={{ ['--coin' as any]: color }}>
     {src ? <img src={src} alt={`${symbol} logo`} onError={() => setSourceIndex(i => i + 1)} /> : <span className="cc-token-fallback"><i /><b>{symbol.slice(0, 2)}</b></span>}
@@ -57,7 +74,8 @@ function TokenLogo({ coin, icons }: { coin: string, icons: Record<string, string
 }
 
 function tokenColour(symbol: string, index: number) {
-  return fallbackColours[String(symbol || '').toUpperCase()] || palette[index % palette.length]
+  const raw = String(symbol || '').toUpperCase()
+  return fallbackColours[raw] || fallbackColours[canonicalToken(raw)] || palette[index % palette.length]
 }
 
 type Segment = { coin: string; weight: number; color: string; originalWeight: number }
@@ -93,12 +111,14 @@ function ExposureBars({ signals, icons }: { signals: any[], icons: Record<string
   ), [signals])
   if (!rows.length) return <div className="cc-empty-state">Exposure appears after refresh.</div>
   return <div className="cc-exposure-list cc-scroll-y">{rows.map(r => {
-    const l = Number(r.value_long_usd || 0), s = Number(r.value_short_usd || 0)
-    const total = l + s || 1
+    const l = Number(r.value_long_usd || 0), sh = Number(r.value_short_usd || 0)
+    const total = l + sh
+    const longPct = total > 0 ? (l / total) * 100 : 0
+    const shortPct = Math.max(0, 100 - longPct)
     return <div className="cc-ex-row" key={r.coin}>
-      <div className="cc-ex-name"><TokenLogo coin={r.coin} icons={icons} /><b title={r.coin}>{r.coin}</b><span>{signalPct(r.signal)}</span></div>
-      <div className="cc-ex-track"><div><i style={{ width: `${(l / total) * 100}%` }} /><em style={{ width: `${(s / total) * 100}%` }} /></div></div>
-      <small>{compactMoney(l)}</small><small>{compactMoney(s)}</small>
+      <div className="cc-ex-name"><TokenLogo coin={r.coin} icons={icons} /><b title={r.coin}>{r.coin}</b><span>{longSharePct(l, sh)}</span></div>
+      <div className="cc-ex-track" aria-label={`${r.coin} ${longPct.toFixed(1)}% long, ${shortPct.toFixed(1)}% short`}><div><i style={{ width: `${longPct}%` }} /><em style={{ width: `${shortPct}%` }} /></div></div>
+      <small>{compactMoney(l)}</small><small>{compactMoney(sh)}</small>
     </div>
   })}</div>
 }
@@ -207,10 +227,6 @@ export default function Dashboard() {
           </div>
           <button className="cc-small-action" onClick={() => setShowAllOrders(v => !v)}>{showAllOrders ? 'Show latest 3 ↑' : 'View all orders →'}</button>
         </div>
-        <div className={`cc-data-quality ${dataHealthy ? 'healthy' : 'checking'}`}>
-          <span className="cc-pulse-dot" />
-          <div><b>{dataHealthy ? 'Data quality: healthy' : 'Data quality: checking'}</b><small>{summary.data_quality_message || 'Waiting for data audit'}</small></div>
-        </div>
         <div className="cc-insights-card">
           <h3>At a glance</h3>
           {(insights || []).slice(0, 4).map((x: any) => <div className="cc-insight-line" key={`${x.type}-${x.coin}`}>
@@ -240,7 +256,7 @@ export default function Dashboard() {
         <div className="cc-scroll-table cc-scroll-y">
           <table className="cc-signal-table">
             <thead><tr><th>#</th><SortTh label="Asset" sortKey="asset" sort={signalSort} setSort={setSignalSort} /><SortTh label="Signal" sortKey="signal" sort={signalSort} setSort={setSignalSort} /><SortTh label="Confidence" sortKey="confidence" sort={signalSort} setSort={setSignalSort} /><SortTh label="Wallets" sortKey="wallets" sort={signalSort} setSort={setSignalSort} /><SortTh label="Value L/S" sortKey="value_ls" sort={signalSort} setSort={setSignalSort} /><SortTh label="Net value" sortKey="net_value_usd" sort={signalSort} setSort={setSignalSort} /><SortTh label="% total value" sortKey="pct_total" sort={signalSort} setSort={setSignalSort} /></tr></thead>
-            <tbody>{sortedSignals.map((r, i) => <tr key={`${r.coin}-${i}`}><td>{i + 1}</td><td><span className="cc-asset-cell"><TokenLogo coin={r.coin} icons={icons} /><b>{r.coin}</b></span></td><td className={cls(r.signal)}>{Number(r.signal).toFixed(2)}</td><td><span className={`cc-confidence ${String(r.confidence).toLowerCase()}`}>{r.confidence}</span></td><td>{r.wallets_long} long / {r.wallets_short} short</td><td>{money(r.value_long_usd)} / {money(r.value_short_usd)}</td><td className={cls(r.net_value_usd)}>{money(r.net_value_usd)}</td><td>{pct(r.value_long_pct_total)} long / {pct(r.value_short_pct_total)} short</td></tr>)}</tbody>
+            <tbody>{sortedSignals.map((r, i) => <tr key={`${r.coin}-${i}`}><td>{i + 1}</td><td><span className="cc-asset-cell"><TokenLogo coin={r.coin} icons={icons} /><b>{r.coin}</b></span></td><td className={cls(r.signal)}>{signalPct(r.signal)}</td><td><span className={`cc-confidence ${String(r.confidence).toLowerCase()}`}>{r.confidence}</span></td><td>{r.wallets_long} long / {r.wallets_short} short</td><td>{money(r.value_long_usd)} / {money(r.value_short_usd)}</td><td className={cls(r.net_value_usd)}>{money(r.net_value_usd)}</td><td>{pct(r.value_long_pct_total)} long / {pct(r.value_short_pct_total)} short</td></tr>)}</tbody>
           </table>
         </div>
       </div>
@@ -255,6 +271,6 @@ export default function Dashboard() {
       </div>
     </section>
 
-    <footer className="cc-warning-banner"><span className="cc-shield" aria-hidden>🛡</span><strong>Market intelligence only.</strong><em>Not financial advice. Crypto trading can result in loss.</em><div className={`cc-footer-meta ${dataHealthy ? 'healthy' : 'checking'}`}><span className="cc-footer-quality"><span className="cc-pulse-dot" /><b>{dataHealthy ? 'Data quality healthy' : 'Data quality checking'}</b></span><small>Signal refresh: {fmtTime(summary.latest_signal_ts_ms)} UTC · Data updates every 10s</small></div></footer>
+    <footer className="cc-warning-banner"><span className="cc-shield" aria-hidden><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5.2c0 4.5-2.7 8.4-7 9.8-4.3-1.4-7-5.3-7-9.8V6l7-3z"/><path d="M9.2 12.1l1.7 1.7 3.9-4.1"/></svg></span><strong>Market intelligence only.</strong><em>Not financial advice. Crypto trading can result in loss.</em><div className={`cc-footer-meta ${dataHealthy ? 'healthy' : 'checking'}`}><span className="cc-footer-quality"><span className="cc-pulse-dot" /><b>{dataHealthy ? 'Data quality healthy' : 'Data quality checking'}</b></span><small>Signal refresh: {fmtTime(summary.latest_signal_ts_ms)} UTC · Data updates every 10s</small></div></footer>
   </main></>
 }
