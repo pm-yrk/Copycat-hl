@@ -1,12 +1,13 @@
-# Copycat Nansen credit-safe refresh patch
+# Copycat database connection pool fix
 
-This patch prevents the daily refresh cron from failing when Nansen returns `403 Insufficient credits`.
+This patch changes the backend SQLAlchemy engine to use `NullPool`, so every short API/collector/cron database transaction closes its database connection immediately.
 
-What changed:
+Why: Render runs the API, live collector, and cron jobs as separate containers. With SQLAlchemy's default QueuePool, each container can hold open several Supabase pooler connections. Supabase then rejects new connections with `EMAXCONNSESSION max clients reached in session mode`.
 
-- If Nansen candidate discovery fails, the job continues using cached candidates/current active cohort.
-- The current active top-50 cohort is never wiped just because external candidate discovery fails.
-- If Ranking V2 qualifies too few wallets, the last known good cohort stays active.
-- The cron exits cleanly and records warnings in `collector_runs` instead of crashing.
+After applying this patch, redeploy all services that use the backend code:
 
-This does not add Nansen credits. It makes Copycat resilient while you wait for credits to renew or upgrade the Nansen plan.
+- hwt-api
+- hwt-collector-live-10s
+- hwt-daily-refresh-midnight
+
+If any old deploy is still running, restart/redeploy it so old pooled connections are dropped.

@@ -1,12 +1,28 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import NullPool
+
 from .settings import get_settings
 
 settings = get_settings()
-engine = create_engine(settings.database_url, pool_pre_ping=True, pool_size=5, max_overflow=10)
+
+# Render runs several separate containers/processes for the API, collector, and cron jobs.
+# Supabase's pooler can reject new connections when each container keeps its own local
+# SQLAlchemy pool open. NullPool opens a connection only for the query/transaction and
+# closes it immediately afterwards, which prevents Copycat from exhausting the Supabase
+# pooler session limit while still keeping the app responsive.
+engine = create_engine(
+    settings.database_url,
+    poolclass=NullPool,
+    pool_pre_ping=True,
+    pool_recycle=60,
+    connect_args={"connect_timeout": 10},
+)
+
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 
