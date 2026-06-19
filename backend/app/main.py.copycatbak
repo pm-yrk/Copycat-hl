@@ -585,34 +585,18 @@ def signals(limit: int = 50, user: dict = Depends(require_active_subscription)):
     )
 
 
-
 @app.get('/api/targets')
 def targets(user: dict = Depends(require_active_subscription)):
-    """Current Copycat Index allocation.
+    return fetch_all(
+        """
+        WITH latest_ts AS (SELECT max(ts_ms) AS ts_ms FROM portfolio_targets)
+        SELECT * FROM portfolio_targets
+        WHERE ts_ms=(SELECT ts_ms FROM latest_ts)
+        ORDER BY target_weight DESC
+        """
+    )
 
-    This intentionally excludes USDC/CASH collateral and normalises tradable
-    net exposure to 100% gross. The dashboard donut and strategy index use this
-    same output so customers can see the exact allocation that powers the index.
-    """
-    ts, weights = _latest_index_weights()
-    rows = []
-    for coin, signed_weight in (weights or {}).items():
-        if _index_is_margin_symbol(coin):
-            continue
-        signed = float(signed_weight or 0)
-        rows.append({
-            'ts_ms': ts,
-            'coin': coin,
-            'target_weight': abs(signed),
-            'index_weight': signed,
-            'direction': 'long' if signed >= 0 else 'short',
-            'signal': signed,
-            'confidence': 'Index',
-            'method': _INDEX_METHOD_VERSION,
-            'note': 'USDC margin excluded; weights are normalised tradable exposure.',
-        })
-    rows.sort(key=lambda r: r['target_weight'], reverse=True)
-    return rows
+
 
 @app.get('/api/insights')
 def insights(user: dict = Depends(require_active_subscription)):
@@ -955,9 +939,9 @@ def token_icons(symbols: str = ''):
 # -------------------------
 _INDEX_LOCK = threading.Lock()
 _INDEX_CACHE: dict[str, Any] = {'ts': 0.0, 'data': None}
-_INDEX_CACHE_TTL_SECONDS = 2.0
+_INDEX_CACHE_TTL_SECONDS = 5.0
 _INDEX_WRITE_INTERVAL_MS = 60_000
-_INDEX_METHOD_VERSION = 'copycat_live_index_v2_no_margin_signed_exposure'
+_INDEX_METHOD_VERSION = 'copycat_live_index_v1_long_only'
 _FEE_SLIPPAGE_RATE = 0.0015  # 15 bps round-trip buffer on rebalance turnover.
 
 def _normalise_index_symbol(symbol: str) -> str:
@@ -1002,76 +986,24 @@ def _hl_all_mids() -> dict[str, float]:
     return out
 
 
-def _index_is_margin_symbol(symbol: str) -> bool:
-    # USDC/USDT-style balances are margin/collateral on Hyperliquid. They are
-    # deliberately excluded from the Copycat Strategy Index so the index reflects
-    # tradable exposure, not unused margin.
-    return _normalise_index_symbol(symbol) in {
-        'USDC', 'USDT', 'USDE', 'USDS', 'USDL', 'USD', 'DAI', 'FDUSD', 'TUSD', 'CASH'
-    }
-
-
 def _latest_index_weights() -> tuple[int | None, dict[str, float]]:
-    """Return signed 1x-gross Copycat Index weights from the latest signal snapshot.
-
-    The dashboard can show USDC as collateral/margin, but the performance index
-    must not treat that collateral as a portfolio holding. This method uses the
-    qualified-wallet net exposure by asset:
-
-        signed exposure = value_long_usd - value_short_usd
-        index weight    = signed exposure / sum(abs(signed exposure))
-
-    That gives a 100% gross exposure model where positive weights are longs and
-    negative weights are shorts. It is the allocation a user would need to follow
-    if they wanted to mirror the Copycat Index methodology.
-    """
-    latest = fetch_one('SELECT max(ts_ms) AS ts_ms FROM asset_signals') or {'ts_ms': None}
+    latest = fetch_one('SELECT max(ts_ms) AS ts_ms FROM portfolio_targets') or {'ts_ms': None}
     ts = latest.get('ts_ms')
     if not ts:
-        return None, {}
-
-    rows = fetch_all(
-        """
-        SELECT coin, value_long_usd, value_short_usd, net_value_usd
-        FROM asset_signals
-        WHERE ts_ms=:ts
-          AND (COALESCE(value_long_usd,0) + COALESCE(value_short_usd,0)) > 0
-        """,
-        {'ts': ts},
-    )
-    raw: dict[str, float] = {}
+        return None, {'USDC': 1.0}
+    rows = fetch_all('SELECT coin,target_weight FROM portfolio_targets WHERE ts_ms=:ts ORDER BY target_weight DESC', {'ts': ts})
+    weights: dict[str, float] = {}
     for r in rows:
         sym = _normalise_index_symbol(r.get('coin'))
-        if not sym or _index_is_margin_symbol(sym):
+        w = max(0.0, _safe_float(r.get('target_weight')))
+        if not sym or w <= 0:
             continue
-        net = _safe_float(r.get('net_value_usd'))
-        if net == 0:
-            net = _safe_float(r.get('value_long_usd')) - _safe_float(r.get('value_short_usd'))
-        if abs(net) <= 0:
-            continue
-        raw[sym] = raw.get(sym, 0.0) + net
-
-    denom = sum(abs(v) for v in raw.values())
-    if denom > 0:
-        return ts, {k: v / denom for k, v in raw.items() if abs(v) > 0}
-
-    fallback_ts = fetch_one('SELECT max(ts_ms) AS ts_ms FROM portfolio_targets') or {'ts_ms': None}
-    fts = fallback_ts.get('ts_ms')
-    if not fts:
-        return ts, {}
-    target_rows = fetch_all('SELECT coin,target_weight,signal FROM portfolio_targets WHERE ts_ms=:ts', {'ts': fts})
-    raw = {}
-    for r in target_rows:
-        sym = _normalise_index_symbol(r.get('coin'))
-        if not sym or _index_is_margin_symbol(sym):
-            continue
-        w = abs(_safe_float(r.get('target_weight')))
-        if w <= 0:
-            continue
-        sign = -1.0 if _safe_float(r.get('signal')) < 0 else 1.0
-        raw[sym] = raw.get(sym, 0.0) + sign * w
-    denom = sum(abs(v) for v in raw.values())
-    return fts, ({k: v / denom for k, v in raw.items()} if denom > 0 else {})
+        weights[sym] = weights.get(sym, 0.0) + w
+    total = sum(weights.values())
+    if total <= 0:
+        return ts, {'USDC': 1.0}
+    weights = {k: v / total for k, v in weights.items()}
+    return ts, weights
 
 
 def _prices_for_symbols(mids: dict[str, float], symbols: list[str] | set[str]) -> dict[str, float]:
@@ -1132,10 +1064,9 @@ def _load_index_points(limit: int = 500) -> list[dict[str, Any]]:
     rows = fetch_all("""
         SELECT ts_ms, copycat_nav, btc_nav, eth_nav, copycat_return_pct, btc_return_pct, eth_return_pct, method, weights_json, prices_json, benchmark_prices_json, metadata_json
         FROM strategy_index_points
-        WHERE method=:method
         ORDER BY ts_ms DESC
         LIMIT :limit
-    """, {'limit': limit, 'method': _INDEX_METHOD_VERSION})
+    """, {'limit': limit})
     rows = list(reversed(rows))
     for r in rows:
         for key in ('weights_json', 'prices_json', 'benchmark_prices_json', 'metadata_json'):
@@ -1256,7 +1187,7 @@ def _update_strategy_index_locked(force: bool = False) -> dict[str, Any]:
         peak = max(peak, nav)
         if peak > 0:
             max_drawdown = min(max_drawdown, (nav / peak) - 1.0)
-    weights_sorted = sorted((weights or {}).items(), key=lambda kv: abs(kv[1]), reverse=True)[:10]
+    weights_sorted = sorted((weights or {}).items(), key=lambda kv: kv[1], reverse=True)[:10]
     return {
         'status': 'ok',
         'method': _INDEX_METHOD_VERSION,
@@ -1270,7 +1201,7 @@ def _update_strategy_index_locked(force: bool = False) -> dict[str, Any]:
         'eth_return_pct': latest.get('eth_return_pct'),
         'max_drawdown_pct': max_drawdown * 100.0,
         'points_count': len(points),
-        'current_weights': [{'coin': k, 'weight': abs(v), 'signed_weight': v, 'direction': 'long' if v >= 0 else 'short'} for k, v in weights_sorted],
+        'current_weights': [{'coin': k, 'weight': v} for k, v in weights_sorted],
         'points': [
             {
                 'ts_ms': p.get('ts_ms'),
@@ -1285,12 +1216,11 @@ def _update_strategy_index_locked(force: bool = False) -> dict[str, Any]:
         ],
         'metadata': {
             'benchmark_assets': ['BTC', 'ETH'],
-            'allocation_basis': 'signed net exposure, excluding USDC margin collateral',
             'fee_slippage_rate': _FEE_SLIPPAGE_RATE,
             'write_interval_ms': _INDEX_WRITE_INTERVAL_MS,
             'target_ts_ms': target_ts,
             'missing_live_prices': missing_live,
-            'note': 'Live model index only. Uses signed net exposure weights excluding USDC margin collateral; no historical backfill or hindsight.',
+            'note': 'Live model index only. Uses published Copycat targets from the time they exist; no historical backfill or hindsight.',
         },
     }
 
@@ -1330,10 +1260,6 @@ def performance_index_audit():
         checks.append({'name': 'ETH benchmark present', 'status': 'pass' if data.get('eth_nav') else 'fail', 'detail': f"ETH NAV {data.get('eth_nav')}"})
         weights = data.get('current_weights') or []
         checks.append({'name': 'Current Copycat weights available', 'status': 'pass' if weights else 'fail', 'detail': f'{len(weights)} top weights returned'})
-        stable_weights = [w for w in weights if str(w.get('coin','')).upper() in ('USDC','USDC/CASH','CASH','USD','USDT')]
-        checks.append({'name': 'USDC margin excluded from index', 'status': 'pass' if not stable_weights else 'fail', 'detail': 'no collateral assets in index weights' if not stable_weights else f"unexpected collateral weights: {stable_weights[:3]}"})
-        weight_sum = sum(float(w.get('weight') or 0) for w in weights)
-        checks.append({'name': 'Index weights sum to 100% gross exposure', 'status': 'pass' if 0.995 <= weight_sum <= 1.005 else 'fail', 'detail': f'gross weight sum={weight_sum:.6f}'})
         missing = (data.get('metadata') or {}).get('missing_live_prices') or []
         checks.append({'name': 'Live prices available for current weights', 'status': 'pass' if not missing else 'warning', 'detail': f"missing: {', '.join(missing[:8])}" if missing else 'all live prices available'})
         overall = 'pass' if all(c['status'] == 'pass' for c in checks) else 'warning' if any(c['status'] == 'warning' for c in checks) else 'fail'

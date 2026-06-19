@@ -87,7 +87,7 @@ export default function PerformanceIndex({ variant = 'dashboard' }: { variant?: 
       <div>
         <p className="eyebrow">Copycat live strategy index</p>
         <h2>{compact ? 'Live model performance' : 'Copycat Index vs BTC / ETH'}</h2>
-        <span>Started {shortDate(data.start_ts_ms)} · USDC margin excluded · no hindsight</span>
+        <span>Started {shortDate(data.start_ts_ms)} · no hindsight backfill</span>
       </div>
       <strong className={cls(data.copycat_return_pct)}>{ret(data.copycat_return_pct)}</strong>
     </div>
@@ -98,8 +98,8 @@ export default function PerformanceIndex({ variant = 'dashboard' }: { variant?: 
       <div><small>ETH</small><b>{nav(data.eth_nav)}</b><em className={cls(data.eth_return_pct)}>{ret(data.eth_return_pct)}</em></div>
       {!compact ? <div><small>Max drawdown</small><b>{ret(data.max_drawdown_pct)}</b><em>live model</em></div> : null}
     </div>
-    {!compact ? <div className="cc-index-weights"><span>Current model weights</span>{weights.map((w: any) => <i key={w.coin} className={w.direction === 'short' ? 'negative' : 'positive'}>{w.direction === 'short' ? 'SHORT ' : 'LONG '}{w.coin} {(Number(w.weight || 0) * 100).toFixed(0)}%</i>)}</div> : null}
-    <p className="cc-index-note">Live model performance from Copycat's signed net exposure allocation. USDC margin is excluded; BTC and ETH are benchmarks. Includes a fee/slippage buffer. Past performance is not a reliable indicator of future results.</p>
+    {!compact ? <div className="cc-index-weights"><span>Current model weights</span>{weights.map(w => <i key={w.coin}>{w.coin} {(Number(w.weight || 0) * 100).toFixed(0)}%</i>)}</div> : null}
+    <p className="cc-index-note">Live model performance from Copycat's published portfolio targets. Includes a fee/slippage buffer. Past performance is not a reliable indicator of future results.</p>
     {err || data.warning ? <p className="cc-index-warning">{err || data.warning}</p> : null}
   </section>
 }
