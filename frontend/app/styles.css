@@ -1876,3 +1876,121 @@ html[data-theme='light'] .cc-donut-svg circle { fill: transparent !important; }
     grid-template-columns: 24px minmax(50px,1fr) 44px !important;
   }
 }
+
+/* --- Copycat light-mode card, order-link, bias toggle, and readability final touch-up --- */
+html[data-theme='light'] .cc-card,
+html[data-theme='light'] .cc-kpi-grid article,
+html[data-theme='light'] .cc-orders-card,
+html[data-theme='light'] .cc-insights-card,
+html[data-theme='light'] .cc-warning-banner {
+  background: linear-gradient(180deg, rgba(252,247,240,.72), rgba(245,238,228,.78)) !important;
+  backdrop-filter: blur(14px) saturate(130%) !important;
+}
+
+html[data-theme='light'] .cc-small-action {
+  appearance: none !important;
+  outline: none !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: #74695b !important;
+}
+html[data-theme='light'] .cc-small-action:hover,
+html[data-theme='light'] .cc-small-action:focus-visible {
+  color: #221d17 !important;
+}
+
+/* stronger, more visible donut in light mode */
+html[data-theme='light'] .cc-donut-stage {
+  filter: drop-shadow(0 0 18px rgba(63, 218, 197, .22));
+}
+html[data-theme='light'] .cc-donut-svg circle {
+  fill: rgba(244, 231, 215, .92) !important;
+  stroke: rgba(106, 160, 147, .28) !important;
+}
+
+/* darker readable neutral/low chips in light mode */
+html[data-theme='light'] .cc-confidence,
+html[data-theme='light'] .cc-read {
+  color: #5a5247 !important;
+  font-weight: 800;
+}
+html[data-theme='light'] .cc-confidence.low,
+html[data-theme='light'] .cc-read.neutral {
+  color: #635a4f !important;
+  background: rgba(236, 228, 217, .92) !important;
+  border-color: rgba(117, 94, 62, .18) !important;
+}
+
+/* refined positioning bias switch */
+.cc-bias-block {
+  align-items: center;
+  gap: 12px;
+}
+.cc-bias-toggle {
+  width: 88px !important;
+  height: 34px !important;
+  padding: 0 !important;
+  position: relative !important;
+  overflow: hidden !important;
+  border-radius: 999px !important;
+  border: 1px solid rgba(0,0,0,.14) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 8px 18px rgba(0,0,0,.16) !important;
+}
+.cc-bias-toggle.is-long {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--cc-green) 84%, #0d5f49), color-mix(in srgb, var(--cc-green) 68%, #084638)) !important;
+}
+.cc-bias-toggle.is-short {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--cc-red) 84%, #7b1c32), color-mix(in srgb, var(--cc-red) 68%, #581322)) !important;
+}
+.cc-bias-toggle b {
+  position: absolute !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  min-width: 0 !important;
+  font-size: 11px !important;
+  font-weight: 950 !important;
+  letter-spacing: .10em !important;
+  color: #fff !important;
+  line-height: 1 !important;
+  z-index: 2 !important;
+}
+.cc-bias-toggle.is-long b { left: 13px !important; right: auto !important; }
+.cc-bias-toggle.is-short b { right: 12px !important; left: auto !important; }
+.cc-bias-toggle i {
+  position: absolute !important;
+  top: 3px !important;
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 50% !important;
+  border: 1px solid rgba(154,154,154,.52) !important;
+  background:
+    radial-gradient(circle at 35% 30%, rgba(255,255,255,.92), rgba(255,255,255,.12) 36%, transparent 37%),
+    repeating-linear-gradient(100deg, rgba(255,255,255,.16) 0 2px, rgba(140,140,140,.08) 2px 4px),
+    linear-gradient(180deg, #fafafa 0%, #cfd5dc 22%, #f2f4f7 48%, #b3bac2 72%, #eef2f5 100%) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.9), inset 0 -1px 1px rgba(92,101,110,.55), 0 3px 10px rgba(0,0,0,.25) !important;
+  z-index: 3 !important;
+}
+.cc-bias-toggle.is-long i { right: 3px !important; left: auto !important; }
+.cc-bias-toggle.is-short i { left: 3px !important; right: auto !important; }
+html[data-theme='light'] .cc-bias-toggle {
+  border-color: rgba(88, 70, 48, .18) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 10px 18px rgba(111,82,48,.12) !important;
+}
+
+/* portfolio wheel: slightly thicker ring */
+.cc-donut-svg { width: 220px; height: 220px; }
+
+/* keep the long/short list comfortably scrollable and trim the last row slightly less awkwardly */
+.cc-exposure-list,
+.cc-scroll-table.cc-scroll-y {
+  scrollbar-gutter: stable;
+}
+
+/* use a cleaner transparent feel for light-mode legend items */
+html[data-theme='light'] .cc-donut-legend div,
+html[data-theme='light'] .cc-ex-track,
+html[data-theme='light'] .cc-confidence,
+html[data-theme='light'] .cc-read {
+  background: rgba(239, 231, 221, .72) !important;
+}

@@ -33,7 +33,8 @@ function longSharePct(longUsd: any, shortUsd: any) {
   const sh = Number(shortUsd || 0)
   const total = l + sh
   if (total <= 0) return '0%'
-  return `${((l / total) * 100).toFixed(0)}%`
+  const share = (l / total) * 100
+  return `${Number(share.toFixed(1)).toString()}%`
 }
 function cls(n: any) { return Number(n) >= 0 ? 'positive' : 'negative' }
 function flowRead(n: any) { return Number(n) > 3 ? 'Accumulation' : Number(n) < -3 ? 'Distribution' : 'Neutral' }
@@ -47,7 +48,7 @@ function maskWallet(w: string) { return w ? `Wallet ${w.slice(0, 4)}…${w.slice
 const palette = ['#43E8D0', '#8057FF', '#44BDEC', '#FFB020', '#25D366', '#F35EA6', '#A6E22E', '#FF5B72', '#38BDF8', '#F97316']
 const fallbackColours: Record<string, string> = { HYPE:'#43E8D0', ETH:'#627EEA', BTC:'#F7931A', SOL:'#14F195', ZEC:'#F4B728', NEAR:'#00EC97', AAVE:'#8B7DFF', TRX:'#FF4B4B', XRP:'#4B9FFF', USDC:'#2775CA', 'USDC/CASH':'#2775CA', MELANIA:'#D7A785', WLD:'#8492A6', PAXG:'#F0C419', PUMP:'#61C685', LIT:'#35D0B4', BNB:'#F3BA2F', XLM:'#44BDEC', PENGU:'#A0D7F8' }
 const staticLogoUrls: Record<string, string> = {
-  BTC:'https://cryptologos.cc/logos/bitcoin-btc-logo.svg?v=040', ETH:'https://cryptologos.cc/logos/ethereum-eth-logo.svg?v=040', SOL:'https://cryptologos.cc/logos/solana-sol-logo.svg?v=040', USDC:'https://cryptologos.cc/logos/usd-coin-usdc-logo.svg?v=040', USDT:'https://cryptologos.cc/logos/tether-usdt-logo.svg?v=040', DOGE:'https://cryptologos.cc/logos/dogecoin-doge-logo.svg?v=040',
+  BTC:'https://cryptologos.cc/logos/bitcoin-btc-logo.svg?v=040', ETH:'https://cryptologos.cc/logos/ethereum-eth-logo.svg?v=040', SOL:'https://cryptologos.cc/logos/solana-sol-logo.svg?v=040', USDC:'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/A0b86991c6218b36c1d19d4a2e9eb0ce3606eb48/logo.png', USDT:'https://cryptologos.cc/logos/tether-usdt-logo.svg?v=040', DOGE:'https://cryptologos.cc/logos/dogecoin-doge-logo.svg?v=040',
   AAVE:'https://cryptologos.cc/logos/aave-aave-logo.svg?v=040', TRX:'https://cryptologos.cc/logos/tron-trx-logo.svg?v=040', XRP:'https://cryptologos.cc/logos/xrp-xrp-logo.svg?v=040', AVAX:'https://cryptologos.cc/logos/avalanche-avax-logo.svg?v=040', BNB:'https://cryptologos.cc/logos/bnb-bnb-logo.svg?v=040', LINK:'https://cryptologos.cc/logos/chainlink-link-logo.svg?v=040', UNI:'https://cryptologos.cc/logos/uniswap-uni-logo.svg?v=040', LTC:'https://cryptologos.cc/logos/litecoin-ltc-logo.svg?v=040', DOT:'https://cryptologos.cc/logos/polkadot-new-dot-logo.svg?v=040', FIL:'https://cryptologos.cc/logos/filecoin-fil-logo.svg?v=040', ATOM:'https://cryptologos.cc/logos/cosmos-atom-logo.svg?v=040', NEAR:'https://cryptologos.cc/logos/near-protocol-near-logo.svg?v=040', ZEC:'https://cryptologos.cc/logos/zcash-zec-logo.svg?v=040', ARB:'https://cryptologos.cc/logos/arbitrum-arb-logo.svg?v=040', SUI:'https://cryptologos.cc/logos/sui-sui-logo.svg?v=040', OP:'https://cryptologos.cc/logos/optimism-ethereum-op-logo.svg?v=040', APE:'https://cryptologos.cc/logos/apecoin-ape-ape-logo.svg?v=040', INJ:'https://cryptologos.cc/logos/injective-inj-logo.svg?v=040', FET:'https://cryptologos.cc/logos/artificial-superintelligence-alliance-fet-logo.svg?v=040'
 }
 function canonicalToken(symbol: string) {
@@ -58,7 +59,8 @@ function canonicalToken(symbol: string) {
 function iconSources(symbol: string, apiUrl?: string) {
   const clean = canonicalToken(symbol)
   const lower = clean.toLowerCase()
-  return [apiUrl, staticLogoUrls[clean], `https://assets.coincap.io/assets/icons/${lower}@2x.png`, `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/svg/color/${lower}.svg`, `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/128/color/${lower}.png`, `https://s3-symbol-logo.tradingview.com/crypto/XTVC${clean}.svg`].filter(Boolean) as string[]
+  const preferred = clean === 'USDC' ? [staticLogoUrls.USDC, apiUrl] : [apiUrl, staticLogoUrls[clean]]
+  return [...preferred, `https://assets.coincap.io/assets/icons/${lower}@2x.png`, `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/svg/color/${lower}.svg`, `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/128/color/${lower}.png`, `https://s3-symbol-logo.tradingview.com/crypto/XTVC${clean}.svg`].filter(Boolean) as string[]
 }
 function TokenLogo({ coin, icons }: { coin: string, icons: Record<string, string> }) {
   const symbol = String(coin || '').toUpperCase()
@@ -96,8 +98,8 @@ function AllocationDonut({ targets, icons }: { targets: any[]; icons: Record<str
   return <div className="cc-donut-layout">
     <div className="cc-donut-stage">
       <svg viewBox="0 0 220 220" className="cc-donut-svg" aria-label="Portfolio target allocation">
-        {parts.map(p => { const start = angle; angle += p.weight * 360; return <path key={p.coin} d={path(110, 110, 92, 58, start, angle - 1)} fill={p.color} onMouseEnter={() => setHovered(p)} onMouseLeave={() => setHovered(null)} onFocus={() => setHovered(p)} onBlur={() => setHovered(null)} tabIndex={0}><title>{p.coin}: {(p.originalWeight * 100).toFixed(1)}%</title></path> })}
-        <circle cx="110" cy="110" r="52" />
+        {parts.map(p => { const start = angle; angle += p.weight * 360; return <path key={p.coin} d={path(110, 110, 92, 48, start, angle - 1)} fill={p.color} onMouseEnter={() => setHovered(p)} onMouseLeave={() => setHovered(null)} onFocus={() => setHovered(p)} onBlur={() => setHovered(null)} tabIndex={0}><title>{p.coin}: {(p.originalWeight * 100).toFixed(1)}%</title></path> })}
+        <circle cx="110" cy="110" r="44" />
       </svg>
       <div className="cc-donut-tooltip">{hovered ? `${hovered.coin} ${(hovered.originalWeight * 100).toFixed(1)}% target` : 'Hover a segment for details'}</div>
     </div>
