@@ -2190,3 +2190,79 @@ html[data-theme='dark'] .cc-donut-svg .cc-donut-hole {
     margin-right: 0 !important;
   }
 }
+
+
+/* --- Copycat final layout/data polish: non-overlap, hollow donut, confidence sort UI. --- */
+/* Bring positioning bias down beside the KPI row without changing the rest of the hero. */
+.cc-bias-block {
+  transform: translateY(112px) !important;
+  margin-right: 52px !important;
+}
+
+/* Recent orders: stop action text/wallet labels overlapping in the narrow card. */
+.cc-order-line {
+  grid-template-columns: 30px 48px minmax(74px, 96px) minmax(68px, 1fr) 44px !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+}
+.cc-order-line b,
+.cc-order-line span,
+.cc-order-line em,
+.cc-order-line small {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+.cc-order-line span {
+  text-align: left !important;
+  font-size: 11px !important;
+  letter-spacing: -.01em !important;
+}
+.cc-order-line em { font-size: 10.5px !important; }
+.cc-order-line small { text-align: right !important; }
+
+/* Donut must be genuinely hollow on both themes, never black in light mode. */
+.cc-donut-svg .cc-donut-hole,
+html[data-theme='light'] .cc-donut-svg .cc-donut-hole,
+html[data-theme='dark'] .cc-donut-svg .cc-donut-hole {
+  fill: transparent !important;
+  stroke: none !important;
+  filter: none !important;
+}
+.cc-donut-legend.cc-scroll-y {
+  max-height: 236px !important;
+  overflow-y: auto !important;
+  padding-right: 4px !important;
+}
+.cc-donut-legend div {
+  grid-template-columns: 30px minmax(66px,1fr) 44px !important;
+}
+
+/* Let the allocation card breathe when it has more than three assets. */
+.cc-allocation-card { min-height: 340px; }
+.cc-donut-layout { align-items: center !important; }
+
+/* Table column tuning: keep data readable while allowing vertical scroll only. */
+.cc-signal-table th:nth-child(1), .cc-signal-table td:nth-child(1) { width: 4% !important; }
+.cc-signal-table th:nth-child(2), .cc-signal-table td:nth-child(2) { width: 15% !important; }
+.cc-signal-table th:nth-child(3), .cc-signal-table td:nth-child(3) { width: 8% !important; }
+.cc-signal-table th:nth-child(4), .cc-signal-table td:nth-child(4) { width: 10% !important; }
+.cc-signal-table th:nth-child(5), .cc-signal-table td:nth-child(5) { width: 13% !important; }
+.cc-signal-table th:nth-child(6), .cc-signal-table td:nth-child(6) { width: 22% !important; }
+.cc-signal-table th:nth-child(7), .cc-signal-table td:nth-child(7) { width: 13% !important; }
+.cc-signal-table th:nth-child(8), .cc-signal-table td:nth-child(8) { width: 15% !important; }
+.cc-scroll-table th,
+.cc-scroll-table td {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+.cc-scroll-table .cc-asset-cell { min-width: 0 !important; }
+
+@media (max-width: 1320px) {
+  .cc-bias-block { transform: translateY(76px) !important; margin-right: 10px !important; }
+}
+@media (max-width: 900px) {
+  .cc-bias-block { transform: none !important; margin-right: 0 !important; }
+  .cc-order-line { grid-template-columns: 28px 44px 78px minmax(54px,1fr) 38px !important; gap: 6px !important; }
+}

@@ -90,13 +90,35 @@ function tokenColour(symbol: string, index: number) {
 }
 
 type Segment = { coin: string; weight: number; color: string; originalWeight: number }
-function AllocationDonut({ targets, icons }: { targets: any[]; icons: Record<string, string> }) {
+
+function AllocationDonut({ targets, signals, trackedValue, icons }: { targets: any[]; signals: any[]; trackedValue: number; icons: Record<string, string> }) {
   const [hovered, setHovered] = useState<Segment | null>(null)
   const parts: Segment[] = useMemo(() => {
-    const clean = (targets || []).filter(t => Number(t.target_weight) > 0).slice(0, 10)
-    const total = clean.reduce((a, t) => a + Number(t.target_weight || 0), 0) || 1
-    return clean.map((t, i) => ({ coin: t.coin, originalWeight: Number(t.target_weight || 0), weight: Number(t.target_weight || 0) / total, color: tokenColour(t.coin, i) }))
-  }, [targets])
+    // Prefer a broad live allocation index from the current signal board rather
+    // than the smaller model target list. This shows what the selected wallet
+    // cohort is actually long/holding at a glance. Cash is inferred from
+    // tracked account value when long exposure is below account value.
+    const longRows = [...(signals || [])]
+      .map((r: any) => ({ coin: r.coin, value: Math.max(0, Number(r.value_long_usd || 0)) }))
+      .filter((r: any) => r.value > 0 && canonicalToken(r.coin) !== 'USDC')
+      .sort((a: any, b: any) => b.value - a.value)
+    const totalLong = longRows.reduce((a: number, r: any) => a + r.value, 0)
+    const accountValue = Math.max(0, Number(trackedValue || 0))
+    const cashValue = Math.max(0, accountValue - totalLong)
+    const rows = [
+      ...(cashValue > 0 ? [{ coin: 'USDC', value: cashValue }] : []),
+      ...longRows,
+    ]
+    let top = rows.slice(0, 10)
+    const shown = top.reduce((a: number, r: any) => a + r.value, 0)
+    const remaining = rows.slice(10).reduce((a: number, r: any) => a + r.value, 0)
+    if (remaining > 0) top = [...top, { coin: 'OTHER', value: remaining }]
+    if (!top.length && (targets || []).length) {
+      top = (targets || []).filter(t => Number(t.target_weight) > 0).slice(0, 10).map((t: any) => ({ coin: t.coin, value: Number(t.target_weight || 0) }))
+    }
+    const total = top.reduce((a: number, r: any) => a + r.value, 0) || 1
+    return top.map((t: any, i: number) => ({ coin: t.coin, originalWeight: Number(t.value || 0) / total, weight: Number(t.value || 0) / total, color: tokenColour(t.coin, i) }))
+  }, [targets, signals, trackedValue])
   let angle = -90
   const path = (cx: number, cy: number, r1: number, r2: number, a0: number, a1: number) => {
     const p = (r: number, a: number) => { const rad = a * Math.PI / 180; return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) } }
@@ -106,13 +128,13 @@ function AllocationDonut({ targets, icons }: { targets: any[]; icons: Record<str
   if (!parts.length) return <div className="cc-empty-state">Targets will appear after refresh.</div>
   return <div className="cc-donut-layout">
     <div className="cc-donut-stage">
-      <svg viewBox="0 0 220 220" className="cc-donut-svg" aria-label="Portfolio target allocation">
-        {parts.map(p => { const start = angle; angle += p.weight * 360; return <path key={p.coin} d={path(110, 110, 92, 48, start, angle - 1)} fill={p.color} onMouseEnter={() => setHovered(p)} onMouseLeave={() => setHovered(null)} onFocus={() => setHovered(p)} onBlur={() => setHovered(null)} tabIndex={0}><title>{displayToken(p.coin)}: {Math.round(p.originalWeight * 100)}%</title></path> })}
-        <circle className="cc-donut-hole" cx="110" cy="110" r="48" />
+      <svg viewBox="0 0 220 220" className="cc-donut-svg" aria-label="Portfolio allocation index">
+        {parts.map(p => { const start = angle; angle += p.weight * 360; return <path key={p.coin} d={path(110, 110, 92, 50, start, angle - 1)} fill={p.color} onMouseEnter={() => setHovered(p)} onMouseLeave={() => setHovered(null)} onFocus={() => setHovered(p)} onBlur={() => setHovered(null)} tabIndex={0}><title>{displayToken(p.coin)}: {Math.round(p.originalWeight * 100)}%</title></path> })}
+        <circle className="cc-donut-hole" cx="110" cy="110" r="50" />
       </svg>
-      <div className="cc-donut-tooltip">{hovered ? `${displayToken(hovered.coin)} ${Math.round(hovered.originalWeight * 100)}% target` : 'Hover a segment for details'}</div>
+      <div className="cc-donut-tooltip">{hovered ? `${displayToken(hovered.coin)} ${Math.round(hovered.originalWeight * 100)}% allocation` : 'Hover a segment for details'}</div>
     </div>
-    <div className="cc-donut-legend">{parts.map(p => <div key={p.coin}><TokenLogo coin={p.coin} icons={icons} /><b>{displayToken(p.coin)}</b><span>{Math.round(p.originalWeight * 100)}%</span></div>)}</div>
+    <div className="cc-donut-legend cc-scroll-y">{parts.map(p => <div key={p.coin}><TokenLogo coin={p.coin} icons={icons} /><b>{displayToken(p.coin)}</b><span>{Math.round(p.originalWeight * 100)}%</span></div>)}</div>
   </div>
 }
 function ExposureBars({ signals, icons }: { signals: any[], icons: Record<string, string> }) {
@@ -158,7 +180,14 @@ function sorterValue(row: any, key: string) {
   if (key === 'value_ls') return Number(row.value_long_usd || 0) + Number(row.value_short_usd || 0)
   if (key === 'pct_total') return Number(row.value_long_pct_total || 0) + Number(row.value_short_pct_total || 0)
   if (key === 'asset') return String(row.coin || '').toUpperCase()
-  if (key === 'read') return flowRead(row.net_buyer_count)
+  if (key === 'confidence') {
+    const rank: Record<string, number> = { high: 3, medium: 2, med: 2, low: 1, reserve: 0 }
+    return rank[String(row.confidence || '').toLowerCase()] ?? -1
+  }
+  if (key === 'read') {
+    const rank: Record<string, number> = { Accumulation: 2, Neutral: 1, Distribution: 0 }
+    return rank[flowRead(row.net_buyer_count)] ?? 0
+  }
   if (key === 'bullish') return Number(row.bullish_flow_usd || 0)
   if (key === 'bearish') return Number(row.bearish_flow_usd || 0)
   if (key === 'net_buyers') return Number(row.net_buyer_count || 0)
@@ -257,7 +286,7 @@ export default function Dashboard() {
     </section>
 
     <section className="cc-chart-grid">
-      <div className="cc-card cc-allocation-card"><h3>Portfolio allocation</h3><AllocationDonut targets={targets} icons={icons} /></div>
+      <div className="cc-card cc-allocation-card"><h3>Portfolio allocation</h3><AllocationDonut targets={targets} signals={signals} trackedValue={Number(summary.tracked_account_value_usd || 0)} icons={icons} /></div>
       <div className="cc-card cc-exposure-card"><div className="cc-panel-title"><h3>Long vs short exposure</h3><span><i />Long <em />Short</span></div><ExposureBars signals={signals} icons={icons} /></div>
     </section>
 
