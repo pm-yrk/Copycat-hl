@@ -2135,3 +2135,58 @@ html[data-theme='light'] .cc-donut-svg .cc-donut-hole {
 html[data-theme='dark'] .cc-donut-svg .cc-donut-hole {
   fill: color-mix(in srgb, var(--panel-bg) 92%, #06101c) !important;
 }
+
+/* --- Live UI/data accuracy patch: USDC, bias position, and no-cache/live polish. --- */
+.cc-token-logo.is-usdc,
+.cc-donut-legend .cc-token-logo.is-usdc {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+.cc-token-logo.is-usdc img,
+.cc-donut-legend .cc-token-logo.is-usdc img {
+  width: 29px !important;
+  height: 29px !important;
+  border-radius: 50% !important;
+  object-fit: contain !important;
+}
+.cc-donut-legend b,
+.cc-asset-cell b,
+.cc-ex-name b,
+.cc-order-line b {
+  text-transform: none;
+}
+.cc-donut-legend b,
+.cc-asset-cell b,
+.cc-ex-name b,
+.cc-order-line b {
+  font-variant-ligatures: none;
+}
+.cc-bias-block {
+  transform: translateY(58px) !important;
+  margin-right: 46px !important;
+}
+.cc-top-rail .cc-orders-card .cc-small-action {
+  color: var(--panel-muted) !important;
+  opacity: .88;
+}
+.cc-top-rail .cc-orders-card .cc-small-action:hover,
+.cc-top-rail .cc-orders-card .cc-small-action:focus-visible {
+  color: var(--panel-text) !important;
+  opacity: 1;
+}
+.cc-ex-name span {
+  min-width: 44px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.cc-order-line span {
+  white-space: nowrap;
+}
+@media (max-width: 1320px) {
+  .cc-bias-block {
+    transform: none !important;
+    margin-right: 0 !important;
+  }
+}

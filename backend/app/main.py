@@ -28,6 +28,16 @@ app.add_middleware(
 )
 
 
+@app.middleware('http')
+async def no_cache_api_responses(request: Request, call_next):
+    response = await call_next(request)
+    if request.url.path.startswith('/api/'):
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+    return response
+
+
 @app.get('/health')
 def health():
     row = fetch_one('SELECT now() AS now')
@@ -685,13 +695,14 @@ def recent_orders(limit: int = 50, user: dict = Depends(require_active_subscript
                  COALESCE(l.side, p.side) AS side,
                  COALESCE(l.position_value_usd,0) - COALESCE(p.position_value_usd,0) AS delta_value_usd,
                  COALESCE(l.position_value_usd,0) AS position_value_usd,
+                 COALESCE(p.position_value_usd,0) AS previous_value_usd,
                  COALESCE(l.size,0) - COALESCE(p.size,0) AS delta_size
           FROM latest l
           FULL OUTER JOIN previous p ON p.wallet=l.wallet AND p.coin=l.coin AND lower(p.side)=lower(l.side)
         )
         SELECT * FROM joined
         WHERE abs(delta_value_usd) > 1000
-        ORDER BY abs(delta_value_usd) DESC NULLS LAST
+        ORDER BY ts_ms DESC, abs(delta_value_usd) DESC NULLS LAST
         LIMIT :limit
         """,
         {'limit': limit},
@@ -700,19 +711,40 @@ def recent_orders(limit: int = 50, user: dict = Depends(require_active_subscript
     for r in rows:
         side_raw = str(r.get('side') or '').lower()
         delta = float(r.get('delta_value_usd') or 0)
+        current_value = float(r.get('position_value_usd') or 0)
+        previous_value = float(r.get('previous_value_usd') or 0)
+        opened = previous_value <= 100 and current_value > 100
+        closed = current_value <= 100 and previous_value > 100
         if side_raw.startswith('short'):
-            side = 'Short' if delta >= 0 else 'Cover'
+            if opened:
+                action = 'Open short'
+            elif closed:
+                action = 'Close short'
+            elif delta > 0:
+                action = 'Add short'
+            else:
+                action = 'Reduce short'
+        elif side_raw.startswith('long'):
+            if opened:
+                action = 'Open long'
+            elif closed:
+                action = 'Close long'
+            elif delta > 0:
+                action = 'Add long'
+            else:
+                action = 'Reduce long'
         else:
-            side = 'Long' if delta >= 0 else 'Reduce'
+            action = 'Buy' if delta > 0 else 'Reduce'
         wallet = r.get('wallet') or ''
         out.append({
             'ts_ms': r.get('ts_ms'),
             'wallet': wallet,
             'wallet_label': f"Wallet {wallet[:4]}…{wallet[-4:]}" if wallet else 'Wallet',
-            'coin': r.get('coin'),
-            'side': side,
+            'coin': 'USDC' if str(r.get('coin') or '').upper() in ('USDC/CASH', 'CASH') else r.get('coin'),
+            'side': action,
             'delta_value_usd': delta,
-            'position_value_usd': float(r.get('position_value_usd') or 0),
+            'position_value_usd': current_value,
+            'previous_value_usd': previous_value,
         })
     return out
 

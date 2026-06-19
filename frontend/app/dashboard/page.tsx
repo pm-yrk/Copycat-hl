@@ -17,16 +17,13 @@ function compactMoney(n: any) {
   if (v >= 1_000) return `${sign}$${(v / 1_000).toFixed(1)}k`
   return `${sign}$${v.toFixed(0)}`
 }
-function pct(n: any, digits = 1) { return (Number(n || 0) * 100).toFixed(digits) + '%' }
+function pct(n: any) { return Math.round(Number(n || 0) * 100) + '%' }
 function uiPct(n: any, digits = 0) {
   const num = Number(n || 0) * 100
   return `${num.toFixed(digits)}%`
 }
 function signalPct(n: any) {
-  const num = Number(n || 0)
-  const signed = num * 100
-  const digits = Math.abs(signed) >= 10 ? 0 : 1
-  return `${signed.toFixed(digits)}%`
+  return `${Math.round(Number(n || 0) * 100)}%`
 }
 function longSharePct(longUsd: any, shortUsd: any) {
   const l = Number(longUsd || 0)
@@ -34,10 +31,15 @@ function longSharePct(longUsd: any, shortUsd: any) {
   const total = l + sh
   if (total <= 0) return '0%'
   const share = (l / total) * 100
-  return `${Number(share.toFixed(1)).toString()}%`
+  return `${Math.round(share)}%`
 }
 function cls(n: any) { return Number(n) >= 0 ? 'positive' : 'negative' }
 function flowRead(n: any) { return Number(n) > 3 ? 'Accumulation' : Number(n) < -3 ? 'Distribution' : 'Neutral' }
+function orderActionClass(side: any) {
+  const s = String(side || '').toLowerCase()
+  if (s.includes('open short') || s.includes('add short') || s.includes('reduce long') || s.includes('close long')) return 'negative'
+  return 'positive'
+}
 function ago(ms: any) { const m = Math.max(0, Math.round((Date.now() - Number(ms || Date.now())) / 60000)); if (m < 1) return 'just now'; if (m < 60) return `${m}m ago`; return `${Math.round(m / 60)}h ago` }
 function fmtTime(ms: any) {
   if (!ms) return 'Awaiting first refresh'
@@ -47,7 +49,7 @@ function maskWallet(w: string) { return w ? `Wallet ${w.slice(0, 4)}…${w.slice
 
 const USDC_LOGO_DATA_URI = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxMjggMTI4Jz48Y2lyY2xlIGN4PSc2NCcgY3k9JzY0JyByPSc2NCcgZmlsbD0nIzI3NzVDQScvPjxwYXRoIGQ9J000MiAzMGE0MiA0MiAwIDAgMCAwIDY4JyBmaWxsPSdub25lJyBzdHJva2U9JyNmZmYnIHN0cm9rZS13aWR0aD0nOCcgc3Ryb2tlLWxpbmVjYXA9J3JvdW5kJy8+PHBhdGggZD0nTTg2IDMwYTQyIDQyIDAgMCAxIDAgNjgnIGZpbGw9J25vbmUnIHN0cm9rZT0nI2ZmZicgc3Ryb2tlLXdpZHRoPSc4JyBzdHJva2UtbGluZWNhcD0ncm91bmQnLz48dGV4dCB4PSc2NCcgeT0nODQnIHRleHQtYW5jaG9yPSdtaWRkbGUnIGZvbnQtZmFtaWx5PSdBcmlhbCxIZWx2ZXRpY2Esc2Fucy1zZXJpZicgZm9udC1zaXplPSc1OCcgZm9udC13ZWlnaHQ9JzgwMCcgZmlsbD0nI2ZmZic+JDwvdGV4dD48L3N2Zz4='
 const palette = ['#43E8D0', '#8057FF', '#44BDEC', '#FFB020', '#25D366', '#F35EA6', '#A6E22E', '#FF5B72', '#38BDF8', '#F97316']
-const fallbackColours: Record<string, string> = { HYPE:'#43E8D0', ETH:'#627EEA', BTC:'#F7931A', SOL:'#14F195', ZEC:'#F4B728', NEAR:'#00EC97', AAVE:'#8B7DFF', TRX:'#FF4B4B', XRP:'#4B9FFF', USDC:USDC_LOGO_DATA_URI, 'USDC/CASH':'#2775CA', MELANIA:'#D7A785', WLD:'#8492A6', PAXG:'#F0C419', PUMP:'#61C685', LIT:'#35D0B4', BNB:'#F3BA2F', XLM:'#44BDEC', PENGU:'#A0D7F8' }
+const fallbackColours: Record<string, string> = { HYPE:'#43E8D0', ETH:'#627EEA', BTC:'#F7931A', SOL:'#14F195', ZEC:'#F4B728', NEAR:'#00EC97', AAVE:'#8B7DFF', TRX:'#FF4B4B', XRP:'#4B9FFF', USDC:'#2775CA', 'USDC/CASH':'#2775CA', MELANIA:'#D7A785', WLD:'#8492A6', PAXG:'#F0C419', PUMP:'#61C685', LIT:'#35D0B4', BNB:'#F3BA2F', XLM:'#44BDEC', PENGU:'#A0D7F8' }
 const staticLogoUrls: Record<string, string> = {
   BTC:'https://cryptologos.cc/logos/bitcoin-btc-logo.svg?v=040', ETH:'https://cryptologos.cc/logos/ethereum-eth-logo.svg?v=040', SOL:'https://cryptologos.cc/logos/solana-sol-logo.svg?v=040', USDC:'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/A0b86991c6218b36c1d19d4a2e9eb0ce3606eb48/logo.png', USDT:'https://cryptologos.cc/logos/tether-usdt-logo.svg?v=040', DOGE:'https://cryptologos.cc/logos/dogecoin-doge-logo.svg?v=040',
   AAVE:'https://cryptologos.cc/logos/aave-aave-logo.svg?v=040', TRX:'https://cryptologos.cc/logos/tron-trx-logo.svg?v=040', XRP:'https://cryptologos.cc/logos/xrp-xrp-logo.svg?v=040', AVAX:'https://cryptologos.cc/logos/avalanche-avax-logo.svg?v=040', BNB:'https://cryptologos.cc/logos/bnb-bnb-logo.svg?v=040', LINK:'https://cryptologos.cc/logos/chainlink-link-logo.svg?v=040', UNI:'https://cryptologos.cc/logos/uniswap-uni-logo.svg?v=040', LTC:'https://cryptologos.cc/logos/litecoin-ltc-logo.svg?v=040', DOT:'https://cryptologos.cc/logos/polkadot-new-dot-logo.svg?v=040', FIL:'https://cryptologos.cc/logos/filecoin-fil-logo.svg?v=040', ATOM:'https://cryptologos.cc/logos/cosmos-atom-logo.svg?v=040', NEAR:'https://cryptologos.cc/logos/near-protocol-near-logo.svg?v=040', ZEC:'https://cryptologos.cc/logos/zcash-zec-logo.svg?v=040', ARB:'https://cryptologos.cc/logos/arbitrum-arb-logo.svg?v=040', SUI:'https://cryptologos.cc/logos/sui-sui-logo.svg?v=040', OP:'https://cryptologos.cc/logos/optimism-ethereum-op-logo.svg?v=040', APE:'https://cryptologos.cc/logos/apecoin-ape-ape-logo.svg?v=040', INJ:'https://cryptologos.cc/logos/injective-inj-logo.svg?v=040', FET:'https://cryptologos.cc/logos/artificial-superintelligence-alliance-fet-logo.svg?v=040'
@@ -57,10 +59,15 @@ function canonicalToken(symbol: string) {
   if (clean === 'USDC/CASH' || clean === 'USDCCASH' || clean === 'USDCASH' || clean === 'CASH') return 'USDC'
   return clean.replace(/[^A-Z0-9]/g, '')
 }
+function displayToken(symbol: string) {
+  const clean = String(symbol || '').toUpperCase().trim()
+  return canonicalToken(clean) === 'USDC' ? 'USDC' : clean
+}
 function iconSources(symbol: string, apiUrl?: string) {
   const clean = canonicalToken(symbol)
   const lower = clean.toLowerCase()
-  const preferred = clean === 'USDC' ? [staticLogoUrls.USDC, apiUrl] : [apiUrl, staticLogoUrls[clean]]
+  if (clean === 'USDC') return [USDC_LOGO_DATA_URI]
+  const preferred = [apiUrl, staticLogoUrls[clean]]
   return [...preferred, `https://assets.coincap.io/assets/icons/${lower}@2x.png`, `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/svg/color/${lower}.svg`, `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/128/color/${lower}.png`, `https://s3-symbol-logo.tradingview.com/crypto/XTVC${clean}.svg`].filter(Boolean) as string[]
 }
 function TokenLogo({ coin, icons }: { coin: string, icons: Record<string, string> }) {
@@ -71,8 +78,9 @@ function TokenLogo({ coin, icons }: { coin: string, icons: Record<string, string
   const sources = iconSources(canonical, icons[symbol] || icons[canonical])
   useEffect(() => setSourceIndex(0), [symbol, canonical, icons[symbol], icons[canonical]])
   const src = sources[sourceIndex]
-  return <span className="cc-token-logo" style={{ ['--coin' as any]: color }}>
-    {src ? <img src={src} alt={`${symbol} logo`} onError={() => setSourceIndex(i => i + 1)} /> : <span className="cc-token-fallback"><i /><b>{symbol.slice(0, 2)}</b></span>}
+  const label = displayToken(symbol)
+  return <span className={`cc-token-logo ${canonical === 'USDC' ? 'is-usdc' : ''}`} style={{ ['--coin' as any]: color }}>
+    {src ? <img src={src} alt={`${label} logo`} onError={() => setSourceIndex(i => i + 1)} /> : <span className="cc-token-fallback"><i /><b>{label.slice(0, 2)}</b></span>}
   </span>
 }
 
@@ -99,12 +107,12 @@ function AllocationDonut({ targets, icons }: { targets: any[]; icons: Record<str
   return <div className="cc-donut-layout">
     <div className="cc-donut-stage">
       <svg viewBox="0 0 220 220" className="cc-donut-svg" aria-label="Portfolio target allocation">
-        {parts.map(p => { const start = angle; angle += p.weight * 360; return <path key={p.coin} d={path(110, 110, 92, 48, start, angle - 1)} fill={p.color} onMouseEnter={() => setHovered(p)} onMouseLeave={() => setHovered(null)} onFocus={() => setHovered(p)} onBlur={() => setHovered(null)} tabIndex={0}><title>{p.coin}: {(p.originalWeight * 100).toFixed(1)}%</title></path> })}
+        {parts.map(p => { const start = angle; angle += p.weight * 360; return <path key={p.coin} d={path(110, 110, 92, 48, start, angle - 1)} fill={p.color} onMouseEnter={() => setHovered(p)} onMouseLeave={() => setHovered(null)} onFocus={() => setHovered(p)} onBlur={() => setHovered(null)} tabIndex={0}><title>{displayToken(p.coin)}: {Math.round(p.originalWeight * 100)}%</title></path> })}
         <circle className="cc-donut-hole" cx="110" cy="110" r="48" />
       </svg>
-      <div className="cc-donut-tooltip">{hovered ? `${hovered.coin} ${(hovered.originalWeight * 100).toFixed(1)}% target` : 'Hover a segment for details'}</div>
+      <div className="cc-donut-tooltip">{hovered ? `${displayToken(hovered.coin)} ${Math.round(hovered.originalWeight * 100)}% target` : 'Hover a segment for details'}</div>
     </div>
-    <div className="cc-donut-legend">{parts.map(p => <div key={p.coin}><TokenLogo coin={p.coin} icons={icons} /><b>{p.coin}</b><span>{(p.originalWeight * 100).toFixed(1)}%</span></div>)}</div>
+    <div className="cc-donut-legend">{parts.map(p => <div key={p.coin}><TokenLogo coin={p.coin} icons={icons} /><b>{displayToken(p.coin)}</b><span>{Math.round(p.originalWeight * 100)}%</span></div>)}</div>
   </div>
 }
 function ExposureBars({ signals, icons }: { signals: any[], icons: Record<string, string> }) {
@@ -119,8 +127,8 @@ function ExposureBars({ signals, icons }: { signals: any[], icons: Record<string
     const longPct = total > 0 ? (l / total) * 100 : 0
     const shortPct = Math.max(0, 100 - longPct)
     return <div className="cc-ex-row" key={r.coin}>
-      <div className="cc-ex-name"><TokenLogo coin={r.coin} icons={icons} /><b title={r.coin}>{r.coin}</b><span>{longSharePct(l, sh)}</span></div>
-      <div className="cc-ex-track" aria-label={`${r.coin} ${longPct.toFixed(1)}% long, ${shortPct.toFixed(1)}% short`}><div><i style={{ width: `${longPct}%` }} /><em style={{ width: `${shortPct}%` }} /></div></div>
+      <div className="cc-ex-name"><TokenLogo coin={r.coin} icons={icons} /><b title={displayToken(r.coin)}>{displayToken(r.coin)}</b><span>{longSharePct(l, sh)}</span></div>
+      <div className="cc-ex-track" aria-label={`${displayToken(r.coin)} ${Math.round(longPct)}% long, ${Math.round(shortPct)}% short`}><div><i style={{ width: `${longPct}%` }} /><em style={{ width: `${shortPct}%` }} /></div></div>
       <small>{compactMoney(l)}</small><small>{compactMoney(sh)}</small>
     </div>
   })}</div>
@@ -198,7 +206,7 @@ export default function Dashboard() {
     } catch (e: any) { setErr(e.message) }
   }
 
-  useEffect(() => { window.history.scrollRestoration = 'manual'; window.scrollTo(0, 0); load(); const id = setInterval(load, 10000); return () => clearInterval(id) }, [])
+  useEffect(() => { window.history.scrollRestoration = 'manual'; window.scrollTo(0, 0); load(); const id = setInterval(load, 3000); return () => clearInterval(id) }, [])
   useEffect(() => {
     const symbols = Array.from(new Set([...signals.map(r => r.coin), ...targets.map(r => r.coin), ...flow.map(r => r.coin), ...orders.map((r: any) => r.coin)].filter(Boolean).map(x => String(x).toUpperCase())))
     if (!symbols.length) return
@@ -226,7 +234,7 @@ export default function Dashboard() {
         <div className={`cc-orders-card ${showAllOrders ? 'expanded' : ''}`}>
           <h3>Most recent orders</h3>
           <div className="cc-order-list">
-            {visibleOrders.map((o: any, i: number) => <div className="cc-order-line" key={`${o.coin}-${i}-${o.wallet || ''}-${o.ts_ms || ''}`}><TokenLogo coin={o.coin} icons={icons} /><b>{o.coin}</b><span className={String(o.side).toLowerCase().includes('short') || String(o.side).toLowerCase().includes('reduce') ? 'negative' : 'positive'}>{o.side}</span><em>{o.wallet_label || maskWallet(o.wallet)}</em><small>{ago(o.ts_ms)}</small></div>)}
+            {visibleOrders.map((o: any, i: number) => <div className="cc-order-line" key={`${o.coin}-${i}-${o.wallet || ''}-${o.ts_ms || ''}`}><TokenLogo coin={o.coin} icons={icons} /><b>{displayToken(o.coin)}</b><span className={orderActionClass(o.side)}>{o.side}</span><em>{o.wallet_label || maskWallet(o.wallet)}</em><small>{ago(o.ts_ms)}</small></div>)}
           </div>
           <button className="cc-small-action" onClick={() => setShowAllOrders(v => !v)}>{showAllOrders ? 'Show latest 3 ↑' : 'View all orders →'}</button>
         </div>
@@ -259,7 +267,7 @@ export default function Dashboard() {
         <div className="cc-scroll-table cc-scroll-y">
           <table className="cc-signal-table">
             <thead><tr><th>#</th><SortTh label="Asset" sortKey="asset" sort={signalSort} setSort={setSignalSort} /><SortTh label="Signal" sortKey="signal" sort={signalSort} setSort={setSignalSort} /><SortTh label="Confidence" sortKey="confidence" sort={signalSort} setSort={setSignalSort} /><SortTh label="Wallets" sortKey="wallets" sort={signalSort} setSort={setSignalSort} /><SortTh label="Value L/S" sortKey="value_ls" sort={signalSort} setSort={setSignalSort} /><SortTh label="Net value" sortKey="net_value_usd" sort={signalSort} setSort={setSignalSort} /><SortTh label="% total value" sortKey="pct_total" sort={signalSort} setSort={setSignalSort} /></tr></thead>
-            <tbody>{sortedSignals.map((r, i) => <tr key={`${r.coin}-${i}`}><td>{i + 1}</td><td><span className="cc-asset-cell"><TokenLogo coin={r.coin} icons={icons} /><b>{r.coin}</b></span></td><td className={cls(r.signal)}>{signalPct(r.signal)}</td><td><span className={`cc-confidence ${String(r.confidence).toLowerCase()}`}>{r.confidence}</span></td><td>{r.wallets_long} long / {r.wallets_short} short</td><td>{money(r.value_long_usd)} / {money(r.value_short_usd)}</td><td className={cls(r.net_value_usd)}>{money(r.net_value_usd)}</td><td>{pct(r.value_long_pct_total)} long / {pct(r.value_short_pct_total)} short</td></tr>)}</tbody>
+            <tbody>{sortedSignals.map((r, i) => <tr key={`${r.coin}-${i}`}><td>{i + 1}</td><td><span className="cc-asset-cell"><TokenLogo coin={r.coin} icons={icons} /><b>{displayToken(r.coin)}</b></span></td><td className={cls(r.signal)}>{signalPct(r.signal)}</td><td><span className={`cc-confidence ${String(r.confidence).toLowerCase()}`}>{r.confidence}</span></td><td>{r.wallets_long} long / {r.wallets_short} short</td><td>{money(r.value_long_usd)} / {money(r.value_short_usd)}</td><td className={cls(r.net_value_usd)}>{money(r.net_value_usd)}</td><td>{pct(r.value_long_pct_total)} long / {pct(r.value_short_pct_total)} short</td></tr>)}</tbody>
           </table>
         </div>
       </div>
@@ -268,12 +276,12 @@ export default function Dashboard() {
         <div className="cc-scroll-table cc-scroll-y">
           <table className="cc-flow-table">
             <thead><tr><SortTh label="Asset" sortKey="asset" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Net buyers" sortKey="net_buyers" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Bullish flow" sortKey="bullish" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Bearish flow" sortKey="bearish" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Net value flow" sortKey="net_value_flow_usd" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Read" sortKey="read" sort={flowSortState} setSort={setFlowSortState} /></tr></thead>
-            <tbody>{sortedFlow.map((r, i) => { const read = flowRead(r.net_buyer_count); return <tr key={`${r.coin}-${i}`}><td><span className="cc-asset-cell"><TokenLogo coin={r.coin} icons={icons} /><b>{r.coin}</b></span></td><td className={cls(r.net_buyer_count)}>{r.net_buyer_count}</td><td>{money(r.bullish_flow_usd)}</td><td>{money(r.bearish_flow_usd)}</td><td className={cls(r.net_value_flow_usd)}>{money(r.net_value_flow_usd)}</td><td><span className={`cc-read ${read.toLowerCase()}`}>{read}</span></td></tr> })}</tbody>
+            <tbody>{sortedFlow.map((r, i) => { const read = flowRead(r.net_buyer_count); return <tr key={`${r.coin}-${i}`}><td><span className="cc-asset-cell"><TokenLogo coin={r.coin} icons={icons} /><b>{displayToken(r.coin)}</b></span></td><td className={cls(r.net_buyer_count)}>{r.net_buyer_count}</td><td>{money(r.bullish_flow_usd)}</td><td>{money(r.bearish_flow_usd)}</td><td className={cls(r.net_value_flow_usd)}>{money(r.net_value_flow_usd)}</td><td><span className={`cc-read ${read.toLowerCase()}`}>{read}</span></td></tr> })}</tbody>
           </table>
         </div>
       </div>
     </section>
 
-    <footer className="cc-warning-banner"><span className="cc-shield" aria-hidden><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5.2c0 4.5-2.7 8.4-7 9.8-4.3-1.4-7-5.3-7-9.8V6l7-3z"/><path d="M9.2 12.1l1.7 1.7 3.9-4.1"/></svg></span><strong>Market intelligence only.</strong><em>Not financial advice. Crypto trading can result in loss.</em><div className={`cc-footer-meta ${dataHealthy ? 'healthy' : 'checking'}`}><span className="cc-footer-quality"><span className="cc-pulse-dot" /><b>{dataHealthy ? 'Data quality healthy' : 'Data quality checking'}</b></span><small>Signal refresh: {fmtTime(summary.latest_signal_ts_ms)} UTC · Data updates every 10s</small></div></footer>
+    <footer className="cc-warning-banner"><span className="cc-shield" aria-hidden><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5.2c0 4.5-2.7 8.4-7 9.8-4.3-1.4-7-5.3-7-9.8V6l7-3z"/><path d="M9.2 12.1l1.7 1.7 3.9-4.1"/></svg></span><strong>Market intelligence only.</strong><em>Not financial advice. Crypto trading can result in loss.</em><div className={`cc-footer-meta ${dataHealthy ? 'healthy' : 'checking'}`}><span className="cc-footer-quality"><span className="cc-pulse-dot" /><b>{dataHealthy ? 'Data quality healthy' : 'Data quality checking'}</b></span><small>Signal refresh: {fmtTime(summary.latest_signal_ts_ms)} UTC · Page checks every 3s</small></div></footer>
   </main></>
 }
