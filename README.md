@@ -1,11 +1,12 @@
-# Copycat final dashboard polish patch
+# Copycat live 1-second data patch
 
-Fixes the final visual/data display issues requested:
+This patch makes the dashboard check the API every 1 second and changes the collector from a scheduled/slow refresh into a continuously running live worker.
 
-- Prevents Most Recent Orders text overlap.
-- Makes light-mode donut truly hollow.
-- Sorts Confidence as High → Medium → Low rather than alphabetically.
-- Builds portfolio allocation from the broader live long-exposure index so the donut shows more relevant tokens, not only the model target subset.
-- Moves positioning bias closer to the KPI bubbles.
+What changes:
+- Dashboard poll interval: 1 second.
+- Footer text: page checks every 1s.
+- Collector loop minimum interval: 1 second.
+- Render worker env: COLLECTOR_INTERVAL_SECONDS=1.
+- Parallel wallet collection workers: default 30, max 50.
 
-Apply by copying this `saas_fix` folder over your current repo, committing, and pushing to Render.
+Important: this does not fake movement. The page checks every second, but values only change when the backend has written a fresh wallet/position snapshot. If a full 50-wallet Hyperliquid fetch takes 3-8 seconds, the screen will update as soon as that completed batch arrives.

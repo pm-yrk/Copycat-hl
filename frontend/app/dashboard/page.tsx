@@ -235,7 +235,7 @@ export default function Dashboard() {
     } catch (e: any) { setErr(e.message) }
   }
 
-  useEffect(() => { window.history.scrollRestoration = 'manual'; window.scrollTo(0, 0); load(); const id = setInterval(load, 3000); return () => clearInterval(id) }, [])
+  useEffect(() => { window.history.scrollRestoration = 'manual'; window.scrollTo(0, 0); load(); const id = setInterval(load, 1000); return () => clearInterval(id) }, [])
   useEffect(() => {
     const symbols = Array.from(new Set([...signals.map(r => r.coin), ...targets.map(r => r.coin), ...flow.map(r => r.coin), ...orders.map((r: any) => r.coin)].filter(Boolean).map(x => String(x).toUpperCase())))
     if (!symbols.length) return
@@ -311,6 +311,6 @@ export default function Dashboard() {
       </div>
     </section>
 
-    <footer className="cc-warning-banner"><span className="cc-shield" aria-hidden><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5.2c0 4.5-2.7 8.4-7 9.8-4.3-1.4-7-5.3-7-9.8V6l7-3z"/><path d="M9.2 12.1l1.7 1.7 3.9-4.1"/></svg></span><strong>Market intelligence only.</strong><em>Not financial advice. Crypto trading can result in loss.</em><div className={`cc-footer-meta ${dataHealthy ? 'healthy' : 'checking'}`}><span className="cc-footer-quality"><span className="cc-pulse-dot" /><b>{dataHealthy ? 'Data quality healthy' : 'Data quality checking'}</b></span><small>Signal refresh: {fmtTime(summary.latest_signal_ts_ms)} UTC · Page checks every 3s</small></div></footer>
+    <footer className="cc-warning-banner"><span className="cc-shield" aria-hidden><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5.2c0 4.5-2.7 8.4-7 9.8-4.3-1.4-7-5.3-7-9.8V6l7-3z"/><path d="M9.2 12.1l1.7 1.7 3.9-4.1"/></svg></span><strong>Market intelligence only.</strong><em>Not financial advice. Crypto trading can result in loss.</em><div className={`cc-footer-meta ${dataHealthy ? 'healthy' : 'checking'}`}><span className="cc-footer-quality"><span className="cc-pulse-dot" /><b>{dataHealthy ? 'Data quality healthy' : 'Data quality checking'}</b></span><small>Signal refresh: {fmtTime(summary.latest_signal_ts_ms)} UTC · Page checks every 1s</small></div></footer>
   </main></>
 }

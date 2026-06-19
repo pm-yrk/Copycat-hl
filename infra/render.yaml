@@ -1,4 +1,6 @@
-# Render blueprint template. Review before production use.
+# Render blueprint template for Copycat live dashboard.
+# The dashboard polls every 1 second. The collector runs continuously and
+# immediately starts the next 50-wallet collection when the previous one ends.
 services:
   - type: web
     name: hwt-api
@@ -37,21 +39,23 @@ services:
       - key: NEXT_PUBLIC_API_BASE_URL
         sync: false
 
-- type: worker
-  name: hwt-collector-live-10s
-  runtime: docker
-  dockerfilePath: ./backend/Dockerfile
-  dockerContext: .
-  dockerCommand: "python -m app.jobs.collect_loop_local"
-  envVars:
-    - key: DATABASE_URL
-      sync: false
-    - key: COLLECTOR_INTERVAL_SECONDS
-      value: "10"
-    - key: TELEGRAM_BOT_TOKEN
-      sync: false
-    - key: TELEGRAM_CHAT_ID
-      sync: false
+  - type: worker
+    name: hwt-collector-live-10s
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    dockerCommand: "python -m app.jobs.collect_loop_local"
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: COLLECTOR_INTERVAL_SECONDS
+        value: "1"
+      - key: COLLECTOR_MAX_WORKERS
+        value: "30"
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
 
   - type: cron
     name: hwt-daily-refresh-midnight

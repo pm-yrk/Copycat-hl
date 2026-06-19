@@ -10,14 +10,14 @@ def _interval_seconds() -> int:
     settings = get_settings()
     raw = os.getenv('COLLECTOR_INTERVAL_SECONDS') or str(settings.collector_interval_seconds)
     try:
-        return max(10, int(float(raw)))
+        return max(1, int(float(raw)))
     except Exception:
-        return 10
+        return 1
 
 
 if __name__ == '__main__':
     interval = _interval_seconds()
-    print(f'copycat collector loop starting; interval={interval}s', flush=True)
+    print(f'copycat live collector loop starting; target_interval={interval}s (restarts immediately if a 50-wallet batch takes longer)', flush=True)
     while True:
         started = time.time()
         try:

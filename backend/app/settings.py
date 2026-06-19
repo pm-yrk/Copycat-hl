@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     nansen_min_total_pnl_usd: float = 1_000
 
     qualified_wallet_limit: int = 50
-    collector_interval_seconds: int = 900
+    collector_interval_seconds: int = 1
     signal_lookback_minutes: int = 60
     min_wallets_for_signal: int = 5
 
