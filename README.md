@@ -1,20 +1,8 @@
-# Copycat final polish patch
+# Copycat three visual fixes
 
-This patch updates the Copycat dashboard UI only.
+Patch changes only:
+- Positioning bias pill: shorter, centered text, uniform brushed-metal knob.
+- USDC/CASH icon: locked to the correct blue USDC icon.
+- Portfolio donut: cleaner single-ring donut with no inner stroke line.
 
-Changes included:
-- Makes "View all orders" a subtle text link instead of a filled button.
-- Removes/hides the top data-quality card; footer remains the status source.
-- Fixes USDC/CASH to use the USDC icon source.
-- Removes synthetic token icon backgrounds so real token artwork appears cleanly.
-- Converts asset signal board signal values from decimals to percentages.
-- Fixes long/short exposure percentages to display long-share percentage only.
-- Ensures exposure bars are calculated directly from long USD vs short USD and always fill 100%.
-- Moves the exposure percentage away from the bar for readability.
-- Refines the positioning-bias pill with a shorter premium brushed-metal slider.
-- Adds a proper inline shield SVG for the disclaimer bar.
-- Makes light-mode panels beige-on-beige with dark text.
-
-Files changed:
-- frontend/app/dashboard/page.tsx
-- frontend/app/styles.css
+Copy the `saas_fix` contents into your existing repo, commit, and push.
