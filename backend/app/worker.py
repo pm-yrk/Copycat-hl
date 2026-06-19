@@ -379,6 +379,15 @@ def score_wallets(limit: int | None = None) -> int:
     hl = Hyperliquid()
     with engine.begin() as conn:
         wallets = [r[0] for r in conn.execute(text('SELECT wallet FROM wallet_candidates WHERE active=true ORDER BY discovered_at DESC')).fetchall()]
+
+    if not wallets:
+        # Important: never wipe the live cohort just because candidate discovery
+        # failed or Nansen credits are exhausted. Keep the previous active cohort
+        # live and make the run visible in /audit and Render logs.
+        with engine.begin() as conn:
+            insert_run(conn, 'score_wallets', 'warning', 'no cached wallet candidates available; kept existing active cohort')
+        return 0
+
     scored = []
     for i, wallet in enumerate(wallets, start=1):
         log.info('Scoring %s/%s %s', i, len(wallets), wallet)
@@ -388,28 +397,42 @@ def score_wallets(limit: int | None = None) -> int:
             score = wallet_score(wallet, state, portfolio)
             scored.append(score)
             with engine.begin() as conn:
-                conn.execute(text('''
+                conn.execute(text("""
                     INSERT INTO wallet_scores(ts_ms,wallet,score,qualifies,account_value_usd,pnl_30d_usd,pnl_all_time_usd,max_drawdown_pct,consistency_score,anti_fluke_score,metrics_json)
                     VALUES(:ts_ms,:wallet,:score,:qualifies,:account_value_usd,:pnl_30d_usd,:pnl_all_time_usd,:max_drawdown_pct,:consistency_score,:anti_fluke_score,CAST(:metrics_json AS jsonb))
-                '''), score)
+                """), score)
         except Exception as exc:
             log.exception('Failed scoring wallet %s: %s', wallet, exc)
         time.sleep(0.5)
+
     qualified = [s for s in scored if s['qualifies']]
     qualified.sort(key=lambda x: x['score'], reverse=True)
     qualified = qualified[:(limit or settings.qualified_wallet_limit)]
+
+    # Safety rail: a bad external-data day should never accidentally publish an
+    # empty or tiny cohort to customers. If strict Ranking V2 cannot find enough
+    # valid wallets, keep the last known good top-50 cohort running.
+    try:
+        min_to_publish = int(float(os.getenv('MIN_QUALIFIED_WALLETS_TO_PUBLISH', '25')))
+    except Exception:
+        min_to_publish = 25
+    min_to_publish = max(1, min(min_to_publish, limit or settings.qualified_wallet_limit))
+    if len(qualified) < min_to_publish:
+        with engine.begin() as conn:
+            insert_run(conn, 'score_wallets', 'warning', f'scored={len(scored)} qualified={len(qualified)} below publish floor={min_to_publish}; kept existing active cohort')
+        return len(scored)
+
     ts = now_ms()
     with engine.begin() as conn:
         conn.execute(text("UPDATE qualified_wallets SET status='inactive'"))
         for rank, s in enumerate(qualified, start=1):
-            conn.execute(text('''
+            conn.execute(text("""
                 INSERT INTO qualified_wallets(wallet,rank,score,qualified_at_ms,status)
                 VALUES(:wallet,:rank,:score,:ts,'active')
                 ON CONFLICT(wallet) DO UPDATE SET rank=excluded.rank, score=excluded.score, qualified_at=now(), qualified_at_ms=excluded.qualified_at_ms, status='active'
-            '''), {'wallet': s['wallet'], 'rank': rank, 'score': s['score'], 'ts': ts})
+            """), {'wallet': s['wallet'], 'rank': rank, 'score': s['score'], 'ts': ts})
         insert_run(conn, 'score_wallets', 'ok', f'scored={len(scored)} qualified={len(qualified)}')
     return len(scored)
-
 
 def insert_run(conn, run_type: str, status: str, message: str=''):
     conn.execute(text('INSERT INTO collector_runs(ts_ms,run_type,status,message) VALUES(:ts,:type,:status,:message)'), {'ts': now_ms(), 'type': run_type, 'status': status, 'message': message})
@@ -691,8 +714,46 @@ def check_alerts() -> int:
 
 
 def daily_refresh() -> dict[str, Any]:
-    c = discover_candidates()
-    s = score_wallets(get_settings().qualified_wallet_limit)
+    """Refresh the ranking cohort without taking the product down if Nansen is unavailable.
+
+    Nansen discovery is useful for finding fresh candidates, but it is an
+    external paid-credit dependency. If it returns 403 insufficient credits, we
+    keep using the cached candidate universe and existing active cohort instead
+    of failing the cron job or clearing customer data.
+    """
+    discovery_status = 'ok'
+    c = 0
+    try:
+        c = discover_candidates()
+    except Exception as exc:
+        discovery_status = 'warning'
+        msg = str(exc)
+        log.exception('Candidate discovery failed; continuing with cached candidates/current cohort: %s', msg)
+        with engine.begin() as conn:
+            insert_run(conn, 'discover_candidates', 'warning', f'candidate discovery skipped; using cached candidates/current cohort: {msg[:400]}')
+
+    scoring_status = 'ok'
+    s = 0
+    try:
+        s = score_wallets(get_settings().qualified_wallet_limit)
+    except Exception as exc:
+        scoring_status = 'warning'
+        msg = str(exc)
+        log.exception('Wallet scoring failed; keeping current cohort: %s', msg)
+        with engine.begin() as conn:
+            insert_run(conn, 'score_wallets', 'warning', f'scoring skipped; kept current active cohort: {msg[:400]}')
+
     collected = collect_once()
-    send_telegram(f'✅ Daily wallet refresh complete\nCandidates: {c}\nScored: {s}\nWallets collected: {collected.get("wallets_ok")}')
-    return {'candidates': c, 'scored': s, 'collection': collected}
+
+    msg = (
+        f'✅ Daily wallet refresh complete\n'
+        f'Discovery: {discovery_status} candidates_imported={c}\n'
+        f'Scoring: {scoring_status} scored={s}\n'
+        f'Wallets collected: {collected.get("wallets_ok")}\n'
+        f'Note: if Nansen credits are exhausted, Copycat continues from cached candidates/current cohort.'
+    )
+    try:
+        send_telegram(msg)
+    except Exception:
+        log.exception('Telegram daily refresh notification failed')
+    return {'discovery_status': discovery_status, 'candidates': c, 'scoring_status': scoring_status, 'scored': s, 'collection': collected}
