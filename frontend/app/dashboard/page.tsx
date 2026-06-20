@@ -193,6 +193,25 @@ function ExposureBars({ signals, icons }: { signals: any[], icons: Record<string
   })}</div>
 }
 
+
+function grossLeverage(openValue: any, accountValue: any) {
+  const account = Number(accountValue || 0)
+  const open = Number(openValue || 0)
+  if (!Number.isFinite(account) || !Number.isFinite(open) || account <= 0 || open <= 0) return null
+  return open / account
+}
+function leverageRead(v: number | null) {
+  if (!v || !Number.isFinite(v)) return ''
+  if (v < 1) return 'Defensive'
+  if (v < 2) return 'Moderate'
+  if (v < 4) return 'Aggressive'
+  return 'Very aggressive'
+}
+function leverageText(v: number | null) {
+  if (!v || !Number.isFinite(v)) return ''
+  return `Gross leverage: ${v.toFixed(1)}x · ${leverageRead(v)}`
+}
+
 function formatDirectionalSignal(row: any) {
   const value = displaySignalValue(row)
   const strength = Math.abs(Math.round(value * 100))
@@ -377,6 +396,7 @@ export default function Dashboard() {
   const rankingScope = summary.ranking_scope_label || `Top ${summary.qualified_wallets || 0} Copycat-ranked wallets from ${summary.owned_wallets_indexed || 0} indexed wallets`
   const liveCoverageText = `${summary.live_wallets || 0}/${summary.qualified_wallets || 0} live wallets`
   const auditStatus = audit?.status || 'checking'
+  const grossLeverageValue = grossLeverage(summary.tracked_open_position_value_usd, summary.tracked_account_value_usd)
   const orderRows = orders.length ? orders : flow.slice(0, 12).map((r: any) => ({ coin: r.coin, side: Number(r.net_value_flow_usd) >= 0 ? 'Long' : 'Short', wallet_label: 'Wallet 0x1A…7F3B', wallet: r.wallet, ts_ms: summary.latest_signal_ts_ms }))
   const orderSignature = useMemo(() => orderRows.slice(0, 50).map(orderKey).join('|'), [orderRows])
   useEffect(() => {
@@ -452,7 +472,7 @@ export default function Dashboard() {
     <section className="cc-kpi-grid">
       <article><small>Copycat-ranked wallets</small><RollingInteger value={summary.qualified_wallets || 0} /><span>{summary.owned_wallets_indexed ? `${summary.owned_wallets_indexed} wallets indexed` : 'owned ranking universe'}</span></article>
       <article className="cc-tracked-value-card"><small>Tracked account value</small><RollingMoney value={summary.tracked_account_value_usd} /><span>{summary.live_state_active ? 'live wallet state' : 'latest snapshots'}</span>{summary.largest_account_value_usd ? <em>Largest account: {money(summary.largest_account_value_usd)}</em> : null}</article>
-      <article><small>Open position value</small><RollingMoney value={summary.tracked_open_position_value_usd} /><span>{summary.open_positions || 0} live positions</span></article>
+      <article className="cc-open-position-card"><small>Open position value</small><RollingMoney value={summary.tracked_open_position_value_usd} /><span>{summary.open_positions || 0} live positions</span>{grossLeverageValue ? <em>{leverageText(grossLeverageValue)}</em> : null}</article>
       <article><small>Assets with signals</small><RollingInteger value={summary.assets_with_signals || 0} /><span>{summary.markets_monitored ? `${summary.markets_monitored} markets monitored` : 'cross-asset breadth'}</span></article>
     </section>
 

@@ -2335,6 +2335,22 @@ html[data-theme='light'] .cc-kpi-grid article.cc-tracked-value-card em {
   color: color-mix(in srgb, var(--panel-muted) 86%, #111);
 }
 
+
+.cc-kpi-grid article.cc-open-position-card em {
+  display: block;
+  margin-top: 4px;
+  color: var(--panel-muted);
+  font-style: normal;
+  font-size: 10.5px;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+html[data-theme='light'] .cc-kpi-grid article.cc-open-position-card em {
+  color: color-mix(in srgb, var(--panel-muted) 86%, #111);
+}
+
 /* At-a-glance can now hold five rows cleanly. */
 .cc-insights-card { min-height: 214px; }
 .cc-insight-line { padding: 10px 0 !important; }

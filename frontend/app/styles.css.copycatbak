@@ -536,6 +536,27 @@ html[data-theme='light'] .cc-donut-svg circle { fill: #f4e7d7; stroke: rgba(26,2
 }
 .cc-panel-title span i { background: var(--cc-green); }
 .cc-panel-title span em { background: var(--cc-red); }
+
+.cc-card-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.cc-card-title-row h3 { margin: 0; }
+.cc-card-title-row > span {
+  color: var(--panel-muted);
+  font-size: 11px;
+  line-height: 1.35;
+  text-align: right;
+  max-width: 190px;
+}
+@media (max-width: 720px) {
+  .cc-card-title-row { display: block; }
+  .cc-card-title-row > span { display: block; margin-top: 6px; text-align: left; max-width: none; }
+}
+
 .cc-exposure-list { display: grid; gap: 8px; }
 .cc-ex-row {
   display: grid;

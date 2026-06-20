@@ -193,12 +193,29 @@ function ExposureBars({ signals, icons }: { signals: any[], icons: Record<string
   })}</div>
 }
 
+function formatDirectionalSignal(row: any) {
+  const value = displaySignalValue(row)
+  const strength = Math.abs(Math.round(value * 100))
+  if (strength === 0) return 'Neutral'
+  return `${strength}% ${value >= 0 ? 'Bullish' : 'Bearish'}`
+}
 function formatInsightDetail(x: any) {
-  if (x?.type === 'top_signal') {
-    const confidence = x?.row?.confidence || x?.detail?.split('·')?.[1]?.trim() || ''
-    return `Signal ${displaySignalPct(x?.row)}${confidence ? ` · ${confidence}` : ''}`
-  }
-  return String(x?.detail || '').replace(/Signal\s+(-?\d+(?:\.\d+)?)/i, (_, raw) => `Signal ${signalPct(Number(raw))}`)
+  if (x?.type === 'top_signal') return formatDirectionalSignal(x?.row)
+  return String(x?.detail || '').replace(/Signal\s+(-?\d+(?:\.\d+)?)/i, (_, raw) => {
+    const value = Number(raw)
+    const strength = Math.abs(Math.round(value * 100))
+    if (!strength) return 'Neutral'
+    return `${strength}% ${value >= 0 ? 'Bullish' : 'Bearish'}`
+  })
+}
+function latestAllocationTs(targets: any[], signals: any[], summary: any) {
+  const times = [
+    ...(targets || []).map((t: any) => Number(t.ts_ms || t.created_at_ms || t.updated_at_ms || 0)),
+    Number(summary?.latest_signal_ts_ms || 0),
+    Number(summary?.latest_position_ts_ms || 0),
+    ...(signals || []).slice(0, 20).map((r: any) => Number(r.ts_ms || 0)),
+  ].filter((n) => Number.isFinite(n) && n > 0)
+  return times.length ? Math.max(...times) : 0
 }
 
 type SortDir = 'asc' | 'desc'
@@ -440,7 +457,7 @@ export default function Dashboard() {
     </section>
 
     <section className="cc-chart-grid">
-      <div className="cc-card cc-allocation-card"><h3>Portfolio allocation</h3><AllocationDonut targets={targets} signals={signals} trackedValue={Number(summary.tracked_account_value_usd || 0)} icons={icons} /></div>
+      <div className="cc-card cc-allocation-card"><div className="cc-card-title-row"><h3>Portfolio allocation</h3><span>Last rebalanced: {fmtTime(latestAllocationTs(targets, signals, summary))} UTC</span></div><AllocationDonut targets={targets} signals={signals} trackedValue={Number(summary.tracked_account_value_usd || 0)} icons={icons} /></div>
       <div className="cc-card cc-exposure-card"><div className="cc-panel-title"><h3>Long vs short exposure</h3><span><i />Long <em />Short</span></div><ExposureBars signals={signals} icons={icons} /></div>
     </section>
 
