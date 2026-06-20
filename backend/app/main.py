@@ -1588,14 +1588,27 @@ def _coingecko_icon_for_symbol(symbol: str) -> str | None:
     return image
 
 @app.get('/api/token-icons')
-def token_icons(symbols: str = ''):
+def token_icons(symbols: str = '', external: bool = False, limit: int = 60):
+    """Return token icon overrides without blocking the dashboard.
+
+    The frontend already has fast public CDN fallbacks for token icons. Calling
+    CoinGecko live for 100+ symbols during dashboard load can keep the browser
+    and API busy for many seconds. Public dashboard calls now return immediately
+    unless external=1 is explicitly requested.
+    """
     requested = []
+    max_symbols = max(1, min(int(limit or 60), 120))
     for raw in symbols.split(','):
         sym = raw.strip().upper()
         if sym and sym not in requested:
             requested.append(sym)
-    requested = requested[:120]
-    return {'icons': {sym: _coingecko_icon_for_symbol(sym) for sym in requested}}
+    requested = requested[:max_symbols]
+    if not external:
+        return {'icons': {}, 'external_lookup': False, 'note': 'Fast mode: frontend CDN fallbacks handle token artwork.'}
+    # Manual/API callers can still request CoinGecko enrichment, but keep the
+    # limit low so one request cannot block the live dashboard service.
+    requested = requested[:25]
+    return {'icons': {sym: _coingecko_icon_for_symbol(sym) for sym in requested}, 'external_lookup': True}
 
 
 
@@ -2158,15 +2171,40 @@ def performance_backtest():
     }
 
 
+
+def _limit_index_points(data: dict[str, Any], max_points: int | None = 240) -> dict[str, Any]:
+    out = dict(data or {})
+    points = list(out.get('points') or [])
+    try:
+        limit = int(max_points or 0)
+    except Exception:
+        limit = 240
+    if limit > 0 and len(points) > limit:
+        # Evenly sample the line while always keeping the first and last point.
+        if limit <= 2:
+            trimmed = [points[0], points[-1]]
+        else:
+            step = (len(points) - 1) / float(limit - 1)
+            idxs = sorted({round(i * step) for i in range(limit)})
+            trimmed = [points[i] for i in idxs if 0 <= i < len(points)]
+            if trimmed[0] is not points[0]:
+                trimmed.insert(0, points[0])
+            if trimmed[-1] is not points[-1]:
+                trimmed.append(points[-1])
+        out['points'] = trimmed[:limit]
+        out['points_returned'] = len(out['points'])
+        out['points_total'] = len(points)
+    return out
+
 @app.get('/api/performance-index')
-def performance_index(force: bool = False):
+def performance_index(force: bool = False, max_points: int = 240):
     now = time.time()
     if not force and _INDEX_CACHE.get('data') and now - float(_INDEX_CACHE.get('ts') or 0) < _INDEX_CACHE_TTL_SECONDS:
-        return _INDEX_CACHE['data']
+        return _limit_index_points(_INDEX_CACHE['data'], max_points)
     with _INDEX_LOCK:
         now = time.time()
         if not force and _INDEX_CACHE.get('data') and now - float(_INDEX_CACHE.get('ts') or 0) < _INDEX_CACHE_TTL_SECONDS:
-            return _INDEX_CACHE['data']
+            return _limit_index_points(_INDEX_CACHE['data'], max_points)
         try:
             data = _update_strategy_index_locked(force=force)
         except Exception as exc:
@@ -2175,11 +2213,11 @@ def performance_index(force: bool = False):
                 stale = dict(cached)
                 stale['stale'] = True
                 stale['warning'] = f'Performance index using last good value while live price feed reconnects: {str(exc)[:180]}'
-                return stale
+                return _limit_index_points(stale, max_points)
             raise HTTPException(status_code=503, detail=f'Performance index is not ready: {str(exc)[:220]}') from exc
         _INDEX_CACHE['ts'] = time.time()
         _INDEX_CACHE['data'] = data
-        return data
+        return _limit_index_points(data, max_points)
 
 
 @app.get('/api/performance-index/audit')

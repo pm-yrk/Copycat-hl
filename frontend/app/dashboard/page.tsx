@@ -321,10 +321,14 @@ export default function Dashboard() {
   useEffect(() => {
     window.history.scrollRestoration = 'manual'
     window.scrollTo(0, 0)
-    loadFull()
+    // Paint the live tape/headline values first, then hydrate the heavier
+    // tables. This prevents the whole dashboard feeling blocked by the full
+    // feed, token icons, or the performance chart.
+    loadTick()
+    const bootTimer = window.setTimeout(loadFull, 80)
     const tickId = setInterval(loadTick, 1000)
     const fullId = setInterval(loadFull, 10000)
-    return () => { clearInterval(tickId); clearInterval(fullId) }
+    return () => { clearTimeout(bootTimer); clearInterval(tickId); clearInterval(fullId) }
   }, [])
 
   const symbolKey = useMemo(() => Array.from(new Set([...signals.map(r => r.coin), ...targets.map(r => r.coin), ...flow.map(r => r.coin), ...orders.map((r: any) => r.coin)].filter(Boolean).map(x => canonicalToken(String(x).toUpperCase())))).sort().join(','), [signals, targets, flow, orders])
@@ -335,11 +339,15 @@ export default function Dashboard() {
       const cached = localStorage.getItem(cacheKey)
       if (cached) setIcons(JSON.parse(cached))
     } catch {}
-    apiGet('/api/token-icons?symbols=' + encodeURIComponent(symbolKey)).then((r: any) => {
-      const nextIcons = r.icons || {}
-      setIcons(nextIcons)
-      try { localStorage.setItem(cacheKey, JSON.stringify(nextIcons)) } catch {}
-    }).catch(() => {})
+    const visibleSymbols = symbolKey.split(',').slice(0, 80).join(',')
+    const timer = window.setTimeout(() => {
+      apiGet('/api/token-icons?limit=80&symbols=' + encodeURIComponent(visibleSymbols), { timeoutMs: 3500 }).then((r: any) => {
+        const nextIcons = r.icons || {}
+        setIcons(nextIcons)
+        try { localStorage.setItem(cacheKey, JSON.stringify(nextIcons)) } catch {}
+      }).catch(() => {})
+    }, 1200)
+    return () => clearTimeout(timer)
   }, [symbolKey])
 
   const longValue = signals.reduce((a, r) => a + Number(r.value_long_usd || 0), 0)

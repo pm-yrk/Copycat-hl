@@ -5,6 +5,7 @@ import json
 import logging
 import time
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 import threading
 
@@ -151,21 +152,66 @@ def _poll_single_wallet_state(wallet: str) -> bool:
     return True
 
 
+def _fetch_wallet_state_for_poll(wallet: str, info_url: str) -> tuple[str, dict[str, Any], list[dict[str, Any]]]:
+    state = _fetch_clearinghouse_state(wallet, info_url)
+    if not state:
+        raise RuntimeError('empty Hyperliquid clearinghouseState')
+    ts_ms = int(time.time() * 1000)
+    state_row, positions = _position_rows(wallet, state, ts_ms)
+    return wallet, state_row, positions
+
+
 def _poll_wallet_states_once(limit: int) -> dict[str, Any]:
+    """Refresh live wallet state without making the dashboard wait ~80s.
+
+    The previous version fetched and wrote 50 wallets one-by-one. In Render logs
+    that made a "5 second" poll actually take ~78-80 seconds, so most wallets
+    looked stale before the poll even finished. This version fetches Hyperliquid
+    states concurrently, then writes to Postgres serially under the existing
+    write lock so the database stays safe.
+    """
+    settings = get_settings()
     wallets = _active_wallets(limit)
     ok = 0
     errors: list[str] = []
     started = time.time()
+    max_workers = max(1, min(int(getattr(settings, 'live_state_max_workers', 10) or 10), 16, len(wallets) or 1))
+    fetched: list[tuple[str, dict[str, Any], list[dict[str, Any]]]] = []
+
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        futures = {pool.submit(_fetch_wallet_state_for_poll, wallet, settings.hl_info_url): wallet for wallet in wallets}
+        for future in as_completed(futures):
+            wallet = futures[future]
+            try:
+                fetched.append(future.result())
+            except Exception as exc:
+                errors.append(f'{wallet[:8]}: {type(exc).__name__}')
+                if len(errors) <= 3:
+                    log.warning('failed to fetch live wallet state for %s: %s', wallet, exc)
+
+    # Write in active-wallet order so the latest timestamps land coherently and
+    # logs are easier to reason about.
+    by_wallet = {wallet: (state_row, positions) for wallet, state_row, positions in fetched}
     for wallet in wallets:
+        payload = by_wallet.get(wallet)
+        if not payload:
+            continue
+        state_row, positions = payload
         try:
-            if _poll_single_wallet_state(wallet):
-                ok += 1
+            _store_wallet_state(state_row, positions)
+            ok += 1
         except Exception as exc:
             errors.append(f'{wallet[:8]}: {type(exc).__name__}')
             if len(errors) <= 3:
-                log.warning('failed to poll live wallet state for %s: %s', wallet, exc)
-        time.sleep(0.03)
-    return {'wallets_ok': ok, 'wallets_total': len(wallets), 'errors': errors[:10], 'elapsed_seconds': round(time.time() - started, 1)}
+                log.warning('failed to store live wallet state for %s: %s', wallet, exc)
+
+    return {
+        'wallets_ok': ok,
+        'wallets_total': len(wallets),
+        'errors': errors[:10],
+        'max_workers': max_workers,
+        'elapsed_seconds': round(time.time() - started, 1),
+    }
 
 
 def _schedule_event_state_refresh(wallet: str) -> None:
@@ -346,6 +392,8 @@ async def _websocket_loop() -> None:
                             log.info('stored %s live wallet events', n)
                     except Exception:
                         log.exception('failed to handle Hyperliquid WS message')
+                log.warning('Hyperliquid live event stream ended cleanly; reconnecting in 5s')
+                await asyncio.sleep(5)
         except Exception:
             log.exception('Hyperliquid live event stream disconnected; reconnecting in 10s')
             await asyncio.sleep(10)

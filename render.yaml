@@ -76,8 +76,10 @@ services:
         value: "50"
       - key: LIVE_STATE_POLL_SECONDS
         value: "5"
+      - key: LIVE_STATE_MAX_WORKERS
+        value: "10"
       - key: LIVE_STATE_MAX_AGE_SECONDS
-        value: "30"
+        value: "45"
       - key: LIVE_SIGNAL_MIN_COVERAGE_RATIO
         value: "0.8"
 

@@ -103,12 +103,12 @@ export default function PerformanceIndex({ variant = 'dashboard' }: { variant?: 
           setErr('')
           return
         }
-        const live = await apiGet('/api/performance-index')
+        const live = await apiGet('/api/performance-index?max_points=120')
         setData({ ...(live || {}), mode: 'live', warning: backtest?.warning || live?.warning })
         setErr('')
         return
       }
-      const r = await apiGet('/api/performance-index')
+      const r = await apiGet('/api/performance-index?max_points=240')
       setData({ ...(r || {}), mode: 'live' })
       setErr('')
     } catch (e: any) {
