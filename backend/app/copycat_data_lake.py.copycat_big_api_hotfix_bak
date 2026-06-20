@@ -10,18 +10,10 @@ from sqlalchemy import text
 
 from .db import fetch_all, fetch_one, engine
 from .settings import get_settings
-from .worker import Hyperliquid, is_address, now_ms, safe_float
+from .worker import Hyperliquid, is_address, now_ms, safe_float, short_wallet
 from .owned_data import ensure_owned_tables, _store_fills
 
 log = logging.getLogger(__name__)
-
-
-
-def short_wallet(wallet: str) -> str:
-    wallet = str(wallet or '').strip()
-    if len(wallet) <= 12:
-        return wallet
-    return f'{wallet[:6]}…{wallet[-4:]}'
 
 
 def _coin_key(coin: str | None) -> str:

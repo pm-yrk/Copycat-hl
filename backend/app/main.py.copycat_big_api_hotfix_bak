@@ -2458,13 +2458,3 @@ async def stripe_webhook(request: Request):
                 },
             )
     return {'received': True}
-
-
-@app.get('/api/data/v1/leaderboard-preview')
-def copycat_data_api_public_leaderboard_preview_alias(limit: int = 20):
-    return {'status': 'ok', 'data': leaderboard_preview(limit)}
-
-
-@app.get('/api/data/v1/token-screener-preview')
-def copycat_data_api_public_token_screener_preview_alias(limit: int = 20):
-    return {'status': 'ok', 'data': token_screener_preview(limit)}
