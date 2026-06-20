@@ -52,7 +52,13 @@ class Settings(BaseSettings):
     wallet_discovery_provider: str = 'owned_first'
     owned_discovery_seed_wallets: str = ''
     owned_discovery_lookback_days: int = 30
+    # Full owned universe limit. The scheduled daily job uses owned_refresh_limit
+    # below so a large discovery setting cannot make the cron overlap forever.
     owned_discovery_refresh_limit: int = 500
+    owned_refresh_limit: int = 75
+    owned_refresh_max_seconds: int = 600
+    owned_refresh_run_collection: bool = False
+    owned_discovery_fetch_fills: bool = False
     owned_discovery_min_account_value_usd: float = 50_000
     owned_discovery_min_30d_pnl_usd: float = 1_000
     owned_discovery_min_all_time_pnl_usd: float = 0

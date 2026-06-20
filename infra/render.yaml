@@ -95,6 +95,14 @@ services:
         value: "owned"
       - key: OWNED_DISCOVERY_REFRESH_LIMIT
         value: "500"
+      - key: OWNED_REFRESH_LIMIT
+        value: "75"
+      - key: OWNED_REFRESH_MAX_SECONDS
+        value: "600"
+      - key: OWNED_REFRESH_RUN_COLLECTION
+        value: "false"
+      - key: OWNED_DISCOVERY_FETCH_FILLS
+        value: "false"
       - key: TELEGRAM_BOT_TOKEN
         sync: false
       - key: TELEGRAM_CHAT_ID

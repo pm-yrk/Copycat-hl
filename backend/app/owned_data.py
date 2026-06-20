@@ -209,12 +209,17 @@ def _owned_qualifies(score_row: dict[str, Any], fill_summary: dict[str, Any]) ->
     pnl30 = safe_float(score_row.get('pnl_30d_usd'))
     if pnl30 == 0 and fill_summary.get('fills_lookback_count', 0) > 0:
         pnl30 = safe_float(fill_summary.get('net_closed_pnl_lookback_usd'))
+    fill_requirement_ok = (
+        True
+        if not settings.owned_discovery_fetch_fills
+        else int(fill_summary.get('fills_lookback_count') or 0) >= settings.owned_discovery_min_fills_lookback
+    )
     return (
         account >= settings.owned_discovery_min_account_value_usd
         and pnl30 >= settings.owned_discovery_min_30d_pnl_usd
         and safe_float(score_row.get('pnl_all_time_usd')) >= settings.owned_discovery_min_all_time_pnl_usd
         and safe_float(score_row.get('score')) >= settings.owned_discovery_min_score
-        and int(fill_summary.get('fills_lookback_count') or 0) >= settings.owned_discovery_min_fills_lookback
+        and fill_requirement_ok
     )
 
 
@@ -225,12 +230,13 @@ def refresh_owned_wallet(wallet: str, lookback_days: int | None = None) -> dict[
     state = hl.clearinghouse_state(wallet)
     portfolio = hl.portfolio(wallet)
     fills: list[dict[str, Any]] = []
-    try:
-        fills_raw = hl.user_fills_by_time(wallet, _lookback_start_ms(lookback_days), now_ms(), aggregate_by_time=True)
-        if isinstance(fills_raw, list):
-            fills = [f for f in fills_raw if isinstance(f, dict)]
-    except Exception as exc:
-        log.warning('owned fills failed for %s: %s', wallet, exc)
+    if settings.owned_discovery_fetch_fills:
+        try:
+            fills_raw = hl.user_fills_by_time(wallet, _lookback_start_ms(lookback_days), now_ms(), aggregate_by_time=True)
+            if isinstance(fills_raw, list):
+                fills = [f for f in fills_raw if isinstance(f, dict)]
+        except Exception as exc:
+            log.warning('owned fills failed for %s: %s', wallet, exc)
 
     score_row = wallet_score(wallet, state, portfolio)
     summary = extract_margin_summary(state)
@@ -314,9 +320,10 @@ def refresh_owned_wallet(wallet: str, lookback_days: int | None = None) -> dict[
     return {'wallet': wallet, 'score': score_row.get('score'), 'qualifies': qualifies, **fill_summary}
 
 
-def refresh_owned_wallet_metrics(limit: int | None = None) -> dict[str, Any]:
+def refresh_owned_wallet_metrics(limit: int | None = None, max_seconds: int | None = None) -> dict[str, Any]:
     settings = get_settings()
     limit = int(limit or settings.owned_discovery_refresh_limit)
+    max_seconds = int(max_seconds or settings.owned_refresh_max_seconds)
     with engine.begin() as conn:
         ensure_owned_tables(conn)
         rows = conn.execute(text('''
@@ -333,19 +340,36 @@ def refresh_owned_wallet_metrics(limit: int | None = None) -> dict[str, Any]:
     wallets = [r[0].lower() for r in rows if is_address(r[0])]
     ok = 0
     errors: list[str] = []
+    stopped_due_to_time = False
     started = time.time()
     for i, wallet in enumerate(wallets, start=1):
-        log.info('Owned wallet metrics %s/%s %s', i, len(wallets), wallet)
+        elapsed = time.time() - started
+        if max_seconds > 0 and elapsed >= max_seconds:
+            stopped_due_to_time = True
+            log.warning('Owned wallet metrics stopped at %s/%s after %.1fs max_seconds=%s', i - 1, len(wallets), elapsed, max_seconds)
+            break
+        log.info('Owned wallet metrics %s/%s start %s', i, len(wallets), wallet)
+        wallet_started = time.time()
         try:
             refresh_owned_wallet(wallet)
             ok += 1
+            log.info('Owned wallet metrics %s/%s done %s %.1fs', i, len(wallets), wallet, time.time() - wallet_started)
         except Exception as exc:
             log.exception('owned wallet refresh failed %s', wallet)
             errors.append(f'{wallet}: {str(exc)[:160]}')
         time.sleep(max(0.0, float(settings.owned_discovery_request_delay_seconds)))
+    status = 'ok' if not errors and not stopped_due_to_time else 'partial'
+    elapsed_total = round(time.time() - started, 1)
     with engine.begin() as conn:
-        insert_run(conn, 'owned_wallet_metrics', 'ok' if not errors else 'partial', f'ok={ok}; errors={len(errors)}; elapsed={time.time()-started:.1f}s')
-    return {'wallets_checked': len(wallets), 'wallets_ok': ok, 'errors': errors[:10], 'elapsed_seconds': round(time.time() - started, 1)}
+        insert_run(conn, 'owned_wallet_metrics', status, f'ok={ok}; errors={len(errors)}; stopped_due_to_time={stopped_due_to_time}; elapsed={elapsed_total:.1f}s')
+    return {
+        'wallets_requested': len(wallets),
+        'wallets_checked': ok + len(errors),
+        'wallets_ok': ok,
+        'errors': errors[:10],
+        'stopped_due_to_time': stopped_due_to_time,
+        'elapsed_seconds': elapsed_total,
+    }
 
 
 def select_owned_qualified_wallets(limit: int | None = None) -> dict[str, Any]:
@@ -387,21 +411,52 @@ def select_owned_qualified_wallets(limit: int | None = None) -> dict[str, Any]:
     return {'status': 'ok', 'qualified': len(qualified), 'message': f'active_owned_wallets={len(qualified)}'}
 
 
-def owned_wallet_refresh(run_collection: bool = True) -> dict[str, Any]:
-    """Nansen-free daily refresh for the live product."""
-    seeded = seed_owned_candidates()
-    metrics = refresh_owned_wallet_metrics()
-    selected = select_owned_qualified_wallets()
-    collection = collect_once() if run_collection else None
-    status = 'ok' if selected.get('status') == 'ok' else 'partial'
-    with engine.begin() as conn:
-        insert_run(conn, 'owned_wallet_refresh', status, f'seeded={seeded}; metrics_ok={metrics.get("wallets_ok")}; {selected.get("message")}')
-    return {
-        'status': status,
-        'source': 'hyperliquid_native',
-        'nansen_used': False,
-        'seeded_or_existing_candidates': seeded,
-        'metrics': metrics,
-        'selected': selected,
-        'collection': collection,
-    }
+def owned_wallet_refresh(run_collection: bool | None = None) -> dict[str, Any]:
+    """Nansen-free scheduled refresh for the live product.
+
+    This job is deliberately lightweight. Live dashboard accuracy comes from
+    hwt-live-events and hwt-collector-live-10s; this cron only refreshes owned
+    ranking metrics/cohort selection. A Postgres advisory lock prevents two
+    Render/manual cron runs from overlapping.
+    """
+    settings = get_settings()
+    should_collect = settings.owned_refresh_run_collection if run_collection is None else bool(run_collection)
+
+    lock_conn = engine.connect()
+    try:
+        got_lock = bool(lock_conn.execute(text('SELECT pg_try_advisory_lock(5525012026)')).scalar())
+        if not got_lock:
+            with engine.begin() as conn:
+                insert_run(conn, 'owned_wallet_refresh', 'skipped', 'another owned wallet refresh is already running')
+            return {
+                'status': 'skipped',
+                'source': 'hyperliquid_native',
+                'nansen_used': False,
+                'message': 'another owned wallet refresh is already running',
+            }
+
+        seeded = seed_owned_candidates()
+        metrics = refresh_owned_wallet_metrics(
+            limit=min(int(settings.owned_discovery_refresh_limit), int(settings.owned_refresh_limit)),
+            max_seconds=int(settings.owned_refresh_max_seconds),
+        )
+        selected = select_owned_qualified_wallets()
+        collection = collect_once() if should_collect else None
+        status = 'ok' if selected.get('status') == 'ok' and not metrics.get('stopped_due_to_time') else 'partial'
+        with engine.begin() as conn:
+            insert_run(conn, 'owned_wallet_refresh', status, f'seeded={seeded}; metrics_ok={metrics.get("wallets_ok")}; {selected.get("message")}')
+        return {
+            'status': status,
+            'source': 'hyperliquid_native',
+            'nansen_used': False,
+            'seeded_or_existing_candidates': seeded,
+            'metrics': metrics,
+            'selected': selected,
+            'collection': collection,
+        }
+    finally:
+        try:
+            lock_conn.execute(text('SELECT pg_advisory_unlock(5525012026)'))
+        except Exception:
+            pass
+        lock_conn.close()
