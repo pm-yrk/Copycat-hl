@@ -82,6 +82,22 @@ function displaySignalPct(row: any) {
   const v = displaySignalValue(row) * 100
   return `${Math.round(v)}%`
 }
+
+function displaySignalMagnitudePct(row: any) {
+  return `${Math.round(Math.abs(displaySignalValue(row)) * 100)}%`
+}
+function displaySignalDirection(row: any) {
+  const value = displaySignalValue(row)
+  if (value > 0) return 'Long'
+  if (value < 0) return 'Short'
+  return 'Neutral'
+}
+function signalConvictionParts(row: any) {
+  const strength = Math.abs(displaySignalValue(row))
+  const net = Math.abs(Number(row?.net_value_usd || 0))
+  const gross = Number(row?.value_long_usd || 0) + Number(row?.value_short_usd || 0)
+  return { strength, net, gross }
+}
 function cls(n: any) { return Number(n) >= 0 ? 'positive' : 'negative' }
 function flowRead(netValueFlowUsd: any) {
   const n = Number(netValueFlowUsd || 0)
@@ -306,6 +322,15 @@ function sorterValue(row: any, key: string) {
 function sortedRows(rows: any[], sort: SortState) {
   const dir = sort.dir === 'desc' ? -1 : 1
   return [...(rows || [])].sort((a, b) => {
+    if (sort.key === 'conviction') {
+      const av = signalConvictionParts(a)
+      const bv = signalConvictionParts(b)
+      const byStrength = av.strength - bv.strength
+      if (Math.abs(byStrength) > 0.000001) return byStrength * dir
+      const byNet = av.net - bv.net
+      if (Math.abs(byNet) > 0.01) return byNet * dir
+      return (av.gross - bv.gross) * dir
+    }
     const av = sorterValue(a, sort.key), bv = sorterValue(b, sort.key)
     if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * dir
     return String(av).localeCompare(String(bv)) * dir
@@ -327,7 +352,7 @@ export default function Dashboard() {
   const [showAllOrders, setShowAllOrders] = useState(false)
   const [icons, setIcons] = useState<Record<string, string>>({})
   const [err, setErr] = useState('')
-  const [signalSort, setSignalSort] = useState<SortState>({ key: 'signal', dir: 'desc' })
+  const [signalSort, setSignalSort] = useState<SortState>({ key: 'conviction', dir: 'desc' })
   const [flowSortState, setFlowSortState] = useState<SortState>({ key: 'net_value_flow_usd', dir: 'desc' })
 
   const fullInFlight = useRef(false)
@@ -524,11 +549,11 @@ export default function Dashboard() {
 
     <section className="cc-table-grid">
       <div className="cc-card cc-table-card">
-        <div className="cc-panel-title"><h3>Asset signal board</h3><span>value-weighted, not wallet-count only</span></div>
+        <div className="cc-panel-title"><h3>Asset signal board</h3><span>clearest long/short conviction first</span></div>
         <div className="cc-scroll-table cc-scroll-y">
           <table className="cc-signal-table">
-            <thead><tr><th>#</th><SortTh label="Asset" sortKey="asset" sort={signalSort} setSort={setSignalSort} /><SortTh label="Signal" sortKey="signal" sort={signalSort} setSort={setSignalSort} /><SortTh label="Confidence" sortKey="confidence" sort={signalSort} setSort={setSignalSort} /><SortTh label="Wallets" sortKey="wallets" sort={signalSort} setSort={setSignalSort} /><SortTh label="Value L/S" sortKey="value_ls" sort={signalSort} setSort={setSignalSort} /><SortTh label="Net value" sortKey="net_value_usd" sort={signalSort} setSort={setSignalSort} /><SortTh label="% total value" sortKey="pct_total" sort={signalSort} setSort={setSignalSort} /></tr></thead>
-            <tbody>{sortedSignals.map((r, i) => <tr key={`${r.coin}-${i}`}><td>{i + 1}</td><td><span className="cc-asset-cell"><TokenLogo coin={r.coin} icons={icons} /><b>{displayToken(r.coin)}</b></span></td><td className={cls(displaySignalValue(r))}>{displaySignalPct(r)}</td><td><span className={`cc-confidence ${String(r.confidence).toLowerCase()}`}>{r.confidence}</span></td><td>{r.wallets_long} long / {r.wallets_short} short</td><td>{money(r.value_long_usd)} / {money(r.value_short_usd)}</td><td className={cls(r.net_value_usd)}>{money(r.net_value_usd)}</td><td>{pct(r.value_long_pct_total)} long / {pct(r.value_short_pct_total)} short</td></tr>)}</tbody>
+            <thead><tr><th>#</th><SortTh label="Asset" sortKey="asset" sort={signalSort} setSort={setSignalSort} /><SortTh label="Signal" sortKey="conviction" sort={signalSort} setSort={setSignalSort} /><SortTh label="Confidence" sortKey="confidence" sort={signalSort} setSort={setSignalSort} /><SortTh label="Wallets" sortKey="wallets" sort={signalSort} setSort={setSignalSort} /><SortTh label="Value L/S" sortKey="value_ls" sort={signalSort} setSort={setSignalSort} /><SortTh label="Net value" sortKey="net_value_usd" sort={signalSort} setSort={setSignalSort} /><SortTh label="% total value" sortKey="pct_total" sort={signalSort} setSort={setSignalSort} /></tr></thead>
+            <tbody>{sortedSignals.map((r, i) => <tr key={`${r.coin}-${i}`}><td>{i + 1}</td><td><span className="cc-asset-cell"><TokenLogo coin={r.coin} icons={icons} /><b>{displayToken(r.coin)}</b></span></td><td className={cls(displaySignalValue(r))}><span className="cc-signal-pill">{displaySignalMagnitudePct(r)} {displaySignalDirection(r)}</span></td><td><span className={`cc-confidence ${String(r.confidence).toLowerCase()}`}>{r.confidence}</span></td><td>{r.wallets_long} long / {r.wallets_short} short</td><td>{money(r.value_long_usd)} / {money(r.value_short_usd)}</td><td className={cls(r.net_value_usd)}>{money(r.net_value_usd)}</td><td>{pct(r.value_long_pct_total)} long / {pct(r.value_short_pct_total)} short</td></tr>)}</tbody>
           </table>
         </div>
       </div>

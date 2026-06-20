@@ -2555,3 +2555,8 @@ html[data-theme='light'] .cc-footer-main small { color: #6b4b12 !important; }
   .cc-footer-main { max-width: 100%; }
   .cc-warning-banner .cc-footer-meta { margin-left: 0; }
 }
+
+.cc-signal-pill {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
