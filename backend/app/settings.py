@@ -59,6 +59,14 @@ class Settings(BaseSettings):
     owned_refresh_limit: int = 75
     owned_refresh_max_seconds: int = 600
     owned_refresh_run_collection: bool = False
+    # Separate deep scanner: expands/scans the known Hyperliquid wallet universe
+    # without blocking the live dashboard or daily cohort refresh.
+    owned_scanner_batch_size: int = 250
+    owned_scanner_max_seconds: int = 900
+    owned_scanner_sleep_seconds: int = 3600
+    # Do not claim \"top 50 on all Hyperliquid\" until enough wallets have
+    # been indexed by the owned scanner. Dashboard wording uses this guard.
+    owned_top_claim_min_indexed_wallets: int = 10000
     owned_discovery_fetch_fills: bool = False
     owned_discovery_min_account_value_usd: float = 50_000
     owned_discovery_min_30d_pnl_usd: float = 1_000

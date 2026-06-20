@@ -83,6 +83,28 @@ services:
       - key: LIVE_SIGNAL_MIN_COVERAGE_RATIO
         value: "0.8"
 
+  - type: worker
+    name: hwt-owned-wallet-scanner
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    dockerCommand: "python -m app.jobs.owned_wallet_scanner"
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: WALLET_DISCOVERY_PROVIDER
+        value: "owned"
+      - key: OWNED_SCANNER_BATCH_SIZE
+        value: "250"
+      - key: OWNED_SCANNER_MAX_SECONDS
+        value: "900"
+      - key: OWNED_SCANNER_SLEEP_SECONDS
+        value: "3600"
+      - key: OWNED_TOP_CLAIM_MIN_INDEXED_WALLETS
+        value: "10000"
+      - key: OWNED_DISCOVERY_FETCH_FILLS
+        value: "false"
+
   - type: cron
     name: hwt-daily-refresh-midnight
     runtime: docker

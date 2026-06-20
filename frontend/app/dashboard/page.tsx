@@ -253,6 +253,7 @@ export default function Dashboard() {
   const [orders, setOrders] = useState<any[]>([])
   const [stagedOrders, setStagedOrders] = useState<any[]>([])
   const [insights, setInsights] = useState<any[]>([])
+  const [audit, setAudit] = useState<any>(null)
   const [showAllOrders, setShowAllOrders] = useState(false)
   const [icons, setIcons] = useState<Record<string, string>>({})
   const [err, setErr] = useState('')
@@ -288,6 +289,7 @@ export default function Dashboard() {
       setFlow(feed.flow || [])
       setOrders(feed.orders || [])
       setInsights(feed.insights || [])
+      setAudit(feed.audit || null)
     } catch (e: any) {
       failureCount.current += 1
       if (!hasLoaded.current && failureCount.current >= 3) {
@@ -354,6 +356,10 @@ export default function Dashboard() {
   const shortValue = signals.reduce((a, r) => a + Number(r.value_short_usd || 0), 0)
   const isLong = longValue >= shortValue
   const dataHealthy = summary.data_quality_status === 'healthy'
+  const claimReady = Boolean(summary.top_claim_ready)
+  const rankingScope = summary.ranking_scope_label || `Top ${summary.qualified_wallets || 0} Copycat-ranked wallets from ${summary.owned_wallets_indexed || 0} indexed wallets`
+  const liveCoverageText = `${summary.live_wallets || 0}/${summary.qualified_wallets || 0} live wallets`
+  const auditStatus = audit?.status || 'checking'
   const orderRows = orders.length ? orders : flow.slice(0, 12).map((r: any) => ({ coin: r.coin, side: Number(r.net_value_flow_usd) >= 0 ? 'Long' : 'Short', wallet_label: 'Wallet 0x1A…7F3B', wallet: r.wallet, ts_ms: summary.latest_signal_ts_ms }))
   const orderSignature = useMemo(() => orderRows.slice(0, 50).map(orderKey).join('|'), [orderRows])
   useEffect(() => {
@@ -403,7 +409,7 @@ export default function Dashboard() {
       <div className="cc-dashboard-copy">
         <p className="eyebrow live">Live smart-wallet tape</p>
         <h1>Market intelligence.<br /><em>Follow the best.</em></h1>
-        <p>Value-weighted positioning from qualified Hyperliquid wallets.<br />Built to show what serious traders are leaning into.</p>
+        <p>Value-weighted positioning from Copycat-ranked Hyperliquid wallets.<br />The ranking scope is shown live below for honest coverage.</p>
       </div>
       <div className="cc-bias-block"><span>Positioning bias</span><button className={`cc-bias-toggle ${isLong ? 'is-long' : 'is-short'}`}><i aria-hidden /><b>{isLong ? 'LONG' : 'SHORT'}</b></button></div>
       <aside className="cc-top-rail">
@@ -425,8 +431,14 @@ export default function Dashboard() {
 
     {err && <p className="notice gold">{err}</p>}
 
+    <section className="cc-truth-strip">
+      <div><small>Ranking scope</small><b>{rankingScope}</b><span>{claimReady ? 'Broad-index threshold met' : `Not claiming all-Hyperliquid top 50 yet`}</span></div>
+      <div><small>Live coverage</small><b>{liveCoverageText}</b><span>{summary.live_coverage_mode || 'snapshot'} · {summary.snapshot_wallets || 0} fallback wallets</span></div>
+      <div><small>Sync audit</small><b className={`cc-audit-${auditStatus}`}>{auditStatus}</b><span>{audit?.message || 'Checking dashboard consistency'}</span></div>
+    </section>
+
     <section className="cc-kpi-grid">
-      <article><small>Qualified wallets</small><RollingInteger value={summary.qualified_wallets || 0} /><span>ranked daily</span></article>
+      <article><small>Copycat-ranked wallets</small><RollingInteger value={summary.qualified_wallets || 0} /><span>{summary.owned_wallets_indexed ? `${summary.owned_wallets_indexed} wallets indexed` : 'owned ranking universe'}</span></article>
       <article className="cc-tracked-value-card"><small>Tracked account value</small><RollingMoney value={summary.tracked_account_value_usd} /><span>{summary.live_state_active ? 'live wallet state' : 'latest snapshots'}</span>{summary.largest_account_value_usd ? <em>Largest account: {money(summary.largest_account_value_usd)}</em> : null}</article>
       <article><small>Open position value</small><RollingMoney value={summary.tracked_open_position_value_usd} /><span>{summary.open_positions || 0} live positions</span></article>
       <article><small>Assets with signals</small><RollingInteger value={summary.assets_with_signals || 0} /><span>{summary.markets_monitored ? `${summary.markets_monitored} markets monitored` : 'cross-asset breadth'}</span></article>
@@ -460,6 +472,6 @@ export default function Dashboard() {
       </div>
     </section>
 
-    <footer className="cc-warning-banner"><span className="cc-shield" aria-hidden><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5.2c0 4.5-2.7 8.4-7 9.8-4.3-1.4-7-5.3-7-9.8V6l7-3z"/><path d="M9.2 12.1l1.7 1.7 3.9-4.1"/></svg></span><strong>Market intelligence only.</strong><em>Not financial advice. Crypto trading can result in loss.</em><div className={`cc-footer-meta ${dataHealthy ? 'healthy' : 'checking'}`}><span className="cc-footer-quality"><span className="cc-pulse-dot" /><b>{dataHealthy ? 'Data quality healthy' : 'Data quality checking'}</b></span><small>Signal refresh: {fmtTime(summary.latest_signal_ts_ms)} UTC · {summary.live_state_active ? `Live state: ${fmtTime(summary.latest_live_state_ts_ms)} UTC` : 'Snapshot mode'} · Page checks every 1s</small></div></footer>
+    <footer className="cc-warning-banner"><span className="cc-shield" aria-hidden><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5.2c0 4.5-2.7 8.4-7 9.8-4.3-1.4-7-5.3-7-9.8V6l7-3z"/><path d="M9.2 12.1l1.7 1.7 3.9-4.1"/></svg></span><strong>Market intelligence only.</strong><em>Tracking Copycat-ranked wallets from our indexed Hyperliquid universe. Not financial advice.</em><div className={`cc-footer-meta ${dataHealthy ? 'healthy' : 'checking'}`}><span className="cc-footer-quality"><span className="cc-pulse-dot" /><b>{dataHealthy ? 'Data quality healthy' : 'Data quality checking'}</b></span><small>Signal refresh: {fmtTime(summary.latest_signal_ts_ms)} UTC · {summary.live_state_active ? `Live state: ${fmtTime(summary.latest_live_state_ts_ms)} UTC` : 'Snapshot mode'} · Page checks every 1s</small></div></footer>
   </main></>
 }

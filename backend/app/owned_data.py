@@ -108,6 +108,15 @@ def ensure_owned_tables(conn) -> None:
     conn.execute(text('CREATE INDEX IF NOT EXISTS idx_owned_wallet_metric_history_wallet_ts ON owned_wallet_metric_history(wallet, ts_ms DESC)'))
     conn.execute(text('CREATE INDEX IF NOT EXISTS idx_owned_wallet_metric_history_ts ON owned_wallet_metric_history(ts_ms DESC)'))
     conn.execute(text('CREATE INDEX IF NOT EXISTS idx_owned_wallet_metric_history_score ON owned_wallet_metric_history(ts_ms DESC, qualifies, score DESC)'))
+    conn.execute(text('''
+        CREATE TABLE IF NOT EXISTS owned_wallet_scan_state (
+          key text PRIMARY KEY,
+          last_started_at timestamptz,
+          last_finished_at timestamptz,
+          last_status text,
+          metadata_json jsonb NOT NULL DEFAULT '{}'::jsonb
+        )
+    '''))
 
 
 def seed_owned_candidates() -> int:
@@ -320,6 +329,191 @@ def refresh_owned_wallet(wallet: str, lookback_days: int | None = None) -> dict[
     return {'wallet': wallet, 'score': score_row.get('score'), 'qualifies': qualifies, **fill_summary}
 
 
+
+def owned_universe_stats() -> dict[str, Any]:
+    """Return truth-in-labeling stats for the owned Hyperliquid wallet universe."""
+    settings = get_settings()
+    min_claim = int(settings.owned_top_claim_min_indexed_wallets or 10000)
+    with engine.begin() as conn:
+        # Read-only and intentionally no schema migration here. This function is
+        # called by hot dashboard endpoints, so it must never take DDL locks.
+        try:
+            candidates = conn.execute(text('''
+                SELECT count(DISTINCT lower(wallet))
+                FROM wallet_candidates
+                WHERE active=true AND wallet ~* '^0x[0-9a-f]{40}$'
+            ''')).scalar() or 0
+        except Exception:
+            candidates = 0
+        try:
+            active = conn.execute(text("SELECT count(*) FROM qualified_wallets WHERE status='active'")).scalar() or 0
+        except Exception:
+            active = 0
+        try:
+            metrics = conn.execute(text('''
+                SELECT count(*) AS indexed,
+                       count(*) FILTER (WHERE qualifies=true) AS qualified,
+                       max(ts_ms) AS latest_metric_ts_ms
+                FROM owned_wallet_metrics
+            ''')).mappings().first() or {}
+        except Exception:
+            metrics = {'indexed': 0, 'qualified': 0, 'latest_metric_ts_ms': None}
+        try:
+            recent_scanner = conn.execute(text('''
+                SELECT ts_ms, status, message
+                FROM collector_runs
+                WHERE run_type IN ('owned_wallet_scanner','owned_wallet_scanner_batch','owned_wallet_metrics','owned_wallet_refresh')
+                ORDER BY ts_ms DESC
+                LIMIT 1
+            ''')).mappings().first() or {}
+        except Exception:
+            recent_scanner = {}
+    indexed = int(metrics.get('indexed') or 0)
+    qualified = int(metrics.get('qualified') or 0)
+    universe_count = max(int(candidates or 0), indexed)
+    top_claim_ready = indexed >= min_claim
+    scope = f"Top {int(active or 0)} Copycat-ranked wallets from {indexed:,} indexed / {universe_count:,} known Hyperliquid wallets"
+    guarded_claim = 'Top 50 most profitable wallets on Hyperliquid' if top_claim_ready else scope
+    return {
+        'source': 'hyperliquid_native',
+        'nansen_required': False,
+        'known_wallet_candidates': universe_count,
+        'owned_wallets_indexed': indexed,
+        'owned_wallets_qualified': qualified,
+        'active_copycat_ranked_wallets': int(active or 0),
+        'top_claim_min_indexed_wallets': min_claim,
+        'top_claim_ready': bool(top_claim_ready),
+        'ranking_scope_label': scope,
+        'guarded_claim_label': guarded_claim,
+        'latest_metric_ts_ms': metrics.get('latest_metric_ts_ms'),
+        'latest_scanner_run': dict(recent_scanner or {}),
+    }
+
+
+def _refresh_owned_wallet_list(wallets: list[str], max_seconds: int, run_type: str = 'owned_wallet_metrics') -> dict[str, Any]:
+    settings = get_settings()
+    ok = 0
+    errors: list[str] = []
+    stopped_due_to_time = False
+    started = time.time()
+    clean_wallets: list[str] = []
+    seen: set[str] = set()
+    for w in wallets:
+        wallet = str(w or '').lower()
+        if is_address(wallet) and wallet not in seen:
+            clean_wallets.append(wallet)
+            seen.add(wallet)
+    for i, wallet in enumerate(clean_wallets, start=1):
+        elapsed = time.time() - started
+        if max_seconds > 0 and elapsed >= max_seconds:
+            stopped_due_to_time = True
+            log.warning('%s stopped at %s/%s after %.1fs max_seconds=%s', run_type, i - 1, len(clean_wallets), elapsed, max_seconds)
+            break
+        log.info('%s %s/%s start %s', run_type, i, len(clean_wallets), wallet)
+        wallet_started = time.time()
+        try:
+            refresh_owned_wallet(wallet)
+            ok += 1
+            log.info('%s %s/%s done %s %.1fs', run_type, i, len(clean_wallets), wallet, time.time() - wallet_started)
+        except Exception as exc:
+            log.exception('%s failed %s', run_type, wallet)
+            errors.append(f'{wallet}: {str(exc)[:160]}')
+        time.sleep(max(0.0, float(settings.owned_discovery_request_delay_seconds)))
+    status = 'ok' if not errors and not stopped_due_to_time else 'partial'
+    elapsed_total = round(time.time() - started, 1)
+    with engine.begin() as conn:
+        insert_run(conn, run_type, status, f'ok={ok}; errors={len(errors)}; stopped_due_to_time={stopped_due_to_time}; elapsed={elapsed_total:.1f}s')
+    return {
+        'wallets_requested': len(clean_wallets),
+        'wallets_checked': ok + len(errors),
+        'wallets_ok': ok,
+        'errors': errors[:10],
+        'stopped_due_to_time': stopped_due_to_time,
+        'elapsed_seconds': elapsed_total,
+    }
+
+
+def refresh_owned_scanner_batch(limit: int | None = None, max_seconds: int | None = None) -> dict[str, Any]:
+    """Deep scanner for the owned universe.
+
+    This is intentionally separate from the daily refresh. It scans the known
+    candidate universe in least-recently-indexed order and slowly builds the
+    ranking database without blocking the live product.
+    """
+    settings = get_settings()
+    limit = int(limit or settings.owned_scanner_batch_size)
+    max_seconds = int(max_seconds or settings.owned_scanner_max_seconds)
+    lock_conn = engine.connect()
+    try:
+        got_lock = bool(lock_conn.execute(text('SELECT pg_try_advisory_lock(5525012027)')).scalar())
+        if not got_lock:
+            with engine.begin() as conn:
+                insert_run(conn, 'owned_wallet_scanner', 'skipped', 'another owned scanner batch is already running')
+            return {'status': 'skipped', 'source': 'hyperliquid_native', 'nansen_used': False, 'message': 'another owned scanner batch is already running'}
+        seeded = seed_owned_candidates()
+        with engine.begin() as conn:
+            ensure_owned_tables(conn)
+            conn.execute(text('''
+                INSERT INTO owned_wallet_scan_state(key,last_started_at,last_status,metadata_json)
+                VALUES('main', now(), 'running', jsonb_build_object('limit', :limit, 'max_seconds', :max_seconds))
+                ON CONFLICT(key) DO UPDATE SET
+                  last_started_at=excluded.last_started_at,
+                  last_status=excluded.last_status,
+                  metadata_json=excluded.metadata_json
+            '''), {'limit': limit, 'max_seconds': max_seconds})
+            rows = conn.execute(text('''
+                WITH universe AS (
+                  SELECT lower(wallet) AS wallet, max(discovered_at) AS discovered_at
+                  FROM wallet_candidates
+                  WHERE active=true AND wallet ~* '^0x[0-9a-f]{40}$'
+                  GROUP BY lower(wallet)
+                  UNION
+                  SELECT lower(wallet) AS wallet, max(qualified_at) AS discovered_at
+                  FROM qualified_wallets
+                  WHERE wallet ~* '^0x[0-9a-f]{40}$'
+                  GROUP BY lower(wallet)
+                ), deduped AS (
+                  SELECT wallet, max(discovered_at) AS discovered_at
+                  FROM universe
+                  GROUP BY wallet
+                )
+                SELECT d.wallet
+                FROM deduped d
+                LEFT JOIN owned_wallet_metrics m ON lower(m.wallet)=d.wallet
+                ORDER BY m.ts_ms ASC NULLS FIRST, d.discovered_at DESC NULLS LAST
+                LIMIT :limit
+            '''), {'limit': limit}).fetchall()
+        wallets = [r[0] for r in rows if is_address(r[0])]
+        metrics = _refresh_owned_wallet_list(wallets, max_seconds=max_seconds, run_type='owned_wallet_scanner')
+        selected = select_owned_qualified_wallets() if metrics.get('wallets_ok', 0) else {'status': 'skipped', 'message': 'no wallets refreshed'}
+        stats = owned_universe_stats()
+        status = 'ok' if metrics.get('wallets_ok', 0) and not metrics.get('stopped_due_to_time') else 'partial'
+        with engine.begin() as conn:
+            conn.execute(text('''
+                INSERT INTO owned_wallet_scan_state(key,last_finished_at,last_status,metadata_json)
+                VALUES('main', now(), :status, CAST(:metadata AS jsonb))
+                ON CONFLICT(key) DO UPDATE SET
+                  last_finished_at=excluded.last_finished_at,
+                  last_status=excluded.last_status,
+                  metadata_json=excluded.metadata_json
+            '''), {'status': status, 'metadata': json.dumps({'metrics': metrics, 'selected': selected, 'stats': stats})})
+            insert_run(conn, 'owned_wallet_scanner_batch', status, f'seeded={seeded}; scanned={metrics.get("wallets_ok")}; indexed={stats.get("owned_wallets_indexed")}')
+        return {
+            'status': status,
+            'source': 'hyperliquid_native',
+            'nansen_used': False,
+            'seeded_or_existing_candidates': seeded,
+            'metrics': metrics,
+            'selected': selected,
+            'universe': stats,
+        }
+    finally:
+        try:
+            lock_conn.execute(text('SELECT pg_advisory_unlock(5525012027)'))
+        except Exception:
+            pass
+        lock_conn.close()
+
 def refresh_owned_wallet_metrics(limit: int | None = None, max_seconds: int | None = None) -> dict[str, Any]:
     settings = get_settings()
     limit = int(limit or settings.owned_discovery_refresh_limit)
@@ -338,38 +532,7 @@ def refresh_owned_wallet_metrics(limit: int | None = None, max_seconds: int | No
             LIMIT :limit
         '''), {'limit': limit}).fetchall()
     wallets = [r[0].lower() for r in rows if is_address(r[0])]
-    ok = 0
-    errors: list[str] = []
-    stopped_due_to_time = False
-    started = time.time()
-    for i, wallet in enumerate(wallets, start=1):
-        elapsed = time.time() - started
-        if max_seconds > 0 and elapsed >= max_seconds:
-            stopped_due_to_time = True
-            log.warning('Owned wallet metrics stopped at %s/%s after %.1fs max_seconds=%s', i - 1, len(wallets), elapsed, max_seconds)
-            break
-        log.info('Owned wallet metrics %s/%s start %s', i, len(wallets), wallet)
-        wallet_started = time.time()
-        try:
-            refresh_owned_wallet(wallet)
-            ok += 1
-            log.info('Owned wallet metrics %s/%s done %s %.1fs', i, len(wallets), wallet, time.time() - wallet_started)
-        except Exception as exc:
-            log.exception('owned wallet refresh failed %s', wallet)
-            errors.append(f'{wallet}: {str(exc)[:160]}')
-        time.sleep(max(0.0, float(settings.owned_discovery_request_delay_seconds)))
-    status = 'ok' if not errors and not stopped_due_to_time else 'partial'
-    elapsed_total = round(time.time() - started, 1)
-    with engine.begin() as conn:
-        insert_run(conn, 'owned_wallet_metrics', status, f'ok={ok}; errors={len(errors)}; stopped_due_to_time={stopped_due_to_time}; elapsed={elapsed_total:.1f}s')
-    return {
-        'wallets_requested': len(wallets),
-        'wallets_checked': ok + len(errors),
-        'wallets_ok': ok,
-        'errors': errors[:10],
-        'stopped_due_to_time': stopped_due_to_time,
-        'elapsed_seconds': elapsed_total,
-    }
+    return _refresh_owned_wallet_list(wallets, max_seconds=max_seconds, run_type='owned_wallet_metrics')
 
 
 def select_owned_qualified_wallets(limit: int | None = None) -> dict[str, Any]:

@@ -265,6 +265,8 @@ async def require_copycat_api_key(
 
 def data_api_status() -> dict[str, Any]:
     ensure_copycat_data_api()
+    from .owned_data import owned_universe_stats
+    truth = owned_universe_stats()
     owned = fetch_one('''
         SELECT count(*) AS wallets,
                count(*) FILTER (WHERE qualifies=true) AS qualified,
@@ -281,8 +283,13 @@ def data_api_status() -> dict[str, Any]:
         'source': 'hyperliquid_native',
         'nansen_required': False,
         'tracked_active_wallets': int(active.get('n') or 0),
+        'known_wallet_candidates': int(truth.get('known_wallet_candidates') or 0),
         'owned_wallets_indexed': int(owned.get('wallets') or 0),
         'owned_wallets_qualified': int(owned.get('qualified') or 0),
+        'top_claim_ready': bool(truth.get('top_claim_ready')),
+        'top_claim_min_indexed_wallets': int(truth.get('top_claim_min_indexed_wallets') or 0),
+        'ranking_scope_label': truth.get('ranking_scope_label'),
+        'guarded_claim_label': truth.get('guarded_claim_label'),
         'stored_owned_fills': int(fills.get('fills') or 0),
         'stored_live_events': int(events.get('events') or 0),
         'latest_metric_ts_ms': owned.get('latest_metric_ts_ms'),

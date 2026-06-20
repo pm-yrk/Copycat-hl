@@ -321,3 +321,11 @@ CREATE TABLE IF NOT EXISTS copycat_historical_sources (
   metadata_json jsonb NOT NULL DEFAULT '{}'::jsonb
 );
 CREATE INDEX IF NOT EXISTS idx_copycat_historical_sources_active ON copycat_historical_sources(active);
+
+CREATE TABLE IF NOT EXISTS owned_wallet_scan_state (
+  key text PRIMARY KEY,
+  last_started_at timestamptz,
+  last_finished_at timestamptz,
+  last_status text,
+  metadata_json jsonb NOT NULL DEFAULT '{}'::jsonb
+);

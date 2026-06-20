@@ -18,6 +18,7 @@ from sqlalchemy import text
 from .auth import get_current_user, require_active_subscription
 from .db import fetch_all, fetch_one, execute, engine
 from .settings import get_settings
+from .owned_data import owned_universe_stats
 from .copycat_data_api import (
     data_api_exposures,
     ensure_copycat_data_api,
@@ -121,6 +122,8 @@ _LIVE_SIGNAL_ROWS_CACHE_TTL_SECONDS = 8.0
 _DASHBOARD_TICK_CACHE: dict[str, Any] = {'ts': 0.0, 'data': None}
 _DASHBOARD_TICK_LOCK = threading.Lock()
 _DASHBOARD_TICK_TTL_SECONDS = 0.75
+_DASHBOARD_TRUTH_CACHE: dict[str, Any] = {'ts': 0.0, 'data': None}
+_DASHBOARD_TRUTH_CACHE_TTL_SECONDS = 30.0
 
 
 def _public_dashboard_user() -> dict[str, Any]:
@@ -224,9 +227,12 @@ def dashboard_tick():
         if cached and now - float(_DASHBOARD_TICK_CACHE.get('ts') or 0) < _DASHBOARD_TICK_TTL_SECONDS:
             return cached
         public_user = _public_dashboard_user()
+        summary_row = _compact_summary(summary(public_user))
+        order_rows = recent_orders(limit=50, user=public_user)
         data = {
-            'summary': _compact_summary(summary(public_user)),
-            'orders': [_compact_order_row(r) for r in recent_orders(limit=50, user=public_user)],
+            'summary': summary_row,
+            'orders': [_compact_order_row(r) for r in order_rows],
+            'truth': _dashboard_truth_payload(summary_row),
             'server_time_ms': _now_ms(),
             'cache_ttl_ms': int(_DASHBOARD_TICK_TTL_SECONDS * 1000),
             'public_readonly': True,
@@ -267,13 +273,19 @@ def dashboard_feed():
             target_rows = targets(public_user)
             order_rows = recent_orders(limit=50, user=public_user)
             insight_result = insights(public_user)
+            compact_summary = _compact_summary(summary(public_user))
+            compact_signals = [_compact_signal_row(r) for r in signal_rows]
+            compact_flow = [_compact_flow_row(r) for r in flow_rows]
+            compact_orders = [_compact_order_row(r) for r in order_rows]
             feed = {
-                'summary': _compact_summary(summary(public_user)),
-                'signals': [_compact_signal_row(r) for r in signal_rows],
+                'summary': compact_summary,
+                'signals': compact_signals,
                 'targets': [_compact_target_row(r) for r in target_rows],
-                'flow': [_compact_flow_row(r) for r in flow_rows],
-                'orders': [_compact_order_row(r) for r in order_rows],
+                'flow': compact_flow,
+                'orders': compact_orders,
                 'insights': [_compact_insight(r) for r in ((insight_result.get('insights') if isinstance(insight_result, dict) else []) or [])],
+                'truth': _dashboard_truth_payload(compact_summary),
+                'audit': _dashboard_consistency_payload(compact_summary, compact_signals, compact_flow, compact_orders),
                 'server_time_ms': _now_ms(),
                 'cache_ttl_ms': int(_DASHBOARD_FEED_TTL_SECONDS * 1000),
                 'public_readonly': True,
@@ -291,6 +303,84 @@ def dashboard_feed():
                 stale['warning'] = 'Serving last good dashboard payload while the live feed reconnects.'
                 return stale
             raise
+
+
+def _dashboard_truth_payload(summary_row: dict[str, Any] | None = None) -> dict[str, Any]:
+    now = time.time()
+    cached = _DASHBOARD_TRUTH_CACHE.get('data')
+    if isinstance(cached, dict) and now - float(_DASHBOARD_TRUTH_CACHE.get('ts') or 0) < _DASHBOARD_TRUTH_CACHE_TTL_SECONDS:
+        truth = dict(cached)
+    else:
+        try:
+            truth = owned_universe_stats()
+        except Exception as exc:
+            truth = {
+                'source': 'hyperliquid_native',
+                'nansen_required': False,
+                'known_wallet_candidates': None,
+                'owned_wallets_indexed': None,
+                'top_claim_ready': False,
+                'ranking_scope_label': 'Copycat-ranked wallets from the indexed Hyperliquid universe',
+                'guarded_claim_label': 'Copycat-ranked wallets from the indexed Hyperliquid universe',
+                'error': str(exc)[:180],
+            }
+        _DASHBOARD_TRUTH_CACHE['ts'] = time.time()
+        _DASHBOARD_TRUTH_CACHE['data'] = dict(truth)
+    if summary_row:
+        truth['active_copycat_ranked_wallets'] = int(summary_row.get('qualified_wallets') or truth.get('active_copycat_ranked_wallets') or 0)
+        truth['live_wallets'] = int(summary_row.get('live_wallets') or 0)
+        truth['snapshot_wallets'] = int(summary_row.get('snapshot_wallets') or 0)
+        truth['markets_monitored'] = int(summary_row.get('markets_monitored') or 0)
+    return truth
+
+
+def _dashboard_consistency_payload(
+    summary_row: dict[str, Any] | None = None,
+    signal_rows: list[dict[str, Any]] | None = None,
+    flow_rows: list[dict[str, Any]] | None = None,
+    order_rows: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    summary_row = summary_row or _compact_summary(summary(_public_dashboard_user()))
+    signal_rows = signal_rows if signal_rows is not None else [_compact_signal_row(r) for r in signals(limit=500, user=_public_dashboard_user())]
+    flow_rows = flow_rows if flow_rows is not None else [_compact_flow_row(r) for r in flow(limit=500, user=_public_dashboard_user())]
+    order_rows = order_rows if order_rows is not None else [_compact_order_row(r) for r in recent_orders(limit=50, user=_public_dashboard_user())]
+    truth = _dashboard_truth_payload(summary_row)
+    active_wallets = int(summary_row.get('qualified_wallets') or 0)
+    live_wallets = int(summary_row.get('live_wallets') or 0)
+    snapshot_wallets = int(summary_row.get('snapshot_wallets') or 0)
+    min_live_wallets = _live_min_wallets(active_wallets) if active_wallets else 0
+    signal_assets = {_normalise_index_symbol(r.get('coin')) for r in signal_rows if r.get('coin')}
+    flow_assets = {_normalise_index_symbol(r.get('coin')) for r in flow_rows if r.get('coin')}
+    order_assets = {_normalise_index_symbol(r.get('coin')) for r in order_rows if r.get('coin')}
+    known_assets = signal_assets | flow_assets | set(_hl_asset_universe())
+    missing_order_assets = sorted(a for a in order_assets if a and a not in known_assets)
+    open_total = _safe_float(summary_row.get('tracked_open_position_value_usd'))
+    signal_total = sum(_safe_float(r.get('value_long_usd')) + _safe_float(r.get('value_short_usd')) for r in signal_rows)
+    checks = []
+    def add(name: str, ok: bool, detail: str, severity: str = 'error'):
+        checks.append({'name': name, 'status': 'pass' if ok else 'fail', 'severity': severity, 'detail': detail})
+    add('Nansen disabled for live path', truth.get('nansen_required') is False, 'source=hyperliquid_native')
+    add('Ranking label is scoped honestly', bool(truth.get('top_claim_ready')) or 'indexed' in str(truth.get('ranking_scope_label') or '').lower(), str(truth.get('ranking_scope_label') or ''))
+    add('Active cohort count', active_wallets == int(settings.qualified_wallet_limit or 50), f'{active_wallets}/{settings.qualified_wallet_limit}', 'warning')
+    add('Live wallet coverage', live_wallets >= min_live_wallets if active_wallets else False, f'{live_wallets}/{active_wallets} live, {snapshot_wallets} snapshot fallback, required={min_live_wallets}', 'warning')
+    add('Recent order assets mapped', not missing_order_assets, 'missing=' + ','.join(missing_order_assets[:12]) if missing_order_assets else 'all recent order assets exist in signal/flow/universe')
+    add('Open exposure represented', signal_total > 0 and open_total > 0, f'signal_gross={round(signal_total,2)}; open_total={round(open_total,2)}', 'warning')
+    errors = [c for c in checks if c['status'] == 'fail' and c.get('severity') == 'error']
+    warnings = [c for c in checks if c['status'] == 'fail' and c.get('severity') != 'error']
+    status = 'fail' if errors else 'warning' if warnings else 'pass'
+    return {
+        'status': status,
+        'message': 'Dashboard data is synced' if status == 'pass' else 'Dashboard data has warnings' if status == 'warning' else 'Dashboard data needs attention',
+        'checks': checks,
+        'truth': truth,
+        'missing_recent_order_assets': missing_order_assets,
+        'server_time_ms': _now_ms(),
+    }
+
+
+@app.get('/api/dashboard-consistency')
+def dashboard_consistency():
+    return _dashboard_consistency_payload()
 
 
 @app.get('/api/summary')
@@ -412,6 +502,7 @@ def summary(user: dict = Depends(require_active_subscription)):
         'open_positions': int(open_value['positions'] or 0),
         'assets_with_signals': int(assets['n'] or 0),
         'markets_monitored': len(_hl_asset_universe()),
+        **_dashboard_truth_payload(),
         'data_quality_status': 'healthy' if data_quality_ok else 'checking',
         'data_quality_age_seconds': collector_age_seconds,
         'data_quality_message': ('Live/hybrid Hyperliquid state active' if live_state_active else ('50-wallet snapshot healthy' if data_quality_ok else 'Waiting for a fresh completed collector snapshot')),
@@ -1633,7 +1724,10 @@ def _normalise_index_symbol(symbol: str) -> str:
     s = str(symbol or '').upper().strip()
     if s in ('USDC/CASH', 'USDCCASH', 'USDCASH', 'CASH', 'USD'):
         return 'USDC'
-    return ''.join(ch for ch in s if ch.isalnum())
+    # Preserve colon namespaces such as HIP-3/stock-style perps (for example
+    # xyz:MU). Removing the colon made recent-order assets visually mismatch
+    # with signal/flow boards.
+    return ''.join(ch for ch in s if ch.isalnum() or ch in (':', '-', '_'))
 
 
 def _ensure_index_table() -> None:
