@@ -409,7 +409,7 @@ export default function Dashboard() {
       <div className="cc-dashboard-copy">
         <p className="eyebrow live">Live smart-wallet tape</p>
         <h1>Market intelligence.<br /><em>Follow the best.</em></h1>
-        <p>Value-weighted positioning from Copycat-ranked Hyperliquid wallets.<br />The ranking scope is shown live below for honest coverage.</p>
+        <p>Value-weighted positioning from Copycat-ranked Hyperliquid wallets.<br />Honest ranking scope and sync status are shown in the footer.</p>
       </div>
       <div className="cc-bias-block"><span>Positioning bias</span><button className={`cc-bias-toggle ${isLong ? 'is-long' : 'is-short'}`}><i aria-hidden /><b>{isLong ? 'LONG' : 'SHORT'}</b></button></div>
       <aside className="cc-top-rail">
@@ -431,11 +431,6 @@ export default function Dashboard() {
 
     {err && <p className="notice gold">{err}</p>}
 
-    <section className="cc-truth-strip">
-      <div><small>Ranking scope</small><b>{rankingScope}</b><span>{claimReady ? 'Broad-index threshold met' : `Not claiming all-Hyperliquid top 50 yet`}</span></div>
-      <div><small>Live coverage</small><b>{liveCoverageText}</b><span>{summary.live_coverage_mode || 'snapshot'} · {summary.snapshot_wallets || 0} fallback wallets</span></div>
-      <div><small>Sync audit</small><b className={`cc-audit-${auditStatus}`}>{auditStatus}</b><span>{audit?.message || 'Checking dashboard consistency'}</span></div>
-    </section>
 
     <section className="cc-kpi-grid">
       <article><small>Copycat-ranked wallets</small><RollingInteger value={summary.qualified_wallets || 0} /><span>{summary.owned_wallets_indexed ? `${summary.owned_wallets_indexed} wallets indexed` : 'owned ranking universe'}</span></article>
@@ -472,6 +467,6 @@ export default function Dashboard() {
       </div>
     </section>
 
-    <footer className="cc-warning-banner"><span className="cc-shield" aria-hidden><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5.2c0 4.5-2.7 8.4-7 9.8-4.3-1.4-7-5.3-7-9.8V6l7-3z"/><path d="M9.2 12.1l1.7 1.7 3.9-4.1"/></svg></span><strong>Market intelligence only.</strong><em>Tracking Copycat-ranked wallets from our indexed Hyperliquid universe. Not financial advice.</em><div className={`cc-footer-meta ${dataHealthy ? 'healthy' : 'checking'}`}><span className="cc-footer-quality"><span className="cc-pulse-dot" /><b>{dataHealthy ? 'Data quality healthy' : 'Data quality checking'}</b></span><small>Signal refresh: {fmtTime(summary.latest_signal_ts_ms)} UTC · {summary.live_state_active ? `Live state: ${fmtTime(summary.latest_live_state_ts_ms)} UTC` : 'Snapshot mode'} · Page checks every 1s</small></div></footer>
+    <footer className="cc-warning-banner"><span className="cc-shield" aria-hidden><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5.2c0 4.5-2.7 8.4-7 9.8-4.3-1.4-7-5.3-7-9.8V6l7-3z"/><path d="M9.2 12.1l1.7 1.7 3.9-4.1"/></svg></span><div className="cc-footer-main"><strong>Market intelligence only.</strong><em>Not financial advice. {rankingScope}. {claimReady ? 'Broad-index threshold met.' : 'Not claiming all-Hyperliquid top 50 yet.'}</em><small>Live coverage: {liveCoverageText} · {summary.snapshot_wallets || 0} fallback · Sync: <b className={`cc-audit-${auditStatus}`}>{auditStatus}</b> · {audit?.message || 'Checking dashboard consistency'}</small></div><div className={`cc-footer-meta ${dataHealthy ? 'healthy' : 'checking'}`}><span className="cc-footer-quality"><span className="cc-pulse-dot" /><b>{dataHealthy ? 'Data quality healthy' : 'Data quality checking'}</b></span><small>Signal refresh: {fmtTime(summary.latest_signal_ts_ms)} UTC · {summary.live_state_active ? `Live state: ${fmtTime(summary.latest_live_state_ts_ms)} UTC` : 'Snapshot mode'} · Page checks every 1s</small></div></footer>
   </main></>
 }

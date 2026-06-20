@@ -2486,3 +2486,35 @@ html[data-theme='light'] .cc-truth-strip span { color: #6b5b38; }
 @media (max-width: 860px) {
   .cc-truth-strip { grid-template-columns: 1fr; width: min(100%, calc(100vw - 26px)); }
 }
+
+
+/* --- Truth footer cleanup patch --- */
+.cc-truth-strip { display: none !important; }
+.cc-footer-main {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  max-width: 760px;
+}
+.cc-footer-main strong,
+.cc-footer-main em,
+.cc-footer-main small { margin: 0; }
+.cc-footer-main small {
+  color: #e6c994;
+  font-size: 11px;
+  line-height: 1.35;
+}
+.cc-warning-banner {
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.cc-warning-banner .cc-footer-meta {
+  margin-left: auto;
+}
+html[data-theme='light'] .cc-footer-main small { color: #6b4b12 !important; }
+@media (max-width: 900px) {
+  .cc-footer-main { max-width: 100%; }
+  .cc-warning-banner .cc-footer-meta { margin-left: 0; }
+}
