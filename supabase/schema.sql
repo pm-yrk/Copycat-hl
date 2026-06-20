@@ -150,3 +150,42 @@ CREATE TABLE IF NOT EXISTS collector_runs (
   message text
 );
 CREATE INDEX IF NOT EXISTS idx_collector_runs_ts ON collector_runs(ts_ms DESC);
+
+CREATE TABLE IF NOT EXISTS strategy_index_points (
+  id bigserial PRIMARY KEY,
+  ts_ms bigint NOT NULL UNIQUE,
+  ts timestamptz NOT NULL DEFAULT now(),
+  copycat_nav double precision NOT NULL,
+  btc_nav double precision NOT NULL,
+  eth_nav double precision NOT NULL,
+  spx_nav double precision NOT NULL DEFAULT 100,
+  copycat_return_pct double precision NOT NULL,
+  btc_return_pct double precision NOT NULL,
+  eth_return_pct double precision NOT NULL,
+  spx_return_pct double precision NOT NULL DEFAULT 0,
+  method text NOT NULL,
+  weights_json jsonb NOT NULL,
+  prices_json jsonb NOT NULL,
+  benchmark_prices_json jsonb NOT NULL,
+  metadata_json jsonb NOT NULL
+);
+ALTER TABLE strategy_index_points ADD COLUMN IF NOT EXISTS spx_nav double precision NOT NULL DEFAULT 100;
+ALTER TABLE strategy_index_points ADD COLUMN IF NOT EXISTS spx_return_pct double precision NOT NULL DEFAULT 0;
+CREATE INDEX IF NOT EXISTS idx_strategy_index_points_ts ON strategy_index_points(ts_ms DESC);
+
+CREATE TABLE IF NOT EXISTS strategy_backtest_points (
+  id bigserial PRIMARY KEY,
+  ts_ms bigint NOT NULL UNIQUE,
+  ts timestamptz NOT NULL DEFAULT now(),
+  copycat_nav double precision NOT NULL,
+  btc_nav double precision NOT NULL,
+  eth_nav double precision NOT NULL,
+  spx_nav double precision NOT NULL,
+  copycat_return_pct double precision NOT NULL,
+  btc_return_pct double precision NOT NULL,
+  eth_return_pct double precision NOT NULL,
+  spx_return_pct double precision NOT NULL,
+  method text NOT NULL DEFAULT 'copycat_backtest_v1_weekly',
+  metadata_json jsonb NOT NULL DEFAULT '{}'::jsonb
+);
+CREATE INDEX IF NOT EXISTS idx_strategy_backtest_points_ts ON strategy_backtest_points(ts_ms DESC);

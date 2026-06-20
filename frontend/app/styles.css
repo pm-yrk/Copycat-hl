@@ -2350,8 +2350,9 @@ html[data-theme='light'] .cc-kpi-grid article.cc-tracked-value-card em {
 .cc-index-chart .copycat{stroke:var(--green); stroke-width:5;}
 .cc-index-chart .btc{stroke:#f7931a; opacity:.7; stroke-width:2.4;}
 .cc-index-chart .eth{stroke:#8da2ff; opacity:.7; stroke-width:2.4;}
-.cc-index-metrics{display:grid; grid-template-columns:repeat(3,1fr); gap:12px;}
-.cc-index-card.deep .cc-index-metrics{grid-template-columns:repeat(4,1fr);}
+.cc-index-chart .spx{stroke:#d7d2c2; opacity:.65; stroke-width:2.2; stroke-dasharray:7 7;}
+.cc-index-metrics{display:grid; grid-template-columns:repeat(4,1fr); gap:12px;}
+.cc-index-card.deep .cc-index-metrics{grid-template-columns:repeat(5,1fr);}
 .cc-index-metrics div{border:1px solid var(--line); border-radius:16px; padding:14px; background:rgba(8,18,32,.34);}
 html[data-theme='light'] .cc-index-metrics div{background:rgba(255,251,244,.62);}
 .cc-index-metrics small{display:block; color:var(--muted); text-transform:uppercase; font-size:.68rem; letter-spacing:.12em; font-weight:900;}
