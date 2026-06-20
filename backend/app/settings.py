@@ -7,7 +7,15 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file='.env', extra='ignore')
 
-    database_url: str = 'postgresql+psycopg://postgres:postgres@localhost:5432/hwt'
+    # Do not default to localhost in deployed environments. If DATABASE_URL is
+    # missing on a Render worker, failing loudly is safer than silently trying
+    # 127.0.0.1:5432 and producing a long SQLAlchemy stack trace.
+    database_url: str = ''
+    supabase_db_url: str = ''
+    postgres_url: str = ''
+    postgres_prisma_url: str = ''
+    postgres_url_non_pooling: str = ''
+
     public_site_url: str = 'http://localhost:3000'
     api_base_url: str = 'http://localhost:8000'
     environment: str = 'local'
@@ -19,6 +27,7 @@ class Settings(BaseSettings):
     live_event_wallet_limit: int = 50
     live_event_subscribe_order_updates: bool = False
     hl_ws_url: str = 'wss://api.hyperliquid.xyz/ws'
+
     nansen_api_key: str = ''
     nansen_base_url: str = 'https://api.nansen.ai'
     nansen_lookback_days: int = 30
