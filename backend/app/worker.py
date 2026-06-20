@@ -63,6 +63,20 @@ class Hyperliquid:
     def user_role(self, wallet: str):
         return self.info({'type': 'userRole', 'user': wallet})
 
+    def user_fills_by_time(self, wallet: str, start_time_ms: int, end_time_ms: int | None = None, aggregate_by_time: bool = True):
+        payload: dict[str, Any] = {
+            'type': 'userFillsByTime',
+            'user': wallet,
+            'startTime': int(start_time_ms),
+            'aggregateByTime': aggregate_by_time,
+        }
+        if end_time_ms is not None:
+            payload['endTime'] = int(end_time_ms)
+        return self.info(payload)
+
+    def user_fees(self, wallet: str):
+        return self.info({'type': 'userFees', 'user': wallet})
+
 
 class Nansen:
     def __init__(self):
@@ -720,11 +734,29 @@ def check_alerts() -> int:
 def daily_refresh() -> dict[str, Any]:
     """Run the daily cohort refresh without breaking the live dashboard.
 
-    Nansen credit failures should not wipe or replace the current active wallet
-    cohort. If discovery/scoring cannot complete safely, keep the existing cohort
-    and still run a collection so the dashboard remains fresh.
+    Default is now Hyperliquid-native owned data. Nansen is optional fallback
+    only; the live product should not depend on paid Nansen credits.
     """
     settings = get_settings()
+    provider = (settings.wallet_discovery_provider or 'owned_first').strip().lower()
+
+    if provider in ('owned', 'owned_first', 'hyperliquid', 'hyperliquid_native'):
+        try:
+            from .owned_data import owned_wallet_refresh
+            owned = owned_wallet_refresh(run_collection=True)
+            if provider in ('owned', 'hyperliquid', 'hyperliquid_native') or owned.get('selected', {}).get('status') == 'ok':
+                return owned
+            log.warning('Owned refresh did not fully replace cohort; falling back to Nansen because provider=owned_first')
+        except Exception as exc:
+            if provider in ('owned', 'hyperliquid', 'hyperliquid_native'):
+                msg = f'owned refresh failed; kept existing active cohort: {str(exc)[:300]}'
+                log.warning(msg)
+                with engine.begin() as conn:
+                    insert_run(conn, 'owned_wallet_refresh', 'warning', msg)
+                collected = collect_once()
+                return {'status': 'partial', 'source': 'hyperliquid_native', 'nansen_used': False, 'collection': collected, 'notes': [msg]}
+            log.warning('Owned refresh failed; falling back to Nansen because provider=owned_first: %s', exc)
+
     notes: list[str] = []
     candidates = 0
     scored = 0
@@ -762,9 +794,10 @@ def daily_refresh() -> dict[str, Any]:
 
     safe_send_telegram(
         f'✅ Daily wallet refresh {status}\n'
+        f'Source: nansen_fallback\n'
         f'Candidates: {candidates}\n'
         f'Scored: {scored}\n'
         f'Wallets collected: {collected.get("wallets_ok")}\n'
         f'{message}'
     )
-    return {'status': status, 'candidates': candidates, 'scored': scored, 'collection': collected, 'notes': notes}
+    return {'status': status, 'source': 'nansen_fallback', 'nansen_used': True, 'candidates': candidates, 'scored': scored, 'collection': collected, 'notes': notes}

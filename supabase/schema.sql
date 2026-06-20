@@ -189,3 +189,69 @@ CREATE TABLE IF NOT EXISTS strategy_backtest_points (
   metadata_json jsonb NOT NULL DEFAULT '{}'::jsonb
 );
 CREATE INDEX IF NOT EXISTS idx_strategy_backtest_points_ts ON strategy_backtest_points(ts_ms DESC);
+
+-- Copycat owned Hyperliquid-native wallet intelligence tables.
+-- These remove live-product dependence on paid Nansen discovery by storing our
+-- own wallet fills and ranking metrics from Hyperliquid public endpoints.
+CREATE TABLE IF NOT EXISTS owned_wallet_fills (
+  id bigserial PRIMARY KEY,
+  wallet text NOT NULL,
+  tid text NOT NULL,
+  ts_ms bigint NOT NULL,
+  ts timestamptz NOT NULL DEFAULT now(),
+  coin text,
+  side text,
+  direction text,
+  px double precision,
+  size double precision,
+  closed_pnl_usd double precision,
+  fee_usd double precision,
+  raw_json jsonb NOT NULL DEFAULT '{}'::jsonb,
+  UNIQUE(wallet, tid)
+);
+CREATE INDEX IF NOT EXISTS idx_owned_wallet_fills_wallet_ts ON owned_wallet_fills(wallet, ts_ms DESC);
+CREATE INDEX IF NOT EXISTS idx_owned_wallet_fills_ts ON owned_wallet_fills(ts_ms DESC);
+
+CREATE TABLE IF NOT EXISTS owned_wallet_metrics (
+  wallet text PRIMARY KEY,
+  ts_ms bigint NOT NULL,
+  ts timestamptz NOT NULL DEFAULT now(),
+  source text NOT NULL DEFAULT 'hyperliquid_native',
+  account_value_usd double precision NOT NULL DEFAULT 0,
+  total_ntl_pos_usd double precision NOT NULL DEFAULT 0,
+  pnl_day_usd double precision NOT NULL DEFAULT 0,
+  pnl_30d_usd double precision NOT NULL DEFAULT 0,
+  pnl_all_time_usd double precision NOT NULL DEFAULT 0,
+  closed_pnl_lookback_usd double precision NOT NULL DEFAULT 0,
+  fees_lookback_usd double precision NOT NULL DEFAULT 0,
+  fills_lookback_count integer NOT NULL DEFAULT 0,
+  active_days_observed integer NOT NULL DEFAULT 0,
+  score double precision NOT NULL DEFAULT 0,
+  qualifies boolean NOT NULL DEFAULT false,
+  metrics_json jsonb NOT NULL DEFAULT '{}'::jsonb
+);
+CREATE INDEX IF NOT EXISTS idx_owned_wallet_metrics_score ON owned_wallet_metrics(qualifies, score DESC);
+CREATE INDEX IF NOT EXISTS idx_owned_wallet_metrics_ts ON owned_wallet_metrics(ts_ms DESC);
+
+CREATE TABLE IF NOT EXISTS owned_wallet_metric_history (
+  id bigserial PRIMARY KEY,
+  wallet text NOT NULL,
+  ts_ms bigint NOT NULL,
+  ts timestamptz NOT NULL DEFAULT now(),
+  source text NOT NULL DEFAULT 'hyperliquid_native',
+  account_value_usd double precision NOT NULL DEFAULT 0,
+  total_ntl_pos_usd double precision NOT NULL DEFAULT 0,
+  pnl_day_usd double precision NOT NULL DEFAULT 0,
+  pnl_30d_usd double precision NOT NULL DEFAULT 0,
+  pnl_all_time_usd double precision NOT NULL DEFAULT 0,
+  closed_pnl_lookback_usd double precision NOT NULL DEFAULT 0,
+  fees_lookback_usd double precision NOT NULL DEFAULT 0,
+  fills_lookback_count integer NOT NULL DEFAULT 0,
+  active_days_observed integer NOT NULL DEFAULT 0,
+  score double precision NOT NULL DEFAULT 0,
+  qualifies boolean NOT NULL DEFAULT false,
+  metrics_json jsonb NOT NULL DEFAULT '{}'::jsonb
+);
+CREATE INDEX IF NOT EXISTS idx_owned_wallet_metric_history_wallet_ts ON owned_wallet_metric_history(wallet, ts_ms DESC);
+CREATE INDEX IF NOT EXISTS idx_owned_wallet_metric_history_ts ON owned_wallet_metric_history(ts_ms DESC);
+CREATE INDEX IF NOT EXISTS idx_owned_wallet_metric_history_score ON owned_wallet_metric_history(ts_ms DESC, qualifies, score DESC);

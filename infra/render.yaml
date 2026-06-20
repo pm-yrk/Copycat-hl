@@ -23,10 +23,10 @@ services:
         sync: false
       - key: TELEGRAM_CHAT_ID
         sync: false
-      - key: NANSEN_API_KEY
-        sync: false
       - key: COLLECTOR_FRESHNESS_SECONDS
         value: "180"
+      - key: WALLET_DISCOVERY_PROVIDER
+        value: "owned_first"
 
   - type: web
     name: hwt-frontend
@@ -65,12 +65,14 @@ services:
     dockerfilePath: ./backend/Dockerfile
     dockerContext: .
     schedule: "0 0 * * *"
-    dockerCommand: "python -m app.jobs.daily_refresh"
+    dockerCommand: "python -m app.jobs.owned_wallet_refresh"
     envVars:
       - key: DATABASE_URL
         sync: false
-      - key: NANSEN_API_KEY
-        sync: false
+      - key: WALLET_DISCOVERY_PROVIDER
+        value: "owned"
+      - key: OWNED_DISCOVERY_REFRESH_LIMIT
+        value: "500"
       - key: TELEGRAM_BOT_TOKEN
         sync: false
       - key: TELEGRAM_CHAT_ID
@@ -82,10 +84,8 @@ services:
     dockerfilePath: ./backend/Dockerfile
     dockerContext: .
     schedule: "0 2 * * 0"
-    dockerCommand: "python -m app.jobs.backfill_backtest"
+    dockerCommand: "python -m app.jobs.owned_backtest_from_history"
     envVars:
       - key: DATABASE_URL
-        sync: false
-      - key: NANSEN_API_KEY
         sync: false
 

@@ -26,6 +26,24 @@ class Settings(BaseSettings):
     nansen_backtest_min_rows: int = 26
     nansen_backtest_replace_existing: bool = True
 
+    # Long-term independence: default daily wallet refresh uses our own
+    # Hyperliquid-native wallet metrics. Nansen remains optional fallback only.
+    wallet_discovery_provider: str = 'owned_first'
+    owned_discovery_seed_wallets: str = ''
+    owned_discovery_lookback_days: int = 30
+    owned_discovery_refresh_limit: int = 500
+    owned_discovery_min_account_value_usd: float = 50_000
+    owned_discovery_min_30d_pnl_usd: float = 1_000
+    owned_discovery_min_all_time_pnl_usd: float = 0
+    owned_discovery_min_score: float = 45
+    owned_discovery_min_fills_lookback: int = 1
+    owned_discovery_min_replacement_ratio: float = 0.80
+    owned_discovery_request_delay_seconds: float = 0.25
+    owned_backtest_rebalance_days: int = 7
+    owned_backtest_min_wallets: int = 10
+    owned_backtest_min_rows: int = 26
+    owned_backtest_replace_existing: bool = True
+
     qualified_wallet_limit: int = 50
     collector_interval_seconds: int = 1
     collector_freshness_seconds: int = 180
