@@ -35,53 +35,9 @@ def _json(value: Any) -> str:
     return json.dumps(value, separators=(',', ':'), default=str)
 
 
-_DATA_LAKE_TABLES_READY = False
-
-
-def _lake_table_exists(conn, table_name: str) -> bool:
-    try:
-        return bool(conn.execute(text("SELECT to_regclass(:table_name)"), {"table_name": f"public.{table_name}"}).scalar())
-    except Exception:
-        return False
-
-
-def _lake_safe_ddl(conn, sql: str) -> None:
-    try:
-        conn.execute(text(sql))
-    except Exception as exc:
-        log.warning("data lake schema DDL skipped: %s", str(exc)[:220])
-
-
 def ensure_copycat_data_lake_tables(conn) -> None:
-    global _DATA_LAKE_TABLES_READY
-    if _DATA_LAKE_TABLES_READY:
-        return
-
-    try:
-        ensure_owned_tables(conn)
-    except Exception as exc:
-        log.warning('owned table ensure skipped from data lake: %s', str(exc)[:220])
-
-    if (
-        _lake_table_exists(conn, 'copycat_market_universe')
-        and _lake_table_exists(conn, 'copycat_market_snapshots')
-        and _lake_table_exists(conn, 'owned_wallet_backfill_state')
-        and _lake_table_exists(conn, 'copycat_data_quality_snapshots')
-    ):
-        _DATA_LAKE_TABLES_READY = True
-        return
-
-    got_lock = False
-    try:
-        got_lock = bool(conn.execute(text('SELECT pg_try_advisory_lock(82420402)')).scalar())
-    except Exception:
-        got_lock = False
-    if not got_lock:
-        log.warning('data lake schema setup already in progress; skipping this pass')
-        return
-
-    try:
-        _lake_safe_ddl(conn, '''
+    ensure_owned_tables(conn)
+    conn.execute(text('''
         CREATE TABLE IF NOT EXISTS copycat_market_universe (
           coin text PRIMARY KEY,
           display_name text NOT NULL,
@@ -94,9 +50,10 @@ def ensure_copycat_data_lake_tables(conn) -> None:
           raw_json jsonb NOT NULL DEFAULT '{}'::jsonb,
           updated_at timestamptz NOT NULL DEFAULT now()
         )
-        ''')
-        _lake_safe_ddl(conn, 'CREATE INDEX IF NOT EXISTS idx_copycat_market_universe_updated ON copycat_market_universe(updated_at DESC)')
-        _lake_safe_ddl(conn, '''
+    '''))
+    conn.execute(text('CREATE INDEX IF NOT EXISTS idx_copycat_market_universe_updated ON copycat_market_universe(updated_at DESC)'))
+
+    conn.execute(text('''
         CREATE TABLE IF NOT EXISTS copycat_market_snapshots (
           id bigserial PRIMARY KEY,
           ts_ms bigint NOT NULL,
@@ -112,10 +69,11 @@ def ensure_copycat_data_lake_tables(conn) -> None:
           raw_json jsonb NOT NULL DEFAULT '{}'::jsonb,
           created_at timestamptz NOT NULL DEFAULT now()
         )
-        ''')
-        _lake_safe_ddl(conn, 'CREATE INDEX IF NOT EXISTS idx_copycat_market_snapshots_coin_ts ON copycat_market_snapshots(coin, ts_ms DESC)')
-        _lake_safe_ddl(conn, 'CREATE INDEX IF NOT EXISTS idx_copycat_market_snapshots_ts ON copycat_market_snapshots(ts_ms DESC)')
-        _lake_safe_ddl(conn, '''
+    '''))
+    conn.execute(text('CREATE INDEX IF NOT EXISTS idx_copycat_market_snapshots_coin_ts ON copycat_market_snapshots(coin, ts_ms DESC)'))
+    conn.execute(text('CREATE INDEX IF NOT EXISTS idx_copycat_market_snapshots_ts ON copycat_market_snapshots(ts_ms DESC)'))
+
+    conn.execute(text('''
         CREATE TABLE IF NOT EXISTS owned_wallet_backfill_state (
           wallet text PRIMARY KEY,
           earliest_fill_ts_ms bigint,
@@ -129,9 +87,10 @@ def ensure_copycat_data_lake_tables(conn) -> None:
           coverage_json jsonb NOT NULL DEFAULT '{}'::jsonb,
           updated_at timestamptz NOT NULL DEFAULT now()
         )
-        ''')
-        _lake_safe_ddl(conn, 'CREATE INDEX IF NOT EXISTS idx_owned_wallet_backfill_status ON owned_wallet_backfill_state(last_status, updated_at)')
-        _lake_safe_ddl(conn, '''
+    '''))
+    conn.execute(text('CREATE INDEX IF NOT EXISTS idx_owned_wallet_backfill_status ON owned_wallet_backfill_state(last_status, updated_at)'))
+
+    conn.execute(text('''
         CREATE TABLE IF NOT EXISTS copycat_data_quality_snapshots (
           id bigserial PRIMARY KEY,
           ts_ms bigint NOT NULL,
@@ -148,14 +107,8 @@ def ensure_copycat_data_lake_tables(conn) -> None:
           raw_json jsonb NOT NULL DEFAULT '{}'::jsonb,
           created_at timestamptz NOT NULL DEFAULT now()
         )
-        ''')
-        _lake_safe_ddl(conn, 'CREATE INDEX IF NOT EXISTS idx_copycat_data_quality_ts ON copycat_data_quality_snapshots(ts_ms DESC)')
-        _DATA_LAKE_TABLES_READY = True
-    finally:
-        try:
-            conn.execute(text('SELECT pg_advisory_unlock(82420402)'))
-        except Exception:
-            pass
+    '''))
+    conn.execute(text('CREATE INDEX IF NOT EXISTS idx_copycat_data_quality_ts ON copycat_data_quality_snapshots(ts_ms DESC)'))
 
 
 def ensure_copycat_data_lake() -> None:
@@ -387,10 +340,6 @@ def historical_fill_backfill_wallet(wallet: str, days: int | None = None, max_pa
     start = now_ms() - max(1, days) * 86_400_000
     end = now_ms()
     hl = Hyperliquid()
-    with engine.begin() as conn:
-        locked = bool(conn.execute(text("SELECT pg_try_advisory_lock(hashtext('copycat_backfill:' || :wallet))"), {'wallet': wallet}).scalar())
-    if not locked:
-        return {'wallet': wallet, 'status': 'skipped', 'error': 'wallet backfill already running'}
     pages = 0
     stored = 0
     earliest = None
@@ -409,6 +358,7 @@ def historical_fill_backfill_wallet(wallet: str, days: int | None = None, max_pa
         if not fills:
             break
         with engine.begin() as conn:
+            ensure_copycat_data_lake_tables(conn)
             summary = _store_fills(conn, wallet, fills)
             stored += int(summary.get('fills_lookback_count') or 0)
         times = [int(safe_float(f.get('time') or f.get('timestamp'), 0)) for f in fills]
@@ -454,11 +404,6 @@ def historical_fill_backfill_wallet(wallet: str, days: int | None = None, max_pa
             'error': last_error,
             'coverage_json': _json({'requested_days': days, 'max_pages': max_pages, 'official_limit_note': 'Hyperliquid userFillsByTime exposes up to 2000 fills per response and only the 10000 most recent fills per user.'}),
         })
-    try:
-        with engine.begin() as conn:
-            conn.execute(text("SELECT pg_advisory_unlock(hashtext('copycat_backfill:' || :wallet))"), {'wallet': wallet})
-    except Exception:
-        pass
     return {'wallet': wallet, 'status': status, 'fills_seen': stored, 'pages': pages, 'earliest_fill_ts_ms': earliest, 'latest_fill_ts_ms': latest, 'error': last_error}
 
 

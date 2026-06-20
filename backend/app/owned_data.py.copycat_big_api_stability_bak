@@ -41,54 +41,8 @@ def _parse_seed_wallets(raw: str | None) -> list[str]:
     return sorted({w.lower() for w in found if is_address(w)})
 
 
-_OWNED_TABLES_READY = False
-
-
-def _table_exists(conn, table_name: str) -> bool:
-    try:
-        return bool(conn.execute(text("SELECT to_regclass(:table_name)"), {"table_name": f"public.{table_name}"}).scalar())
-    except Exception:
-        return False
-
-
-def _safe_ddl(conn, sql: str) -> None:
-    try:
-        conn.execute(text(sql))
-    except Exception as exc:
-        # DDL can race with live writers during deploys. Existing tables are good
-        # enough for workers to continue; avoid taking the product down for an
-        # index/check that can be retried on the next clean deploy.
-        log.warning("owned schema DDL skipped: %s", str(exc)[:220])
-
-
 def ensure_owned_tables(conn) -> None:
-    global _OWNED_TABLES_READY
-    if _OWNED_TABLES_READY:
-        return
-
-    # In production these tables already exist. Do not re-run CREATE INDEX on
-    # every worker loop; it caused statement timeouts/deadlocks while fills were
-    # being inserted.
-    if (
-        _table_exists(conn, 'owned_wallet_fills')
-        and _table_exists(conn, 'owned_wallet_metrics')
-        and _table_exists(conn, 'owned_wallet_metric_history')
-    ):
-        _OWNED_TABLES_READY = True
-        return
-
-    got_lock = False
-    try:
-        got_lock = bool(conn.execute(text('SELECT pg_try_advisory_lock(82420401)')).scalar())
-    except Exception:
-        got_lock = False
-    if not got_lock:
-        # Another process is doing first-time schema setup. Avoid deadlocking.
-        log.warning('owned schema setup already in progress; skipping this pass')
-        return
-
-    try:
-        _safe_ddl(conn, '''
+    conn.execute(text('''
         CREATE TABLE IF NOT EXISTS owned_wallet_fills (
           id bigserial PRIMARY KEY,
           wallet text NOT NULL,
@@ -105,10 +59,10 @@ def ensure_owned_tables(conn) -> None:
           raw_json jsonb NOT NULL DEFAULT '{}'::jsonb,
           UNIQUE(wallet, tid)
         )
-        ''')
-        _safe_ddl(conn, 'CREATE INDEX IF NOT EXISTS idx_owned_wallet_fills_wallet_ts ON owned_wallet_fills(wallet, ts_ms DESC)')
-        _safe_ddl(conn, 'CREATE INDEX IF NOT EXISTS idx_owned_wallet_fills_ts ON owned_wallet_fills(ts_ms DESC)')
-        _safe_ddl(conn, '''
+    '''))
+    conn.execute(text('CREATE INDEX IF NOT EXISTS idx_owned_wallet_fills_wallet_ts ON owned_wallet_fills(wallet, ts_ms DESC)'))
+    conn.execute(text('CREATE INDEX IF NOT EXISTS idx_owned_wallet_fills_ts ON owned_wallet_fills(ts_ms DESC)'))
+    conn.execute(text('''
         CREATE TABLE IF NOT EXISTS owned_wallet_metrics (
           wallet text PRIMARY KEY,
           ts_ms bigint NOT NULL,
@@ -127,10 +81,10 @@ def ensure_owned_tables(conn) -> None:
           qualifies boolean NOT NULL DEFAULT false,
           metrics_json jsonb NOT NULL DEFAULT '{}'::jsonb
         )
-        ''')
-        _safe_ddl(conn, 'CREATE INDEX IF NOT EXISTS idx_owned_wallet_metrics_score ON owned_wallet_metrics(qualifies, score DESC)')
-        _safe_ddl(conn, 'CREATE INDEX IF NOT EXISTS idx_owned_wallet_metrics_ts ON owned_wallet_metrics(ts_ms DESC)')
-        _safe_ddl(conn, '''
+    '''))
+    conn.execute(text('CREATE INDEX IF NOT EXISTS idx_owned_wallet_metrics_score ON owned_wallet_metrics(qualifies, score DESC)'))
+    conn.execute(text('CREATE INDEX IF NOT EXISTS idx_owned_wallet_metrics_ts ON owned_wallet_metrics(ts_ms DESC)'))
+    conn.execute(text('''
         CREATE TABLE IF NOT EXISTS owned_wallet_metric_history (
           id bigserial PRIMARY KEY,
           wallet text NOT NULL,
@@ -150,16 +104,19 @@ def ensure_owned_tables(conn) -> None:
           qualifies boolean NOT NULL DEFAULT false,
           metrics_json jsonb NOT NULL DEFAULT '{}'::jsonb
         )
-        ''')
-        _safe_ddl(conn, 'CREATE INDEX IF NOT EXISTS idx_owned_wallet_metric_history_wallet_ts ON owned_wallet_metric_history(wallet, ts_ms DESC)')
-        _safe_ddl(conn, 'CREATE INDEX IF NOT EXISTS idx_owned_wallet_metric_history_ts ON owned_wallet_metric_history(ts_ms DESC)')
-        _safe_ddl(conn, 'CREATE INDEX IF NOT EXISTS idx_owned_wallet_metric_history_score ON owned_wallet_metric_history(ts_ms DESC, qualifies, score DESC)')
-        _OWNED_TABLES_READY = True
-    finally:
-        try:
-            conn.execute(text('SELECT pg_advisory_unlock(82420401)'))
-        except Exception:
-            pass
+    '''))
+    conn.execute(text('CREATE INDEX IF NOT EXISTS idx_owned_wallet_metric_history_wallet_ts ON owned_wallet_metric_history(wallet, ts_ms DESC)'))
+    conn.execute(text('CREATE INDEX IF NOT EXISTS idx_owned_wallet_metric_history_ts ON owned_wallet_metric_history(ts_ms DESC)'))
+    conn.execute(text('CREATE INDEX IF NOT EXISTS idx_owned_wallet_metric_history_score ON owned_wallet_metric_history(ts_ms DESC, qualifies, score DESC)'))
+    conn.execute(text('''
+        CREATE TABLE IF NOT EXISTS owned_wallet_scan_state (
+          key text PRIMARY KEY,
+          last_started_at timestamptz,
+          last_finished_at timestamptz,
+          last_status text,
+          metadata_json jsonb NOT NULL DEFAULT '{}'::jsonb
+        )
+    '''))
 
 
 def seed_owned_candidates() -> int:
@@ -235,7 +192,16 @@ def _store_fills(conn, wallet: str, fills: list[dict[str, Any]]) -> dict[str, An
         conn.execute(text('''
             INSERT INTO owned_wallet_fills(wallet,tid,ts_ms,coin,side,direction,px,size,closed_pnl_usd,fee_usd,raw_json)
             VALUES(:wallet,:tid,:ts_ms,:coin,:side,:direction,:px,:size,:closed_pnl_usd,:fee_usd,CAST(:raw_json AS jsonb))
-            ON CONFLICT(wallet, tid) DO NOTHING
+            ON CONFLICT(wallet, tid) DO UPDATE SET
+              ts_ms=excluded.ts_ms,
+              coin=excluded.coin,
+              side=excluded.side,
+              direction=excluded.direction,
+              px=excluded.px,
+              size=excluded.size,
+              closed_pnl_usd=excluded.closed_pnl_usd,
+              fee_usd=excluded.fee_usd,
+              raw_json=excluded.raw_json
         '''), row)
     return {
         'fills_lookback_count': count,
