@@ -78,16 +78,6 @@ class Hyperliquid:
         return self.info({'type': 'userFees', 'user': wallet})
 
 
-    def meta(self):
-        return self.info({'type': 'meta'})
-
-    def meta_and_asset_ctxs(self):
-        return self.info({'type': 'metaAndAssetCtxs'})
-
-    def all_mids(self):
-        return self.info({'type': 'allMids'})
-
-
 class Nansen:
     def __init__(self):
         self.settings = get_settings()

@@ -32,16 +32,6 @@ from .copycat_data_api import (
     recent_live_orders,
     require_copycat_api_key,
 )
-from .copycat_data_lake import (
-    backfill_coverage,
-    historical_fills,
-    leaderboard_preview,
-    leaderboard_v2,
-    quality_snapshot,
-    token_screener,
-    token_screener_preview,
-    wallet_universe,
-)
 
 settings = get_settings()
 stripe.api_key = settings.stripe_secret_key or None
@@ -122,58 +112,6 @@ def copycat_data_api_events(limit: int = 100, api_key: dict = Depends(require_co
 @app.get('/api/data/v1/historical-sources')
 def copycat_data_api_historical_sources():
     return {'status': 'ok', 'data': historical_sources()}
-
-
-@app.get('/api/data/v1/public/leaderboard-preview')
-def copycat_data_api_public_leaderboard_preview(limit: int = 20):
-    return {'status': 'ok', 'data': leaderboard_preview(limit)}
-
-
-@app.get('/api/data/v1/public/token-screener-preview')
-def copycat_data_api_public_token_screener_preview(limit: int = 20):
-    return {'status': 'ok', 'data': token_screener_preview(limit)}
-
-
-@app.get('/api/data/v1/coverage')
-def copycat_data_api_coverage(api_key: dict = Depends(require_copycat_api_key)):
-    return quality_snapshot()
-
-
-@app.get('/api/data/v1/leaderboard-v2')
-def copycat_data_api_leaderboard_v2(
-    limit: int = 50,
-    offset: int = 0,
-    min_account_value_usd: float = 0,
-    qualified_only: bool = True,
-    api_key: dict = Depends(require_copycat_api_key),
-):
-    return leaderboard_v2(limit=limit, offset=offset, min_account_value_usd=min_account_value_usd, qualified_only=qualified_only)
-
-
-@app.get('/api/data/v1/token-screener')
-def copycat_data_api_token_screener(limit: int = 100, api_key: dict = Depends(require_copycat_api_key)):
-    return token_screener(limit=limit)
-
-
-@app.get('/api/data/v1/wallet-universe')
-def copycat_data_api_wallet_universe(limit: int = 500, offset: int = 0, api_key: dict = Depends(require_copycat_api_key)):
-    return wallet_universe(limit=limit, offset=offset)
-
-
-@app.get('/api/data/v1/historical-fills')
-def copycat_data_api_historical_fills(
-    wallet: str | None = None,
-    coin: str | None = None,
-    limit: int = 500,
-    before_ts_ms: int | None = None,
-    api_key: dict = Depends(require_copycat_api_key),
-):
-    return {'status': 'ok', 'data': historical_fills(wallet=wallet, coin=coin, limit=limit, before_ts_ms=before_ts_ms)}
-
-
-@app.get('/api/data/v1/backfill-coverage')
-def copycat_data_api_backfill_coverage(api_key: dict = Depends(require_copycat_api_key)):
-    return backfill_coverage()
 
 
 _DASHBOARD_FEED_CACHE: dict[str, Any] = {'ts': 0.0, 'data': None}
