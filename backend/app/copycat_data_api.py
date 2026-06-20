@@ -112,6 +112,7 @@ def ensure_copycat_data_api_tables(conn) -> None:
           ts_ms bigint NOT NULL,
           size double precision NOT NULL DEFAULT 0,
           position_value_usd double precision NOT NULL DEFAULT 0,
+          mark_px double precision,
           entry_px double precision,
           unrealized_pnl_usd double precision,
           source text NOT NULL DEFAULT 'hyperliquid_info',
@@ -120,6 +121,7 @@ def ensure_copycat_data_api_tables(conn) -> None:
           PRIMARY KEY(wallet, coin, side)
         )
     '''))
+    conn.execute(text('ALTER TABLE copycat_live_positions ADD COLUMN IF NOT EXISTS mark_px double precision'))
     conn.execute(text('CREATE INDEX IF NOT EXISTS idx_copycat_live_positions_ts ON copycat_live_positions(ts_ms DESC)'))
     conn.execute(text('CREATE INDEX IF NOT EXISTS idx_copycat_live_positions_coin_ts ON copycat_live_positions(coin, ts_ms DESC)'))
 

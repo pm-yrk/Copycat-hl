@@ -339,7 +339,7 @@ export default function Dashboard() {
           .filter((p) => nextKeys.has(orderKey(p)))
           .sort((a, b) => (orderIndex.get(orderKey(a)) ?? 9999) - (orderIndex.get(orderKey(b)) ?? 9999))
           .slice(0, 50))
-      }, i * 140)
+      }, i * 360)
       orderStageTimers.current.push(timer)
     })
     return () => orderStageTimers.current.forEach((timer) => window.clearTimeout(timer))
@@ -360,7 +360,7 @@ export default function Dashboard() {
         <div className={`cc-orders-card ${showAllOrders ? 'expanded' : ''}`}>
           <h3>Most recent orders</h3>
           <div className="cc-order-list">
-            {visibleOrders.map((o: any, i: number) => <div className="cc-order-line" key={`${o.coin}-${i}-${o.wallet || ''}-${o.ts_ms || ''}`}><TokenLogo coin={o.coin} icons={icons} /><b>{displayToken(o.coin)}</b><span className={orderActionClass(o.side)}>{o.side}</span><em>{o.wallet_label || maskWallet(o.wallet)}</em><small>{ago(o.ts_ms)}</small></div>)}
+            {visibleOrders.map((o: any) => <div className="cc-order-line" key={orderKey(o)}><TokenLogo coin={o.coin} icons={icons} /><b>{displayToken(o.coin)}</b><span className={orderActionClass(o.side)}>{o.side}</span><em>{o.wallet_label || maskWallet(o.wallet)}</em><small>{ago(o.ts_ms)}</small></div>)}
           </div>
           <button className="cc-small-action" onClick={() => setShowAllOrders(v => !v)}>{showAllOrders ? 'Show latest 3 ↑' : 'View all orders →'}</button>
         </div>

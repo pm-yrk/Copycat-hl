@@ -17,6 +17,10 @@ from ..settings import get_settings
 log = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 
+_LAST_EVENT_STATE_REFRESH: dict[str, float] = {}
+_EVENT_STATE_REFRESH_MIN_SECONDS = 2.0
+
+
 
 def _active_wallets(limit: int) -> list[str]:
     with engine.begin() as conn:
@@ -56,6 +60,7 @@ def _position_rows(wallet: str, state: dict[str, Any], ts_ms: int) -> tuple[dict
         value = abs(safe_float(pos.get('positionValue')))
         if value <= 0 and abs(size) <= 0:
             continue
+        mark_px = (value / abs(size)) if abs(size) > 0 and value > 0 else safe_float(pos.get('markPx'), None)
         rows.append({
             'wallet': wallet,
             'coin': coin,
@@ -63,6 +68,7 @@ def _position_rows(wallet: str, state: dict[str, Any], ts_ms: int) -> tuple[dict
             'ts_ms': ts_ms,
             'size': size,
             'position_value_usd': value,
+            'mark_px': mark_px,
             'entry_px': safe_float(pos.get('entryPx'), None),
             'unrealized_pnl_usd': safe_float(pos.get('unrealizedPnl')),
             'raw_json': json.dumps(pos)[:8000],
@@ -101,16 +107,17 @@ def _store_wallet_state(state_row: dict[str, Any], position_rows: list[dict[str,
         for row in position_rows:
             conn.execute(text('''
                 INSERT INTO copycat_live_positions(
-                  wallet, coin, side, ts_ms, size, position_value_usd, entry_px,
+                  wallet, coin, side, ts_ms, size, position_value_usd, mark_px, entry_px,
                   unrealized_pnl_usd, source, raw_json, updated_at
                 ) VALUES (
-                  :wallet, :coin, :side, :ts_ms, :size, :position_value_usd, :entry_px,
+                  :wallet, :coin, :side, :ts_ms, :size, :position_value_usd, :mark_px, :entry_px,
                   :unrealized_pnl_usd, 'hyperliquid_info', CAST(:raw_json AS jsonb), now()
                 )
                 ON CONFLICT(wallet, coin, side) DO UPDATE SET
                   ts_ms=excluded.ts_ms,
                   size=excluded.size,
                   position_value_usd=excluded.position_value_usd,
+                  mark_px=excluded.mark_px,
                   entry_px=excluded.entry_px,
                   unrealized_pnl_usd=excluded.unrealized_pnl_usd,
                   source=excluded.source,
@@ -119,32 +126,63 @@ def _store_wallet_state(state_row: dict[str, Any], position_rows: list[dict[str,
             '''), row)
 
 
-def _poll_wallet_states_once(limit: int) -> dict[str, Any]:
+def _poll_single_wallet_state(wallet: str) -> bool:
     settings = get_settings()
+    state = _fetch_clearinghouse_state(wallet, settings.hl_info_url)
+    if not state:
+        return False
+    ts_ms = int(time.time() * 1000)
+    state_row, positions = _position_rows(wallet, state, ts_ms)
+    _store_wallet_state(state_row, positions)
+    return True
+
+
+def _poll_wallet_states_once(limit: int) -> dict[str, Any]:
     wallets = _active_wallets(limit)
     ok = 0
     errors: list[str] = []
     started = time.time()
     for wallet in wallets:
         try:
-            state = _fetch_clearinghouse_state(wallet, settings.hl_info_url)
-            if not state:
-                continue
-            ts_ms = int(time.time() * 1000)
-            state_row, positions = _position_rows(wallet, state, ts_ms)
-            _store_wallet_state(state_row, positions)
-            ok += 1
+            if _poll_single_wallet_state(wallet):
+                ok += 1
         except Exception as exc:
             errors.append(f'{wallet[:8]}: {type(exc).__name__}')
             if len(errors) <= 3:
                 log.warning('failed to poll live wallet state for %s: %s', wallet, exc)
-        time.sleep(0.08)
+        time.sleep(0.03)
     return {'wallets_ok': ok, 'wallets_total': len(wallets), 'errors': errors[:10], 'elapsed_seconds': round(time.time() - started, 1)}
+
+
+def _schedule_event_state_refresh(wallet: str) -> None:
+    wallet = (wallet or '').lower().strip()
+    if not wallet:
+        return
+    now = time.time()
+    last = _LAST_EVENT_STATE_REFRESH.get(wallet, 0.0)
+    if now - last < _EVENT_STATE_REFRESH_MIN_SECONDS:
+        return
+    _LAST_EVENT_STATE_REFRESH[wallet] = now
+
+    async def _run() -> None:
+        try:
+            await asyncio.to_thread(_poll_single_wallet_state, wallet)
+        except Exception as exc:
+            log.warning('event-triggered live state refresh failed for %s: %s', wallet[:8], exc)
+
+    try:
+        asyncio.create_task(_run())
+    except RuntimeError:
+        # No running event loop; safe fallback for local/manual calls.
+        try:
+            _poll_single_wallet_state(wallet)
+        except Exception as exc:
+            log.warning('event-triggered live state refresh failed for %s: %s', wallet[:8], exc)
 
 
 async def _state_poll_loop() -> None:
     settings = get_settings()
-    interval = max(10, int(settings.live_state_poll_seconds or 20))
+    interval = max(5, int(settings.live_state_poll_seconds or 5))
     limit = max(1, int(settings.live_state_wallet_limit or settings.live_event_wallet_limit or 50))
     while True:
         try:
@@ -223,7 +261,7 @@ def _normalise_order(wallet: str, update: dict[str, Any]) -> dict[str, Any] | No
     }
 
 
-def _handle_message(msg: dict[str, Any]) -> int:
+async def _handle_message(msg: dict[str, Any]) -> int:
     channel = msg.get('channel')
     data = msg.get('data')
     stored = 0
@@ -235,6 +273,8 @@ def _handle_message(msg: dict[str, Any]) -> int:
             if isinstance(fill, dict) and wallet:
                 _store_event(_normalise_fill(wallet, fill))
                 stored += 1
+        if stored and wallet:
+            _schedule_event_state_refresh(wallet)
     elif channel == 'userEvents' and isinstance(data, dict):
         wallet = str(data.get('user') or data.get('userAddress') or '').lower()
         # Some Hyperliquid user event messages nest fills directly under data.
@@ -246,6 +286,8 @@ def _handle_message(msg: dict[str, Any]) -> int:
                 if isinstance(fill, dict):
                     _store_event(_normalise_fill(wallet, fill))
                     stored += 1
+        if stored and wallet:
+            _schedule_event_state_refresh(wallet)
     elif channel == 'orderUpdates' and isinstance(data, list):
         for update in data:
             if not isinstance(update, dict):
@@ -259,6 +301,7 @@ def _handle_message(msg: dict[str, Any]) -> int:
             if row:
                 _store_event(row)
                 stored += 1
+                _schedule_event_state_refresh(user)
     elif channel == 'subscriptionResponse':
         log.info('subscription ack: %s', data)
     return stored
@@ -284,7 +327,7 @@ async def _websocket_loop() -> None:
                 async for raw in ws:
                     try:
                         msg = json.loads(raw)
-                        n = _handle_message(msg)
+                        n = await _handle_message(msg)
                         if n:
                             log.info('stored %s live wallet events', n)
                     except Exception:

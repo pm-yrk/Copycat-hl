@@ -30,8 +30,8 @@ class Settings(BaseSettings):
     # values can refresh faster than the full collector cycle. Defaults are safe
     # for Render Starter/Supabase and can be tuned from Render later.
     live_state_wallet_limit: int = 50
-    live_state_poll_seconds: int = 20
-    live_state_max_age_seconds: int = 75
+    live_state_poll_seconds: int = 5
+    live_state_max_age_seconds: int = 30
     live_signal_min_coverage_ratio: float = 0.80
     hl_ws_url: str = 'wss://api.hyperliquid.xyz/ws'
     nansen_api_key: str = ''

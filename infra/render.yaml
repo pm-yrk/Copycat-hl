@@ -72,6 +72,14 @@ services:
         value: "50"
       - key: LIVE_EVENT_SUBSCRIBE_ORDER_UPDATES
         value: "false"
+      - key: LIVE_STATE_WALLET_LIMIT
+        value: "50"
+      - key: LIVE_STATE_POLL_SECONDS
+        value: "5"
+      - key: LIVE_STATE_MAX_AGE_SECONDS
+        value: "30"
+      - key: LIVE_SIGNAL_MIN_COVERAGE_RATIO
+        value: "0.8"
 
   - type: cron
     name: hwt-daily-refresh-midnight

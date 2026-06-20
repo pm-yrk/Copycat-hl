@@ -19,6 +19,7 @@ from .db import fetch_all, fetch_one, execute, engine
 from .settings import get_settings
 from .copycat_data_api import (
     data_api_exposures,
+    ensure_copycat_data_api,
     data_api_leaderboard,
     data_api_recent_events,
     data_api_status,
@@ -112,7 +113,9 @@ def copycat_data_api_historical_sources():
 
 _DASHBOARD_FEED_CACHE: dict[str, Any] = {'ts': 0.0, 'data': None}
 _DASHBOARD_FEED_LOCK = threading.Lock()
-_DASHBOARD_FEED_TTL_SECONDS = 0.45
+_DASHBOARD_FEED_TTL_SECONDS = 0.35
+_LIVE_SIGNAL_ROWS_CACHE: dict[str, Any] = {'ts': 0.0, 'rows': []}
+_LIVE_SIGNAL_ROWS_CACHE_TTL_SECONDS = 0.75
 
 
 @app.get('/api/dashboard-feed')
@@ -247,12 +250,16 @@ def summary(user: dict = Depends(require_active_subscription)):
             'total': live_rollup.get('open_total') or 0,
             'positions': live_rollup.get('positions') or 0,
         }
-        live_asset_count = fetch_one('''
-            SELECT count(DISTINCT upper(coin)) AS n
-            FROM copycat_live_positions
-            WHERE ts_ms >= :fresh_cutoff
-        ''', {'fresh_cutoff': _live_state_cutoff_ms()}) or {'n': assets.get('n', 0)}
-        assets = {'n': int(live_asset_count.get('n') or assets.get('n') or 0)}
+        live_rows_for_count = _live_signal_rows(500)
+        if live_rows_for_count:
+            assets = {'n': len(live_rows_for_count)}
+        else:
+            live_asset_count = fetch_one('''
+                SELECT count(DISTINCT upper(coin)) AS n
+                FROM copycat_live_positions
+                WHERE ts_ms >= :fresh_cutoff
+            ''', {'fresh_cutoff': _live_state_cutoff_ms()}) or {'n': assets.get('n', 0)}
+            assets = {'n': int(live_asset_count.get('n') or assets.get('n') or 0)}
 
     latest_pos_ts = fetch_one('SELECT max(ts_ms) AS ts_ms FROM positions') or {'ts_ms': None}
     latest_run = fetch_one("SELECT ts_ms,status,message FROM collector_runs WHERE run_type='collect_once' ORDER BY ts_ms DESC LIMIT 1") or {}
@@ -375,118 +382,257 @@ def _live_state_is_ready() -> bool:
     return bool(active and fresh >= _live_min_wallets(active))
 
 
+def _live_marked_position_rows() -> list[dict[str, Any]]:
+    """Fresh live positions marked to current Hyperliquid mids.
+
+    copycat_live_positions stores the last full user-state snapshot. Between
+    those snapshots, value/exposure should still move with the market. This
+    helper re-marks stored sizes against allMids so dashboard KPIs, signals,
+    allocation and the index move from one consistent live source.
+    """
+    if not _live_state_is_ready():
+        return []
+    try:
+        ensure_copycat_data_api()
+        rows = fetch_all("""
+            SELECT lower(lp.wallet) AS wallet,
+                   upper(lp.coin) AS coin,
+                   lower(lp.side) AS side,
+                   lp.ts_ms,
+                   COALESCE(lp.size,0) AS size,
+                   COALESCE(lp.position_value_usd,0) AS position_value_usd,
+                   COALESCE(lp.mark_px,
+                            CASE WHEN abs(COALESCE(lp.size,0)) > 0
+                                 THEN abs(COALESCE(lp.position_value_usd,0)) / abs(COALESCE(lp.size,0))
+                                 ELSE NULL END) AS mark_px,
+                   COALESCE(lp.entry_px,0) AS entry_px,
+                   COALESCE(lp.unrealized_pnl_usd,0) AS unrealized_pnl_usd
+            FROM copycat_live_positions lp
+            JOIN copycat_live_wallet_states s ON lower(s.wallet)=lower(lp.wallet)
+            JOIN qualified_wallets q ON lower(q.wallet)=lower(lp.wallet) AND q.status='active'
+            WHERE s.ts_ms >= :fresh_cutoff
+              AND lp.ts_ms >= :fresh_cutoff
+              AND upper(lp.coin) NOT IN ('USDC','USDC/CASH','CASH','USD')
+        """, {'fresh_cutoff': _live_state_cutoff_ms()})
+    except Exception:
+        return []
+    mids = _hl_all_mids()
+    out: list[dict[str, Any]] = []
+    for r in rows:
+        row = dict(r)
+        sym = _normalise_index_symbol(row.get('coin'))
+        size = _safe_float(row.get('size'))
+        stale_value = abs(_safe_float(row.get('position_value_usd')))
+        stored_mark = _safe_float(row.get('mark_px'))
+        current_mark = _safe_float(mids.get(sym)) or stored_mark
+        current_value = abs(size) * current_mark if abs(size) > 0 and current_mark > 0 else stale_value
+        mark_delta_pnl = size * (current_mark - stored_mark) if abs(size) > 0 and stored_mark > 0 and current_mark > 0 else 0.0
+        row['coin'] = sym or row.get('coin')
+        row['side'] = 'short' if size < 0 or str(row.get('side')).lower().startswith('short') else 'long'
+        row['current_mark_px'] = current_mark
+        row['current_position_value_usd'] = current_value
+        row['mark_delta_pnl_usd'] = mark_delta_pnl
+        out.append(row)
+    return out
+
+
+def _live_event_flow_map() -> dict[str, dict[str, Any]]:
+    try:
+        rows = fetch_all("""
+            SELECT upper(coin) AS coin,
+                   lower(COALESCE(direction,'')) AS direction,
+                   upper(COALESCE(side,'')) AS side,
+                   wallet,
+                   COALESCE(notional_usd,0) AS notional_usd
+            FROM copycat_live_events
+            WHERE ts_ms >= :flow_cutoff
+              AND coin IS NOT NULL
+        """, {'flow_cutoff': _now_ms() - int(settings.signal_lookback_minutes or 60) * 60_000})
+    except Exception:
+        return {}
+    out: dict[str, dict[str, Any]] = {}
+    for r in rows:
+        coin = _normalise_index_symbol(r.get('coin'))
+        if not coin or _index_is_margin_symbol(coin):
+            continue
+        d = str(r.get('direction') or '').lower()
+        side = str(r.get('side') or '').upper()
+        notional = _safe_float(r.get('notional_usd'))
+        wallet = str(r.get('wallet') or '').lower()
+        bullish = (
+            ('open long' in d) or ('add long' in d) or ('close short' in d) or ('reduce short' in d) or
+            (not d and side in ('B', 'BUY'))
+        )
+        bearish = (
+            ('open short' in d) or ('add short' in d) or ('close long' in d) or ('reduce long' in d) or
+            (not d and side in ('A', 'ASK', 'SELL'))
+        )
+        bucket = out.setdefault(coin, {'coin': coin, 'bullish_wallets': set(), 'bearish_wallets': set(), 'bullish_value_flow_usd': 0.0, 'bearish_value_flow_usd': 0.0})
+        if bullish:
+            bucket['bullish_wallets'].add(wallet)
+            bucket['bullish_value_flow_usd'] += notional
+        elif bearish:
+            bucket['bearish_wallets'].add(wallet)
+            bucket['bearish_value_flow_usd'] += notional
+    final: dict[str, dict[str, Any]] = {}
+    for coin, b in out.items():
+        bullish_wallets = b.get('bullish_wallets') or set()
+        bearish_wallets = b.get('bearish_wallets') or set()
+        bullish_value = _safe_float(b.get('bullish_value_flow_usd'))
+        bearish_value = _safe_float(b.get('bearish_value_flow_usd'))
+        final[coin] = {
+            'coin': coin,
+            'net_buyer_count': len(bullish_wallets) - len(bearish_wallets),
+            'bullish_value_flow_usd': bullish_value,
+            'bearish_value_flow_usd': bearish_value,
+            'bullish_flow_usd': bullish_value,
+            'bearish_flow_usd': bearish_value,
+            'net_value_flow_usd': bullish_value - bearish_value,
+        }
+    return final
+
+
 def _live_wallet_state_rollup() -> dict[str, Any] | None:
     if not _live_state_is_ready():
         return None
     try:
-        row = fetch_one('''
-            WITH active AS (
-              SELECT wallet FROM qualified_wallets WHERE status='active'
-            ), fresh AS (
-              SELECT s.*
-              FROM copycat_live_wallet_states s
-              JOIN active a ON lower(a.wallet)=lower(s.wallet)
-              WHERE s.ts_ms >= :fresh_cutoff
-            )
-            SELECT count(*) AS live_wallets,
-                   max(ts_ms) AS latest_live_state_ts_ms,
-                   COALESCE(sum(account_value_usd),0) AS total,
-                   COALESCE(max(account_value_usd),0) AS largest_account_value_usd,
-                   COALESCE(sum(open_position_value_usd),0) AS open_total,
-                   COALESCE(sum(open_positions),0) AS positions
-            FROM fresh
-        ''', {'fresh_cutoff': _live_state_cutoff_ms()}) or {}
-        if int(row.get('live_wallets') or 0) <= 0:
-            return None
-        return row
+        states = fetch_all("""
+            SELECT lower(s.wallet) AS wallet,
+                   s.ts_ms,
+                   COALESCE(s.account_value_usd,0) AS account_value_usd,
+                   COALESCE(s.open_position_value_usd,0) AS open_position_value_usd,
+                   COALESCE(s.open_positions,0) AS open_positions
+            FROM copycat_live_wallet_states s
+            JOIN qualified_wallets q ON lower(q.wallet)=lower(s.wallet) AND q.status='active'
+            WHERE s.ts_ms >= :fresh_cutoff
+        """, {'fresh_cutoff': _live_state_cutoff_ms()})
     except Exception:
         return None
+    if not states:
+        return None
+    by_wallet: dict[str, dict[str, float]] = {}
+    latest_ts = 0
+    for srow in states:
+        wallet = str(srow.get('wallet') or '').lower()
+        latest_ts = max(latest_ts, int(srow.get('ts_ms') or 0))
+        by_wallet[wallet] = {
+            'account': _safe_float(srow.get('account_value_usd')),
+            'open': 0.0,
+            'positions': 0.0,
+            'adjustment': 0.0,
+        }
+    for p in _live_marked_position_rows():
+        wallet = str(p.get('wallet') or '').lower()
+        bucket = by_wallet.get(wallet)
+        if not bucket:
+            continue
+        bucket['open'] += _safe_float(p.get('current_position_value_usd'))
+        bucket['positions'] += 1
+        bucket['adjustment'] += _safe_float(p.get('mark_delta_pnl_usd'))
+        latest_ts = max(latest_ts, int(p.get('ts_ms') or 0))
+    account_values = [max(0.0, v['account'] + v['adjustment']) for v in by_wallet.values()]
+    return {
+        'live_wallets': len(by_wallet),
+        'latest_live_state_ts_ms': latest_ts,
+        'total': sum(account_values),
+        'largest_account_value_usd': max(account_values) if account_values else 0.0,
+        'open_total': sum(v['open'] for v in by_wallet.values()),
+        'positions': int(sum(v['positions'] for v in by_wallet.values())),
+    }
 
 
 def _live_signal_rows(limit: int = 500) -> list[dict[str, Any]]:
+    requested_limit = max(1, min(int(limit or 500), 500))
+    now = time.time()
+    cached_rows = _LIVE_SIGNAL_ROWS_CACHE.get('rows')
+    if isinstance(cached_rows, list) and cached_rows and now - float(_LIVE_SIGNAL_ROWS_CACHE.get('ts') or 0) < _LIVE_SIGNAL_ROWS_CACHE_TTL_SECONDS:
+        return cached_rows[:requested_limit]
     if not _live_state_is_ready():
         return []
     try:
-        limit = max(1, min(int(limit or 500), 500))
-        return fetch_all('''
-            WITH active AS (
-              SELECT wallet FROM qualified_wallets WHERE status='active'
-            ), fresh_states AS (
-              SELECT s.wallet, s.account_value_usd
-              FROM copycat_live_wallet_states s
-              JOIN active a ON lower(a.wallet)=lower(s.wallet)
-              WHERE s.ts_ms >= :fresh_cutoff
-            ), p AS (
-              SELECT upper(lp.coin) AS coin,
-                     COALESCE(sum(lp.position_value_usd) FILTER (WHERE lower(lp.side)='long'),0) AS value_long_usd,
-                     COALESCE(sum(lp.position_value_usd) FILTER (WHERE lower(lp.side)='short'),0) AS value_short_usd,
-                     count(DISTINCT lp.wallet) FILTER (WHERE lower(lp.side)='long') AS wallets_long,
-                     count(DISTINCT lp.wallet) FILTER (WHERE lower(lp.side)='short') AS wallets_short,
-                     max(lp.ts_ms) AS ts_ms
-              FROM copycat_live_positions lp
-              JOIN fresh_states fs ON lower(fs.wallet)=lower(lp.wallet)
-              WHERE lp.ts_ms >= :fresh_cutoff
-              GROUP BY upper(lp.coin)
-            ), totals AS (
-              SELECT COALESCE(sum(value_long_usd + value_short_usd),0) AS gross,
-                     COALESCE((SELECT sum(account_value_usd) FROM fresh_states),0) AS tracked_value
-              FROM p
-            ), event_flow AS (
-              SELECT upper(coin) AS coin,
-                     count(DISTINCT wallet) FILTER (
-                       WHERE lower(COALESCE(direction, side, '')) LIKE '%long%' OR upper(COALESCE(side,'')) IN ('B','BUY')
-                     ) - count(DISTINCT wallet) FILTER (
-                       WHERE lower(COALESCE(direction, side, '')) LIKE '%short%' OR upper(COALESCE(side,'')) IN ('A','SELL')
-                     ) AS net_buyer_count,
-                     COALESCE(sum(notional_usd) FILTER (
-                       WHERE lower(COALESCE(direction, side, '')) LIKE '%long%' OR upper(COALESCE(side,'')) IN ('B','BUY')
-                     ),0) AS bullish_value_flow_usd,
-                     COALESCE(sum(notional_usd) FILTER (
-                       WHERE lower(COALESCE(direction, side, '')) LIKE '%short%' OR upper(COALESCE(side,'')) IN ('A','SELL')
-                     ),0) AS bearish_value_flow_usd
-              FROM copycat_live_events
-              WHERE ts_ms >= :flow_cutoff
-                AND coin IS NOT NULL
-              GROUP BY upper(coin)
-            )
-            SELECT p.coin,
-                   p.ts_ms,
-                   CASE WHEN p.value_long_usd + p.value_short_usd > 0
-                        THEN (p.value_long_usd - p.value_short_usd) / (p.value_long_usd + p.value_short_usd)
-                        ELSE 0 END AS signal,
-                   CASE WHEN abs(p.value_long_usd - p.value_short_usd) / GREATEST(p.value_long_usd + p.value_short_usd, 1) >= 0.65 THEN 'High'
-                        WHEN abs(p.value_long_usd - p.value_short_usd) / GREATEST(p.value_long_usd + p.value_short_usd, 1) >= 0.35 THEN 'Medium'
-                        ELSE 'Low' END AS confidence,
-                   p.wallets_long,
-                   p.wallets_short,
-                   0 AS wallets_flat,
-                   p.value_long_usd,
-                   p.value_short_usd,
-                   p.value_long_usd - p.value_short_usd AS net_value_usd,
-                   CASE WHEN totals.gross > 0 THEN p.value_long_usd/totals.gross ELSE 0 END AS value_long_pct_total,
-                   CASE WHEN totals.gross > 0 THEN p.value_short_usd/totals.gross ELSE 0 END AS value_short_pct_total,
-                   COALESCE(event_flow.net_buyer_count,0) AS net_buyer_count,
-                   COALESCE(event_flow.bullish_value_flow_usd,0) AS bullish_value_flow_usd,
-                   COALESCE(event_flow.bearish_value_flow_usd,0) AS bearish_value_flow_usd,
-                   COALESCE(event_flow.bullish_value_flow_usd,0) AS bullish_flow_usd,
-                   COALESCE(event_flow.bearish_value_flow_usd,0) AS bearish_flow_usd,
-                   COALESCE(event_flow.bullish_value_flow_usd,0) - COALESCE(event_flow.bearish_value_flow_usd,0) AS net_value_flow_usd,
-                   totals.tracked_value AS total_tracked_value_usd,
-                   true AS live_state
-            FROM p
-            CROSS JOIN totals
-            LEFT JOIN event_flow ON event_flow.coin=p.coin
-            WHERE (p.value_long_usd + p.value_short_usd) > 0
-            ORDER BY abs(p.value_long_usd - p.value_short_usd) DESC NULLS LAST
-            LIMIT :limit
-        ''', {
-            'limit': limit,
-            'fresh_cutoff': _live_state_cutoff_ms(),
-            'flow_cutoff': _now_ms() - int(settings.signal_lookback_minutes or 60) * 60_000,
-        })
+        positions = _live_marked_position_rows()
+        flow_map = _live_event_flow_map()
+        rollup = _live_wallet_state_rollup() or {}
     except Exception:
         return []
+    if not positions and not flow_map:
+        return []
+    gross = 0.0
+    agg: dict[str, dict[str, Any]] = {}
+    latest_ts = 0
+    for p in positions:
+        coin = _normalise_index_symbol(p.get('coin'))
+        if not coin or _index_is_margin_symbol(coin):
+            continue
+        value = _safe_float(p.get('current_position_value_usd'))
+        if value <= 0:
+            continue
+        wallet = str(p.get('wallet') or '').lower()
+        side = str(p.get('side') or '').lower()
+        row = agg.setdefault(coin, {
+            'coin': coin,
+            'ts_ms': 0,
+            'value_long_usd': 0.0,
+            'value_short_usd': 0.0,
+            'wallets_long_set': set(),
+            'wallets_short_set': set(),
+        })
+        row['ts_ms'] = max(int(row.get('ts_ms') or 0), int(p.get('ts_ms') or 0))
+        latest_ts = max(latest_ts, int(p.get('ts_ms') or 0))
+        gross += value
+        if side.startswith('short'):
+            row['value_short_usd'] += value
+            row['wallets_short_set'].add(wallet)
+        else:
+            row['value_long_usd'] += value
+            row['wallets_long_set'].add(wallet)
 
+    for coin in flow_map:
+        agg.setdefault(coin, {
+            'coin': coin,
+            'ts_ms': latest_ts or _now_ms(),
+            'value_long_usd': 0.0,
+            'value_short_usd': 0.0,
+            'wallets_long_set': set(),
+            'wallets_short_set': set(),
+        })
+
+    out: list[dict[str, Any]] = []
+    tracked_value = _safe_float(rollup.get('total'))
+    for coin, row in agg.items():
+        long_v = _safe_float(row.get('value_long_usd'))
+        short_v = _safe_float(row.get('value_short_usd'))
+        total = long_v + short_v
+        net = long_v - short_v
+        signal = net / total if total > 0 else 0.0
+        confidence = 'High' if total > 0 and abs(signal) >= 0.65 else 'Medium' if total > 0 and abs(signal) >= 0.35 else 'Low'
+        flow = flow_map.get(coin, {})
+        out.append({
+            'coin': coin,
+            'ts_ms': row.get('ts_ms') or latest_ts or _now_ms(),
+            'signal': signal,
+            'confidence': confidence,
+            'wallets_long': len(row.get('wallets_long_set') or set()),
+            'wallets_short': len(row.get('wallets_short_set') or set()),
+            'wallets_flat': 0,
+            'value_long_usd': long_v,
+            'value_short_usd': short_v,
+            'net_value_usd': net,
+            'value_long_pct_total': long_v / gross if gross > 0 else 0.0,
+            'value_short_pct_total': short_v / gross if gross > 0 else 0.0,
+            'net_buyer_count': int(flow.get('net_buyer_count') or 0),
+            'bullish_value_flow_usd': _safe_float(flow.get('bullish_value_flow_usd')),
+            'bearish_value_flow_usd': _safe_float(flow.get('bearish_value_flow_usd')),
+            'bullish_flow_usd': _safe_float(flow.get('bullish_flow_usd')),
+            'bearish_flow_usd': _safe_float(flow.get('bearish_flow_usd')),
+            'net_value_flow_usd': _safe_float(flow.get('net_value_flow_usd')),
+            'total_tracked_value_usd': tracked_value,
+            'live_state': True,
+        })
+    out.sort(key=lambda r: (_safe_float(r.get('value_long_usd')) + _safe_float(r.get('value_short_usd')), abs(_safe_float(r.get('net_value_flow_usd')))), reverse=True)
+    _LIVE_SIGNAL_ROWS_CACHE['ts'] = time.time()
+    _LIVE_SIGNAL_ROWS_CACHE['rows'] = out[:500]
+    return out[:requested_limit]
 
 def _within_tolerance(a: float, b: float, pct: float = 0.0075, abs_tol: float = 5000.0) -> bool:
     a = _safe_float(a); b = _safe_float(b)
@@ -1202,12 +1348,14 @@ def token_icons(symbols: str = ''):
 # -------------------------
 _INDEX_LOCK = threading.Lock()
 _INDEX_CACHE: dict[str, Any] = {'ts': 0.0, 'data': None}
-_INDEX_CACHE_TTL_SECONDS = 2.0
+_INDEX_CACHE_TTL_SECONDS = 0.75
 _INDEX_WRITE_INTERVAL_MS = 60_000
 _INDEX_METHOD_VERSION = 'copycat_live_index_v2_no_margin_signed_exposure'
 _FEE_SLIPPAGE_RATE = 0.0015  # 15 bps round-trip buffer on rebalance turnover.
 _SPX_CACHE: dict[str, Any] = {'ts': 0.0, 'price': None}
 _SPX_CACHE_TTL_SECONDS = 60 * 30
+_HL_MIDS_CACHE: dict[str, Any] = {'ts': 0.0, 'mids': None}
+_HL_MIDS_CACHE_TTL_SECONDS = 0.9
 
 
 def _normalise_index_symbol(symbol: str) -> str:
@@ -1265,15 +1413,21 @@ def _ensure_backtest_table() -> None:
 
 
 def _hl_all_mids() -> dict[str, float]:
+    now = time.time()
+    cached = _HL_MIDS_CACHE.get('mids')
+    if isinstance(cached, dict) and now - float(_HL_MIDS_CACHE.get('ts') or 0) < _HL_MIDS_CACHE_TTL_SECONDS:
+        return cached
     payload = _hl_info({'type': 'allMids'})
     if not isinstance(payload, dict):
-        return {}
+        return cached if isinstance(cached, dict) else {'USDC': 1.0}
     out: dict[str, float] = {'USDC': 1.0}
     for k, v in payload.items():
         sym = _normalise_index_symbol(k)
         px = _safe_float(v)
         if sym and px > 0:
             out[sym] = px
+    _HL_MIDS_CACHE['ts'] = now
+    _HL_MIDS_CACHE['mids'] = out
     return out
 
 
