@@ -259,21 +259,26 @@ export default function Dashboard() {
   const [signalSort, setSignalSort] = useState<SortState>({ key: 'signal', dir: 'desc' })
   const [flowSortState, setFlowSortState] = useState<SortState>({ key: 'net_value_flow_usd', dir: 'desc' })
 
-  const inFlight = useRef(false)
+  const fullInFlight = useRef(false)
+  const tickInFlight = useRef(false)
   const failureCount = useRef(0)
   const hasLoaded = useRef(false)
   const stagedOrderKeys = useRef<Set<string>>(new Set())
   const orderStageTimers = useRef<number[]>([])
   const ordersInitialised = useRef(false)
 
-  async function load() {
-    // One browser tab should never stack multiple refreshes. When a mobile tab
-    // and desktop tab are open together, this prevents request pile-ups that
-    // can make Render/Supabase briefly refuse connections and show "Failed to fetch".
-    if (inFlight.current) return
-    inFlight.current = true
+  function applyLiveTick(feed: any) {
+    if (feed.summary) setSummary((prev: any) => ({ ...prev, ...feed.summary }))
+    if (Array.isArray(feed.orders)) setOrders(feed.orders)
+  }
+
+  async function loadFull() {
+    // The full payload contains the large tables and chart inputs. It should
+    // load on first paint and then refresh in the background, not every second.
+    if (fullInFlight.current) return
+    fullInFlight.current = true
     try {
-      const feed = await apiGet('/api/dashboard-feed')
+      const feed = await apiGet('/api/dashboard-feed', { timeoutMs: 20000 })
       failureCount.current = 0
       hasLoaded.current = true
       setErr('')
@@ -285,17 +290,42 @@ export default function Dashboard() {
       setInsights(feed.insights || [])
     } catch (e: any) {
       failureCount.current += 1
-      // Keep the last good dashboard on screen during transient network blips.
-      // Only show an error if the page has never loaded successfully.
       if (!hasLoaded.current && failureCount.current >= 3) {
         setErr('Live data connection interrupted. Retrying…')
       }
     } finally {
-      inFlight.current = false
+      fullInFlight.current = false
     }
   }
 
-  useEffect(() => { window.history.scrollRestoration = 'manual'; window.scrollTo(0, 0); load(); const id = setInterval(load, 1000); return () => clearInterval(id) }, [])
+  async function loadTick() {
+    // Tiny 1s update: most recent orders + headline live numbers only.
+    if (tickInFlight.current) return
+    tickInFlight.current = true
+    try {
+      const tick = await apiGet('/api/dashboard-tick', { timeoutMs: 6000 })
+      failureCount.current = 0
+      hasLoaded.current = true
+      setErr('')
+      applyLiveTick(tick)
+    } catch (e: any) {
+      failureCount.current += 1
+      if (!hasLoaded.current && failureCount.current >= 3) {
+        setErr('Live data connection interrupted. Retrying…')
+      }
+    } finally {
+      tickInFlight.current = false
+    }
+  }
+
+  useEffect(() => {
+    window.history.scrollRestoration = 'manual'
+    window.scrollTo(0, 0)
+    loadFull()
+    const tickId = setInterval(loadTick, 1000)
+    const fullId = setInterval(loadFull, 10000)
+    return () => { clearInterval(tickId); clearInterval(fullId) }
+  }, [])
 
   const symbolKey = useMemo(() => Array.from(new Set([...signals.map(r => r.coin), ...targets.map(r => r.coin), ...flow.map(r => r.coin), ...orders.map((r: any) => r.coin)].filter(Boolean).map(x => canonicalToken(String(x).toUpperCase())))).sort().join(','), [signals, targets, flow, orders])
   useEffect(() => {
@@ -323,7 +353,7 @@ export default function Dashboard() {
     orderStageTimers.current = []
     const next = orderRows.slice(0, 50)
     const nextKeys = new Set(next.map(orderKey))
-    const orderIndex = new Map(next.map((o, i) => [orderKey(o), i]))
+    const orderIndex = new Map<string, number>(next.map((o, i) => [orderKey(o), i] as [string, number]))
 
     // First paint must show the latest tape immediately. The satisfying
     // brick/stack animation is only for genuinely new fills after the page
@@ -391,7 +421,7 @@ export default function Dashboard() {
       <article><small>Qualified wallets</small><RollingInteger value={summary.qualified_wallets || 0} /><span>ranked daily</span></article>
       <article className="cc-tracked-value-card"><small>Tracked account value</small><RollingMoney value={summary.tracked_account_value_usd} /><span>{summary.live_state_active ? 'live wallet state' : 'latest snapshots'}</span>{summary.largest_account_value_usd ? <em>Largest account: {money(summary.largest_account_value_usd)}</em> : null}</article>
       <article><small>Open position value</small><RollingMoney value={summary.tracked_open_position_value_usd} /><span>{summary.open_positions || 0} live positions</span></article>
-      <article><small>Assets with signals</small><RollingInteger value={summary.assets_with_signals || 0} /><span>cross-asset breadth</span></article>
+      <article><small>Assets with signals</small><RollingInteger value={summary.assets_with_signals || 0} /><span>{summary.markets_monitored ? `${summary.markets_monitored} markets monitored` : 'cross-asset breadth'}</span></article>
     </section>
 
     <section className="cc-chart-grid">

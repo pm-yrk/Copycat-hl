@@ -12,6 +12,7 @@ from typing import Any
 import stripe
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from sqlalchemy import text
 
 from .auth import get_current_user, require_active_subscription
@@ -35,6 +36,7 @@ settings = get_settings()
 stripe.api_key = settings.stripe_secret_key or None
 
 app = FastAPI(title='Hyper Wallet Tracker SaaS API')
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[settings.public_site_url, 'http://localhost:3000'],
@@ -113,9 +115,125 @@ def copycat_data_api_historical_sources():
 
 _DASHBOARD_FEED_CACHE: dict[str, Any] = {'ts': 0.0, 'data': None}
 _DASHBOARD_FEED_LOCK = threading.Lock()
-_DASHBOARD_FEED_TTL_SECONDS = 1.5
+_DASHBOARD_FEED_TTL_SECONDS = 8.0
 _LIVE_SIGNAL_ROWS_CACHE: dict[str, Any] = {'ts': 0.0, 'rows': []}
-_LIVE_SIGNAL_ROWS_CACHE_TTL_SECONDS = 2.0
+_LIVE_SIGNAL_ROWS_CACHE_TTL_SECONDS = 8.0
+_DASHBOARD_TICK_CACHE: dict[str, Any] = {'ts': 0.0, 'data': None}
+_DASHBOARD_TICK_LOCK = threading.Lock()
+_DASHBOARD_TICK_TTL_SECONDS = 0.75
+
+
+def _public_dashboard_user() -> dict[str, Any]:
+    return {'sub': 'public-dashboard', 'email': None, 'demo': True}
+
+
+def _round_float(value: Any, digits: int = 6) -> float:
+    return round(_safe_float(value), digits)
+
+
+def _round_usd(value: Any) -> float:
+    return round(_safe_float(value), 2)
+
+
+def _compact_summary(row: dict[str, Any]) -> dict[str, Any]:
+    out = dict(row or {})
+    for key in ('tracked_account_value_usd', 'largest_account_value_usd', 'tracked_open_position_value_usd'):
+        if key in out:
+            out[key] = _round_usd(out.get(key))
+    if out.get('markets_monitored') is None:
+        try:
+            out['markets_monitored'] = len(_hl_asset_universe())
+        except Exception:
+            out['markets_monitored'] = None
+    return out
+
+
+def _compact_signal_row(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        'coin': row.get('coin'),
+        'ts_ms': row.get('ts_ms'),
+        'signal': _round_float(row.get('signal')),
+        'confidence': row.get('confidence'),
+        'wallets_long': int(row.get('wallets_long') or 0),
+        'wallets_short': int(row.get('wallets_short') or 0),
+        'value_long_usd': _round_usd(row.get('value_long_usd')),
+        'value_short_usd': _round_usd(row.get('value_short_usd')),
+        'net_value_usd': _round_usd(row.get('net_value_usd')),
+        'value_long_pct_total': _round_float(row.get('value_long_pct_total')),
+        'value_short_pct_total': _round_float(row.get('value_short_pct_total')),
+        'live_state': bool(row.get('live_state')),
+    }
+
+
+def _compact_flow_row(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        'coin': row.get('coin'),
+        'net_buyer_count': int(row.get('net_buyer_count') or 0),
+        'bullish_flow_usd': _round_usd(row.get('bullish_flow_usd') or row.get('bullish_value_flow_usd')),
+        'bearish_flow_usd': _round_usd(row.get('bearish_flow_usd') or row.get('bearish_value_flow_usd')),
+        'net_value_flow_usd': _round_usd(row.get('net_value_flow_usd')),
+    }
+
+
+def _compact_target_row(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        'ts_ms': row.get('ts_ms'),
+        'coin': row.get('coin'),
+        'target_weight': _round_float(row.get('target_weight')),
+        'index_weight': _round_float(row.get('index_weight')),
+        'direction': row.get('direction'),
+    }
+
+
+def _compact_order_row(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        'ts_ms': row.get('ts_ms'),
+        'wallet': row.get('wallet'),
+        'wallet_label': row.get('wallet_label'),
+        'coin': row.get('coin'),
+        'side': row.get('side'),
+        'delta_value_usd': _round_usd(row.get('delta_value_usd') or row.get('notional_usd')),
+        'position_value_usd': _round_usd(row.get('position_value_usd')),
+        'source': row.get('source'),
+    }
+
+
+def _compact_insight(row: dict[str, Any]) -> dict[str, Any]:
+    out = dict(row or {})
+    for key in ('value', 'net_value_flow_usd', 'bullish_value_flow_usd', 'bearish_value_flow_usd'):
+        if key in out:
+            out[key] = _round_usd(out.get(key))
+    return out
+
+
+@app.get('/api/dashboard-tick')
+def dashboard_tick():
+    """Tiny public payload for 1s UI refreshes.
+
+    The heavy dashboard tables should not be downloaded and parsed every second.
+    This endpoint keeps the live tape and headline numbers moving while the full
+    feed refreshes less often.
+    """
+    now = time.time()
+    cached = _DASHBOARD_TICK_CACHE.get('data')
+    if cached and now - float(_DASHBOARD_TICK_CACHE.get('ts') or 0) < _DASHBOARD_TICK_TTL_SECONDS:
+        return cached
+    with _DASHBOARD_TICK_LOCK:
+        now = time.time()
+        cached = _DASHBOARD_TICK_CACHE.get('data')
+        if cached and now - float(_DASHBOARD_TICK_CACHE.get('ts') or 0) < _DASHBOARD_TICK_TTL_SECONDS:
+            return cached
+        public_user = _public_dashboard_user()
+        data = {
+            'summary': _compact_summary(summary(public_user)),
+            'orders': [_compact_order_row(r) for r in recent_orders(limit=50, user=public_user)],
+            'server_time_ms': _now_ms(),
+            'cache_ttl_ms': int(_DASHBOARD_TICK_TTL_SECONDS * 1000),
+            'public_readonly': True,
+        }
+        _DASHBOARD_TICK_CACHE['ts'] = time.time()
+        _DASHBOARD_TICK_CACHE['data'] = data
+        return data
 
 
 @app.get('/api/dashboard-feed')
@@ -140,18 +258,22 @@ def dashboard_feed():
         if cached and now - float(_DASHBOARD_FEED_CACHE.get('ts') or 0) < _DASHBOARD_FEED_TTL_SECONDS:
             return cached
         try:
-            # Public read-only dashboard payload. Keep this endpoint fast: the
-            # browser polls it every second, so it must not require Supabase auth
-            # and it must share one cached computation across all open tabs.
-            public_user = {'sub': 'public-dashboard', 'email': None, 'demo': True}
+            # Public read-only dashboard payload. This is the heavier table
+            # payload, so it is compacted and cached for several seconds. The
+            # frontend uses /api/dashboard-tick for the 1s tape/headline updates.
+            public_user = _public_dashboard_user()
+            signal_rows = signals(limit=500, user=public_user)
+            flow_rows = flow(limit=500, user=public_user)
+            target_rows = targets(public_user)
+            order_rows = recent_orders(limit=50, user=public_user)
             insight_result = insights(public_user)
             feed = {
-                'summary': summary(public_user),
-                'signals': signals(limit=500, user=public_user),
-                'targets': targets(public_user),
-                'flow': flow(limit=500, user=public_user),
-                'orders': recent_orders(limit=50, user=public_user),
-                'insights': (insight_result.get('insights') if isinstance(insight_result, dict) else []) or [],
+                'summary': _compact_summary(summary(public_user)),
+                'signals': [_compact_signal_row(r) for r in signal_rows],
+                'targets': [_compact_target_row(r) for r in target_rows],
+                'flow': [_compact_flow_row(r) for r in flow_rows],
+                'orders': [_compact_order_row(r) for r in order_rows],
+                'insights': [_compact_insight(r) for r in ((insight_result.get('insights') if isinstance(insight_result, dict) else []) or [])],
                 'server_time_ms': _now_ms(),
                 'cache_ttl_ms': int(_DASHBOARD_FEED_TTL_SECONDS * 1000),
                 'public_readonly': True,
@@ -257,7 +379,12 @@ def summary(user: dict = Depends(require_active_subscription)):
         }
         live_rows_for_count = _live_signal_rows(500)
         if live_rows_for_count:
-            assets = {'n': len(live_rows_for_count)}
+            active_signal_count = sum(
+                1
+                for r in live_rows_for_count
+                if (_safe_float(r.get('value_long_usd')) + _safe_float(r.get('value_short_usd'))) > 0
+            )
+            assets = {'n': active_signal_count or len(live_rows_for_count)}
         else:
             universe_count = len(_hl_asset_universe())
             assets = {'n': universe_count or int(assets.get('n') or 0)}
@@ -283,7 +410,8 @@ def summary(user: dict = Depends(require_active_subscription)):
         'largest_account_value_usd': float(total_value.get('largest_account_value_usd') or 0),
         'tracked_open_position_value_usd': float(open_value['total'] or 0),
         'open_positions': int(open_value['positions'] or 0),
-        'assets_with_signals': assets['n'],
+        'assets_with_signals': int(assets['n'] or 0),
+        'markets_monitored': len(_hl_asset_universe()),
         'data_quality_status': 'healthy' if data_quality_ok else 'checking',
         'data_quality_age_seconds': collector_age_seconds,
         'data_quality_message': ('Live/hybrid Hyperliquid state active' if live_state_active else ('50-wallet snapshot healthy' if data_quality_ok else 'Waiting for a fresh completed collector snapshot')),
@@ -707,7 +835,11 @@ def _live_signal_rows(limit: int = 500) -> list[dict[str, Any]]:
             row['value_long_usd'] += value
             row['wallets_long_set'].add(wallet)
 
-    for coin in sorted(set(list(flow_map.keys()) + list(asset_universe or []))):
+    # Keep the dashboard fast by returning assets with tracked-wallet
+    # exposure or fresh order flow. The full Hyperliquid market count is still
+    # exposed as summary.markets_monitored; zero-exposure markets should not be
+    # pushed through the 1s dashboard feed.
+    for coin in sorted(set(flow_map.keys())):
         agg.setdefault(coin, {
             'coin': coin,
             'ts_ms': latest_ts or _now_ms(),
