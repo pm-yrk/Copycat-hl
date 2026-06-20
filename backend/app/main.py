@@ -113,13 +113,13 @@ def copycat_data_api_historical_sources():
 
 _DASHBOARD_FEED_CACHE: dict[str, Any] = {'ts': 0.0, 'data': None}
 _DASHBOARD_FEED_LOCK = threading.Lock()
-_DASHBOARD_FEED_TTL_SECONDS = 0.35
+_DASHBOARD_FEED_TTL_SECONDS = 1.5
 _LIVE_SIGNAL_ROWS_CACHE: dict[str, Any] = {'ts': 0.0, 'rows': []}
-_LIVE_SIGNAL_ROWS_CACHE_TTL_SECONDS = 0.75
+_LIVE_SIGNAL_ROWS_CACHE_TTL_SECONDS = 2.0
 
 
 @app.get('/api/dashboard-feed')
-def dashboard_feed(user: dict = Depends(require_active_subscription)):
+def dashboard_feed():
     """Single live dashboard payload.
 
     The customer dashboard polls once per second. Previously each browser tab
@@ -140,16 +140,21 @@ def dashboard_feed(user: dict = Depends(require_active_subscription)):
         if cached and now - float(_DASHBOARD_FEED_CACHE.get('ts') or 0) < _DASHBOARD_FEED_TTL_SECONDS:
             return cached
         try:
-            insight_result = insights(user)
+            # Public read-only dashboard payload. Keep this endpoint fast: the
+            # browser polls it every second, so it must not require Supabase auth
+            # and it must share one cached computation across all open tabs.
+            public_user = {'sub': 'public-dashboard', 'email': None, 'demo': True}
+            insight_result = insights(public_user)
             feed = {
-                'summary': summary(user),
-                'signals': signals(limit=500, user=user),
-                'targets': targets(user),
-                'flow': flow(limit=500, user=user),
-                'orders': recent_orders(limit=50, user=user),
+                'summary': summary(public_user),
+                'signals': signals(limit=500, user=public_user),
+                'targets': targets(public_user),
+                'flow': flow(limit=500, user=public_user),
+                'orders': recent_orders(limit=50, user=public_user),
                 'insights': (insight_result.get('insights') if isinstance(insight_result, dict) else []) or [],
                 'server_time_ms': _now_ms(),
                 'cache_ttl_ms': int(_DASHBOARD_FEED_TTL_SECONDS * 1000),
+                'public_readonly': True,
             }
             _DASHBOARD_FEED_CACHE['ts'] = time.time()
             _DASHBOARD_FEED_CACHE['data'] = feed
@@ -1467,14 +1472,14 @@ def token_icons(symbols: str = ''):
 # -------------------------
 _INDEX_LOCK = threading.Lock()
 _INDEX_CACHE: dict[str, Any] = {'ts': 0.0, 'data': None}
-_INDEX_CACHE_TTL_SECONDS = 0.75
+_INDEX_CACHE_TTL_SECONDS = 5.0
 _INDEX_WRITE_INTERVAL_MS = 60_000
 _INDEX_METHOD_VERSION = 'copycat_live_index_v2_no_margin_signed_exposure'
 _FEE_SLIPPAGE_RATE = 0.0015  # 15 bps round-trip buffer on rebalance turnover.
 _SPX_CACHE: dict[str, Any] = {'ts': 0.0, 'price': None}
 _SPX_CACHE_TTL_SECONDS = 60 * 30
 _HL_MIDS_CACHE: dict[str, Any] = {'ts': 0.0, 'mids': None}
-_HL_MIDS_CACHE_TTL_SECONDS = 0.9
+_HL_MIDS_CACHE_TTL_SECONDS = 4.0
 _ASSET_UNIVERSE_CACHE: dict[str, Any] = {'ts': 0.0, 'symbols': []}
 _ASSET_UNIVERSE_TTL_SECONDS = 60 * 30
 
