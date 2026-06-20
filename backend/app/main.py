@@ -1389,8 +1389,8 @@ def insights(user: dict = Depends(require_active_subscription)):
         'ts_ms': ts,
         'insights': [
             {'type': 'top_signal', 'label': 'Top conviction asset', 'coin': top_signal.get('coin'), 'detail': f"Signal {display_signal(top_signal):.4f} · {top_signal.get('confidence')}", 'row': top_signal},
-            {'type': 'accumulation', 'label': 'Biggest accumulation', 'coin': accumulation.get('coin'), 'detail': f"Net flow ${float(accumulation.get('net_value_flow_usd') or 0):,.0f}", 'row': accumulation},
-            {'type': 'distribution', 'label': 'Biggest distribution', 'coin': distribution.get('coin'), 'detail': f"Net flow ${float(distribution.get('net_value_flow_usd') or 0):,.0f}", 'row': distribution},
+            {'type': 'accumulation', 'label': 'Recent accumulation', 'coin': accumulation.get('coin'), 'detail': f"Net flow ${float(accumulation.get('net_value_flow_usd') or 0):,.0f}", 'row': accumulation},
+            {'type': 'distribution', 'label': 'Recent distribution', 'coin': distribution.get('coin'), 'detail': f"Net flow ${float(distribution.get('net_value_flow_usd') or 0):,.0f}", 'row': distribution},
             {'type': 'most_traded', 'label': 'Most traded asset', 'coin': most_traded.get('coin'), 'detail': f"Gross flow ${float((_safe_float(most_traded.get('bullish_value_flow_usd')) + _safe_float(most_traded.get('bearish_value_flow_usd')))):,.0f}", 'row': most_traded},
             {'type': 'disagreement', 'label': 'Wallet count vs value disagreement', 'coin': disagreement.get('coin'), 'detail': f"{disagreement.get('wallets_long')} long / {disagreement.get('wallets_short')} short · net ${float(disagreement.get('net_value_usd') or 0):,.0f}", 'row': disagreement},
         ]

@@ -87,6 +87,40 @@ function flowRead(netValueFlowUsd: any) {
   const n = Number(netValueFlowUsd || 0)
   return n > 1000 ? 'Accumulation' : n < -1000 ? 'Distribution' : 'Neutral'
 }
+
+function flowInsightLabel(x: any) {
+  const label = String(x?.label || '')
+  if (/biggest accumulation/i.test(label)) return 'Recent accumulation'
+  if (/biggest distribution/i.test(label)) return 'Recent distribution'
+  return label
+}
+function flowWindowText(summary: any) {
+  const minutes = Number(summary?.signal_lookback_minutes || summary?.flow_lookback_minutes || 60)
+  if (!Number.isFinite(minutes) || minutes <= 0) return 'recent order flow'
+  if (minutes < 60) return `last ${Math.round(minutes)}m order flow`
+  const hours = minutes / 60
+  return hours === 1 ? 'last 60m order flow' : `last ${hours.toFixed(hours % 1 ? 1 : 0)}h order flow`
+}
+function flowIntensityText(flowRows: any[], openValue: any) {
+  const open = Math.abs(Number(openValue || 0))
+  const grossFlow = (flowRows || []).reduce((sum, row) => sum + Math.abs(Number(row.bullish_flow_usd || row.bullish_value_flow_usd || 0)) + Math.abs(Number(row.bearish_flow_usd || row.bearish_value_flow_usd || 0)), 0)
+  if (!open || !Number.isFinite(open) || grossFlow <= 0) return 'Flow intensity: awaiting recent orders'
+  const share = (grossFlow / open) * 100
+  const label = share < 0.01 ? '<0.01%' : `${share.toFixed(share < 1 ? 2 : 1)}%`
+  return `Flow intensity: ${label} of open exposure`
+}
+function largestCurrentExposure(signals: any[]) {
+  const rows = [...(signals || [])]
+    .map((row: any) => {
+      const long = Number(row.value_long_usd || 0)
+      const short = Number(row.value_short_usd || 0)
+      const net = Number(row.net_value_usd || (long - short) || 0)
+      return { coin: row.coin, net, value: Math.abs(net), direction: net >= 0 ? 'Long' : 'Short' }
+    })
+    .filter((row: any) => row.coin && Number.isFinite(row.value) && row.value > 0)
+    .sort((a: any, b: any) => b.value - a.value)
+  return rows[0] || null
+}
 function orderActionClass(side: any) {
   const s = String(side || '').toLowerCase()
   if (s.includes('open short') || s.includes('add short') || s.includes('reduce long') || s.includes('close long')) return 'negative'
@@ -440,6 +474,8 @@ export default function Dashboard() {
   const visibleOrders = showAllOrders ? stagedOrders : stagedOrders.slice(0, 3)
   const sortedSignals = sortedRows(signals, signalSort)
   const sortedFlow = sortedRows(flow, flowSortState)
+  const topCurrentExposure = useMemo(() => largestCurrentExposure(signals), [signals])
+  const flowContextText = `${flowWindowText(summary)} · ${flowIntensityText(flow, summary.tracked_open_position_value_usd)}`
 
   return <><Nav /><main className="cc-dashboard-shell"><LineBackdrop variant="dashboard" />
     <section className="cc-dashboard-top">
@@ -459,8 +495,11 @@ export default function Dashboard() {
         </div>
         <div className="cc-insights-card">
           <h3>At a glance</h3>
-          {(insights || []).slice(0, 5).map((x: any) => <div className="cc-insight-line" key={`${x.type}-${x.coin}`}>
-            <span>{x.label}</span><b>{x.coin || '—'}</b><em>{formatInsightDetail(x)}</em>
+          {topCurrentExposure ? <div className="cc-insight-line" key="largest-current-exposure">
+            <span>Largest current exposure</span><b>{displayToken(topCurrentExposure.coin)} {topCurrentExposure.direction}</b><em>{compactMoney(topCurrentExposure.value)} current exposure</em>
+          </div> : null}
+          {(insights || []).slice(0, topCurrentExposure ? 4 : 5).map((x: any) => <div className="cc-insight-line" key={`${x.type}-${x.coin}`}>
+            <span>{flowInsightLabel(x)}</span><b>{x.coin || '—'}</b><em>{formatInsightDetail(x)}</em>
           </div>)}
         </div>
       </aside>
@@ -494,7 +533,7 @@ export default function Dashboard() {
         </div>
       </div>
       <div className="cc-card cc-table-card">
-        <div className="cc-panel-title"><h3>Recent buyer / seller pressure</h3><span>largest flow changes first</span></div>
+        <div className="cc-panel-title"><h3>Recent buyer / seller pressure</h3><span>{flowContextText}</span></div>
         <div className="cc-scroll-table cc-scroll-y">
           <table className="cc-flow-table">
             <thead><tr><SortTh label="Asset" sortKey="asset" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Net buyers" sortKey="net_buyers" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Bullish flow" sortKey="bullish" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Bearish flow" sortKey="bearish" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Net value flow" sortKey="net_value_flow_usd" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Read" sortKey="read" sort={flowSortState} setSort={setFlowSortState} /></tr></thead>
