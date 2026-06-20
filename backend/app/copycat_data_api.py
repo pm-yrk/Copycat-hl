@@ -91,6 +91,39 @@ def ensure_copycat_data_api_tables(conn) -> None:
     conn.execute(text('CREATE INDEX IF NOT EXISTS idx_copycat_live_events_coin_ts ON copycat_live_events(coin, ts_ms DESC)'))
 
     conn.execute(text('''
+        CREATE TABLE IF NOT EXISTS copycat_live_wallet_states (
+          wallet text PRIMARY KEY,
+          ts_ms bigint NOT NULL,
+          account_value_usd double precision NOT NULL DEFAULT 0,
+          open_position_value_usd double precision NOT NULL DEFAULT 0,
+          open_positions integer NOT NULL DEFAULT 0,
+          source text NOT NULL DEFAULT 'hyperliquid_info',
+          raw_json jsonb NOT NULL DEFAULT '{}'::jsonb,
+          updated_at timestamptz NOT NULL DEFAULT now()
+        )
+    '''))
+    conn.execute(text('CREATE INDEX IF NOT EXISTS idx_copycat_live_wallet_states_ts ON copycat_live_wallet_states(ts_ms DESC)'))
+
+    conn.execute(text('''
+        CREATE TABLE IF NOT EXISTS copycat_live_positions (
+          wallet text NOT NULL,
+          coin text NOT NULL,
+          side text NOT NULL,
+          ts_ms bigint NOT NULL,
+          size double precision NOT NULL DEFAULT 0,
+          position_value_usd double precision NOT NULL DEFAULT 0,
+          entry_px double precision,
+          unrealized_pnl_usd double precision,
+          source text NOT NULL DEFAULT 'hyperliquid_info',
+          raw_json jsonb NOT NULL DEFAULT '{}'::jsonb,
+          updated_at timestamptz NOT NULL DEFAULT now(),
+          PRIMARY KEY(wallet, coin, side)
+        )
+    '''))
+    conn.execute(text('CREATE INDEX IF NOT EXISTS idx_copycat_live_positions_ts ON copycat_live_positions(ts_ms DESC)'))
+    conn.execute(text('CREATE INDEX IF NOT EXISTS idx_copycat_live_positions_coin_ts ON copycat_live_positions(coin, ts_ms DESC)'))
+
+    conn.execute(text('''
         CREATE TABLE IF NOT EXISTS copycat_historical_sources (
           id bigserial PRIMARY KEY,
           name text NOT NULL UNIQUE,
@@ -308,6 +341,48 @@ def data_api_wallet_fills(wallet: str, limit: int = 100) -> list[dict[str, Any]]
 def data_api_exposures(limit: int = 100) -> list[dict[str, Any]]:
     ensure_copycat_data_api()
     limit = max(1, min(int(limit or 100), 500))
+    settings = get_settings()
+    fresh_cutoff = now_ms() - max(15, int(settings.live_state_max_age_seconds or 75)) * 1000
+    min_ratio = max(0.1, min(float(settings.live_signal_min_coverage_ratio or 0.8), 1.0))
+    try:
+        coverage = fetch_one('''
+            WITH active AS (
+              SELECT wallet FROM qualified_wallets WHERE status='active'
+            )
+            SELECT count(*) AS active_wallets,
+                   count(s.wallet) FILTER (WHERE s.ts_ms >= :fresh_cutoff) AS fresh_wallets
+            FROM active a
+            LEFT JOIN copycat_live_wallet_states s ON lower(s.wallet)=lower(a.wallet)
+        ''', {'fresh_cutoff': fresh_cutoff}) or {}
+        active_wallets = int(coverage.get('active_wallets') or 0)
+        fresh_wallets = int(coverage.get('fresh_wallets') or 0)
+        if active_wallets and fresh_wallets >= max(1, int(active_wallets * min_ratio)):
+            return fetch_all('''
+                WITH active AS (
+                  SELECT wallet FROM qualified_wallets WHERE status='active'
+                ), p AS (
+                  SELECT upper(lp.coin) AS coin,
+                         COALESCE(sum(lp.position_value_usd) FILTER (WHERE lower(lp.side)='long'),0) AS long_usd,
+                         COALESCE(sum(lp.position_value_usd) FILTER (WHERE lower(lp.side)='short'),0) AS short_usd,
+                         count(DISTINCT lp.wallet) FILTER (WHERE lower(lp.side)='long') AS wallets_long,
+                         count(DISTINCT lp.wallet) FILTER (WHERE lower(lp.side)='short') AS wallets_short,
+                         max(lp.ts_ms) AS ts_ms
+                  FROM copycat_live_positions lp
+                  JOIN active a ON lower(a.wallet)=lower(lp.wallet)
+                  WHERE lp.ts_ms >= :fresh_cutoff
+                  GROUP BY upper(lp.coin)
+                )
+                SELECT coin, ts_ms, long_usd, short_usd, long_usd-short_usd AS net_usd,
+                       wallets_long, wallets_short,
+                       CASE WHEN long_usd + short_usd > 0 THEN long_usd/(long_usd+short_usd) ELSE 0 END AS long_share,
+                       CASE WHEN long_usd + short_usd > 0 THEN short_usd/(long_usd+short_usd) ELSE 0 END AS short_share,
+                       true AS live_state
+                FROM p
+                ORDER BY abs(long_usd-short_usd) DESC
+                LIMIT :limit
+            ''', {'limit': limit, 'fresh_cutoff': fresh_cutoff})
+    except Exception:
+        pass
     return fetch_all('''
         WITH latest_ts AS (SELECT max(ts_ms) AS ts_ms FROM positions), p AS (
           SELECT upper(coin) AS coin,
@@ -323,7 +398,8 @@ def data_api_exposures(limit: int = 100) -> list[dict[str, Any]]:
         SELECT coin, ts_ms, long_usd, short_usd, long_usd-short_usd AS net_usd,
                wallets_long, wallets_short,
                CASE WHEN long_usd + short_usd > 0 THEN long_usd/(long_usd+short_usd) ELSE 0 END AS long_share,
-               CASE WHEN long_usd + short_usd > 0 THEN short_usd/(long_usd+short_usd) ELSE 0 END AS short_share
+               CASE WHEN long_usd + short_usd > 0 THEN short_usd/(long_usd+short_usd) ELSE 0 END AS short_share,
+               false AS live_state
         FROM p
         ORDER BY abs(long_usd-short_usd) DESC
         LIMIT :limit

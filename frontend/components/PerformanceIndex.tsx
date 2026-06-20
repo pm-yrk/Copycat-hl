@@ -118,7 +118,7 @@ export default function PerformanceIndex({ variant = 'dashboard' }: { variant?: 
     }
   }
 
-  useEffect(() => { load(); const id = setInterval(load, compact ? 30000 : 10000); return () => clearInterval(id) }, [])
+  useEffect(() => { load(); const id = setInterval(load, compact ? 30000 : 2500); return () => clearInterval(id) }, [])
 
   const weights = useMemo(() => (data.current_weights || []).slice(0, 5), [data.current_weights])
   const isBacktest = data.mode === 'backtest' && (data.points || []).length > 0

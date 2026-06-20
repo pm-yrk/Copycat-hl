@@ -26,8 +26,14 @@ class Settings(BaseSettings):
     copycat_api_key_salt: str = ''
     live_event_wallet_limit: int = 50
     live_event_subscribe_order_updates: bool = False
+    # Same worker also polls current Hyperliquid wallet state so headline KPI
+    # values can refresh faster than the full collector cycle. Defaults are safe
+    # for Render Starter/Supabase and can be tuned from Render later.
+    live_state_wallet_limit: int = 50
+    live_state_poll_seconds: int = 20
+    live_state_max_age_seconds: int = 75
+    live_signal_min_coverage_ratio: float = 0.80
     hl_ws_url: str = 'wss://api.hyperliquid.xyz/ws'
-
     nansen_api_key: str = ''
     nansen_base_url: str = 'https://api.nansen.ai'
     nansen_lookback_days: int = 30

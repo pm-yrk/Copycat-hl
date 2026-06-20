@@ -9,6 +9,39 @@ import PerformanceIndex from '../../components/PerformanceIndex'
 function money(n: any) {
   return '$' + Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })
 }
+function useRollingNumber(value: any, durationMs = 850) {
+  const target = Number(value || 0)
+  const [display, setDisplay] = useState(target)
+  const previous = useRef(target)
+  useEffect(() => {
+    const from = previous.current
+    const to = Number(value || 0)
+    previous.current = to
+    if (!Number.isFinite(to) || Math.abs(to - from) < 1) {
+      setDisplay(to)
+      return
+    }
+    let frame = 0
+    const started = performance.now()
+    const step = (now: number) => {
+      const t = Math.min(1, (now - started) / durationMs)
+      const eased = 1 - Math.pow(1 - t, 3)
+      setDisplay(from + (to - from) * eased)
+      if (t < 1) frame = requestAnimationFrame(step)
+    }
+    frame = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(frame)
+  }, [target, durationMs, value])
+  return display
+}
+function RollingMoney({ value }: { value: any }) {
+  const display = useRollingNumber(value)
+  return <b className="cc-rolling-number">{money(display)}</b>
+}
+function RollingInteger({ value }: { value: any }) {
+  const display = useRollingNumber(value, 650)
+  return <b className="cc-rolling-number">{Math.round(Number(display || 0)).toLocaleString()}</b>
+}
 function compactMoney(n: any) {
   const num = Number(n || 0)
   const v = Math.abs(num)
@@ -58,6 +91,9 @@ function orderActionClass(side: any) {
   const s = String(side || '').toLowerCase()
   if (s.includes('open short') || s.includes('add short') || s.includes('reduce long') || s.includes('close long')) return 'negative'
   return 'positive'
+}
+function orderKey(o: any) {
+  return [o.source || 'snapshot', o.wallet || '', o.coin || '', o.ts_ms || '', o.side || '', Math.round(Number(o.delta_value_usd || o.notional_usd || 0))].join(':')
 }
 function ago(ms: any) { const m = Math.max(0, Math.round((Date.now() - Number(ms || Date.now())) / 60000)); if (m < 1) return 'just now'; if (m < 60) return `${m}m ago`; return `${Math.round(m / 60)}h ago` }
 function fmtTime(ms: any) {
@@ -215,6 +251,7 @@ export default function Dashboard() {
   const [targets, setTargets] = useState<any[]>([])
   const [flow, setFlow] = useState<any[]>([])
   const [orders, setOrders] = useState<any[]>([])
+  const [stagedOrders, setStagedOrders] = useState<any[]>([])
   const [insights, setInsights] = useState<any[]>([])
   const [showAllOrders, setShowAllOrders] = useState(false)
   const [icons, setIcons] = useState<Record<string, string>>({})
@@ -225,6 +262,8 @@ export default function Dashboard() {
   const inFlight = useRef(false)
   const failureCount = useRef(0)
   const hasLoaded = useRef(false)
+  const stagedOrderKeys = useRef<Set<string>>(new Set())
+  const orderStageTimers = useRef<number[]>([])
 
   async function load() {
     // One browser tab should never stack multiple refreshes. When a mobile tab
@@ -277,7 +316,35 @@ export default function Dashboard() {
   const isLong = longValue >= shortValue
   const dataHealthy = summary.data_quality_status === 'healthy'
   const orderRows = orders.length ? orders : flow.slice(0, 12).map((r: any) => ({ coin: r.coin, side: Number(r.net_value_flow_usd) >= 0 ? 'Long' : 'Short', wallet_label: 'Wallet 0x1A…7F3B', wallet: r.wallet, ts_ms: summary.latest_signal_ts_ms }))
-  const visibleOrders = showAllOrders ? orderRows : orderRows.slice(0, 3)
+  const orderSignature = useMemo(() => orderRows.slice(0, 50).map(orderKey).join('|'), [orderRows])
+  useEffect(() => {
+    orderStageTimers.current.forEach((timer) => window.clearTimeout(timer))
+    orderStageTimers.current = []
+    const next = orderRows.slice(0, 50)
+    const nextKeys = new Set(next.map(orderKey))
+    const orderIndex = new Map(next.map((o, i) => [orderKey(o), i]))
+    setStagedOrders((prev) => {
+      const kept = prev
+        .filter((o) => nextKeys.has(orderKey(o)))
+        .sort((a, b) => (orderIndex.get(orderKey(a)) ?? 9999) - (orderIndex.get(orderKey(b)) ?? 9999))
+      stagedOrderKeys.current = new Set(kept.map(orderKey))
+      return kept
+    })
+    const incoming = next.filter((o) => !stagedOrderKeys.current.has(orderKey(o))).reverse()
+    incoming.forEach((order, i) => {
+      const timer = window.setTimeout(() => {
+        const key = orderKey(order)
+        stagedOrderKeys.current.add(key)
+        setStagedOrders((prev) => [order, ...prev.filter((p) => orderKey(p) !== key)]
+          .filter((p) => nextKeys.has(orderKey(p)))
+          .sort((a, b) => (orderIndex.get(orderKey(a)) ?? 9999) - (orderIndex.get(orderKey(b)) ?? 9999))
+          .slice(0, 50))
+      }, i * 140)
+      orderStageTimers.current.push(timer)
+    })
+    return () => orderStageTimers.current.forEach((timer) => window.clearTimeout(timer))
+  }, [orderSignature])
+  const visibleOrders = showAllOrders ? stagedOrders : stagedOrders.slice(0, 3)
   const sortedSignals = sortedRows(signals, signalSort)
   const sortedFlow = sortedRows(flow, flowSortState)
 
@@ -309,10 +376,10 @@ export default function Dashboard() {
     {err && <p className="notice gold">{err}</p>}
 
     <section className="cc-kpi-grid">
-      <article><small>Qualified wallets</small><b>{summary.qualified_wallets || 0}</b><span>ranked daily</span></article>
-      <article className="cc-tracked-value-card"><small>Tracked account value</small><b>{money(summary.tracked_account_value_usd)}</b><span>latest snapshots</span>{summary.largest_account_value_usd ? <em>Largest account: {money(summary.largest_account_value_usd)}</em> : null}</article>
-      <article><small>Open position value</small><b>{money(summary.tracked_open_position_value_usd)}</b><span>{summary.open_positions || 0} live positions</span></article>
-      <article><small>Assets with signals</small><b>{summary.assets_with_signals || 0}</b><span>cross-asset breadth</span></article>
+      <article><small>Qualified wallets</small><RollingInteger value={summary.qualified_wallets || 0} /><span>ranked daily</span></article>
+      <article className="cc-tracked-value-card"><small>Tracked account value</small><RollingMoney value={summary.tracked_account_value_usd} /><span>{summary.live_state_active ? 'live wallet state' : 'latest snapshots'}</span>{summary.largest_account_value_usd ? <em>Largest account: {money(summary.largest_account_value_usd)}</em> : null}</article>
+      <article><small>Open position value</small><RollingMoney value={summary.tracked_open_position_value_usd} /><span>{summary.open_positions || 0} live positions</span></article>
+      <article><small>Assets with signals</small><RollingInteger value={summary.assets_with_signals || 0} /><span>cross-asset breadth</span></article>
     </section>
 
     <section className="cc-chart-grid">
@@ -343,6 +410,6 @@ export default function Dashboard() {
       </div>
     </section>
 
-    <footer className="cc-warning-banner"><span className="cc-shield" aria-hidden><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5.2c0 4.5-2.7 8.4-7 9.8-4.3-1.4-7-5.3-7-9.8V6l7-3z"/><path d="M9.2 12.1l1.7 1.7 3.9-4.1"/></svg></span><strong>Market intelligence only.</strong><em>Not financial advice. Crypto trading can result in loss.</em><div className={`cc-footer-meta ${dataHealthy ? 'healthy' : 'checking'}`}><span className="cc-footer-quality"><span className="cc-pulse-dot" /><b>{dataHealthy ? 'Data quality healthy' : 'Data quality checking'}</b></span><small>Signal refresh: {fmtTime(summary.latest_signal_ts_ms)} UTC · Page checks every 1s</small></div></footer>
+    <footer className="cc-warning-banner"><span className="cc-shield" aria-hidden><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5.2c0 4.5-2.7 8.4-7 9.8-4.3-1.4-7-5.3-7-9.8V6l7-3z"/><path d="M9.2 12.1l1.7 1.7 3.9-4.1"/></svg></span><strong>Market intelligence only.</strong><em>Not financial advice. Crypto trading can result in loss.</em><div className={`cc-footer-meta ${dataHealthy ? 'healthy' : 'checking'}`}><span className="cc-footer-quality"><span className="cc-pulse-dot" /><b>{dataHealthy ? 'Data quality healthy' : 'Data quality checking'}</b></span><small>Signal refresh: {fmtTime(summary.latest_signal_ts_ms)} UTC · {summary.live_state_active ? `Live state: ${fmtTime(summary.latest_live_state_ts_ms)} UTC` : 'Snapshot mode'} · Page checks every 1s</small></div></footer>
   </main></>
 }

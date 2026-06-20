@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 import time
+import urllib.request
 from typing import Any
 
 import websockets
@@ -28,6 +29,130 @@ def _active_wallets(limit: int) -> list[str]:
             LIMIT :limit
         '''), {'limit': limit}).fetchall()
     return [str(r[0]).lower() for r in rows]
+
+
+
+def _fetch_clearinghouse_state(wallet: str, info_url: str) -> dict[str, Any] | None:
+    body = json.dumps({'type': 'clearinghouseState', 'user': wallet}).encode('utf-8')
+    req = urllib.request.Request(info_url, data=body, headers={'Content-Type': 'application/json'})
+    with urllib.request.urlopen(req, timeout=12) as resp:
+        data = json.loads(resp.read().decode('utf-8'))
+    return data if isinstance(data, dict) else None
+
+
+def _position_rows(wallet: str, state: dict[str, Any], ts_ms: int) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    margin = state.get('marginSummary') if isinstance(state.get('marginSummary'), dict) else {}
+    cross = state.get('crossMarginSummary') if isinstance(state.get('crossMarginSummary'), dict) else {}
+    account_value = safe_float(margin.get('accountValue') or cross.get('accountValue'))
+    rows: list[dict[str, Any]] = []
+    for item in state.get('assetPositions') or []:
+        if not isinstance(item, dict):
+            continue
+        pos = item.get('position') if isinstance(item.get('position'), dict) else item
+        coin = str(pos.get('coin') or '').upper().strip()
+        if not coin:
+            continue
+        size = safe_float(pos.get('szi'))
+        value = abs(safe_float(pos.get('positionValue')))
+        if value <= 0 and abs(size) <= 0:
+            continue
+        rows.append({
+            'wallet': wallet,
+            'coin': coin,
+            'side': 'short' if size < 0 else 'long',
+            'ts_ms': ts_ms,
+            'size': size,
+            'position_value_usd': value,
+            'entry_px': safe_float(pos.get('entryPx'), None),
+            'unrealized_pnl_usd': safe_float(pos.get('unrealizedPnl')),
+            'raw_json': json.dumps(pos)[:8000],
+        })
+    state_row = {
+        'wallet': wallet,
+        'ts_ms': ts_ms,
+        'account_value_usd': account_value,
+        'open_position_value_usd': sum(r['position_value_usd'] for r in rows),
+        'open_positions': len(rows),
+        'raw_json': json.dumps({k: state.get(k) for k in ('marginSummary', 'crossMarginSummary')})[:8000],
+    }
+    return state_row, rows
+
+
+def _store_wallet_state(state_row: dict[str, Any], position_rows: list[dict[str, Any]]) -> None:
+    with engine.begin() as conn:
+        ensure_copycat_data_api_tables(conn)
+        conn.execute(text('''
+            INSERT INTO copycat_live_wallet_states(
+              wallet, ts_ms, account_value_usd, open_position_value_usd, open_positions, source, raw_json, updated_at
+            ) VALUES (
+              :wallet, :ts_ms, :account_value_usd, :open_position_value_usd, :open_positions,
+              'hyperliquid_info', CAST(:raw_json AS jsonb), now()
+            )
+            ON CONFLICT(wallet) DO UPDATE SET
+              ts_ms=excluded.ts_ms,
+              account_value_usd=excluded.account_value_usd,
+              open_position_value_usd=excluded.open_position_value_usd,
+              open_positions=excluded.open_positions,
+              source=excluded.source,
+              raw_json=excluded.raw_json,
+              updated_at=now()
+        '''), state_row)
+        conn.execute(text('DELETE FROM copycat_live_positions WHERE wallet=:wallet'), {'wallet': state_row['wallet']})
+        for row in position_rows:
+            conn.execute(text('''
+                INSERT INTO copycat_live_positions(
+                  wallet, coin, side, ts_ms, size, position_value_usd, entry_px,
+                  unrealized_pnl_usd, source, raw_json, updated_at
+                ) VALUES (
+                  :wallet, :coin, :side, :ts_ms, :size, :position_value_usd, :entry_px,
+                  :unrealized_pnl_usd, 'hyperliquid_info', CAST(:raw_json AS jsonb), now()
+                )
+                ON CONFLICT(wallet, coin, side) DO UPDATE SET
+                  ts_ms=excluded.ts_ms,
+                  size=excluded.size,
+                  position_value_usd=excluded.position_value_usd,
+                  entry_px=excluded.entry_px,
+                  unrealized_pnl_usd=excluded.unrealized_pnl_usd,
+                  source=excluded.source,
+                  raw_json=excluded.raw_json,
+                  updated_at=now()
+            '''), row)
+
+
+def _poll_wallet_states_once(limit: int) -> dict[str, Any]:
+    settings = get_settings()
+    wallets = _active_wallets(limit)
+    ok = 0
+    errors: list[str] = []
+    started = time.time()
+    for wallet in wallets:
+        try:
+            state = _fetch_clearinghouse_state(wallet, settings.hl_info_url)
+            if not state:
+                continue
+            ts_ms = int(time.time() * 1000)
+            state_row, positions = _position_rows(wallet, state, ts_ms)
+            _store_wallet_state(state_row, positions)
+            ok += 1
+        except Exception as exc:
+            errors.append(f'{wallet[:8]}: {type(exc).__name__}')
+            if len(errors) <= 3:
+                log.warning('failed to poll live wallet state for %s: %s', wallet, exc)
+        time.sleep(0.08)
+    return {'wallets_ok': ok, 'wallets_total': len(wallets), 'errors': errors[:10], 'elapsed_seconds': round(time.time() - started, 1)}
+
+
+async def _state_poll_loop() -> None:
+    settings = get_settings()
+    interval = max(10, int(settings.live_state_poll_seconds or 20))
+    limit = max(1, int(settings.live_state_wallet_limit or settings.live_event_wallet_limit or 50))
+    while True:
+        try:
+            result = await asyncio.to_thread(_poll_wallet_states_once, limit)
+            log.info('live state poll: %s', result)
+        except Exception:
+            log.exception('live wallet state poll failed')
+        await asyncio.sleep(interval)
 
 
 def _event_id(prefix: str, wallet: str, payload: dict[str, Any]) -> str:
@@ -139,7 +264,7 @@ def _handle_message(msg: dict[str, Any]) -> int:
     return stored
 
 
-async def _run_forever() -> None:
+async def _websocket_loop() -> None:
     settings = get_settings()
     limit = max(1, int(settings.live_event_wallet_limit))
     while True:
@@ -167,6 +292,10 @@ async def _run_forever() -> None:
         except Exception:
             log.exception('Hyperliquid live event stream disconnected; reconnecting in 10s')
             await asyncio.sleep(10)
+
+
+async def _run_forever() -> None:
+    await asyncio.gather(_websocket_loop(), _state_poll_loop())
 
 
 def main() -> None:

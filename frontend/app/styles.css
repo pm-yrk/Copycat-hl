@@ -2393,3 +2393,17 @@ html[data-theme='light'] .cc-api-endpoints code{background:rgba(255,251,244,.62)
 .cc-api-feature-row article button{display:none;}
 @media (max-width:900px){.cc-api-status-grid{grid-template-columns:1fr 1fr}.cc-api-doc-card{grid-template-columns:1fr}.cc-api-endpoints code{white-space:normal; word-break:break-word}}
 @media (max-width:620px){.cc-api-status-grid{grid-template-columns:1fr}}
+
+/* Live dashboard motion: keeps existing layout but makes new data feel like a market tape. */
+.cc-rolling-number{
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+  will-change: contents;
+}
+@keyframes ccOrderTapeIn{
+  from{opacity:0; transform:translateY(-8px); filter:blur(3px)}
+  to{opacity:1; transform:translateY(0); filter:blur(0)}
+}
+.cc-order-line{
+  animation:ccOrderTapeIn .28s cubic-bezier(.2,.8,.2,1) both;
+}

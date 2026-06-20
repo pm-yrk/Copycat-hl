@@ -112,7 +112,7 @@ def copycat_data_api_historical_sources():
 
 _DASHBOARD_FEED_CACHE: dict[str, Any] = {'ts': 0.0, 'data': None}
 _DASHBOARD_FEED_LOCK = threading.Lock()
-_DASHBOARD_FEED_TTL_SECONDS = 0.85
+_DASHBOARD_FEED_TTL_SECONDS = 0.45
 
 
 @app.get('/api/dashboard-feed')
@@ -236,15 +236,37 @@ def summary(user: dict = Depends(require_active_subscription)):
         ) or {'total': 0, 'positions': 0}
         assets = {'n': 0}
 
+    live_rollup = _live_wallet_state_rollup()
+    live_state_active = bool(live_rollup)
+    if live_rollup:
+        total_value = {
+            'total': live_rollup.get('total') or 0,
+            'largest_account_value_usd': live_rollup.get('largest_account_value_usd') or 0,
+        }
+        open_value = {
+            'total': live_rollup.get('open_total') or 0,
+            'positions': live_rollup.get('positions') or 0,
+        }
+        live_asset_count = fetch_one('''
+            SELECT count(DISTINCT upper(coin)) AS n
+            FROM copycat_live_positions
+            WHERE ts_ms >= :fresh_cutoff
+        ''', {'fresh_cutoff': _live_state_cutoff_ms()}) or {'n': assets.get('n', 0)}
+        assets = {'n': int(live_asset_count.get('n') or assets.get('n') or 0)}
+
     latest_pos_ts = fetch_one('SELECT max(ts_ms) AS ts_ms FROM positions') or {'ts_ms': None}
     latest_run = fetch_one("SELECT ts_ms,status,message FROM collector_runs WHERE run_type='collect_once' ORDER BY ts_ms DESC LIMIT 1") or {}
     collector_age_seconds = None
     if latest_run.get('ts_ms'):
         collector_age_seconds = max(0, (_now_ms() - int(latest_run['ts_ms'])) / 1000)
-    data_quality_ok = bool(stable_ts) and int(latest_wallets.get('n') or 0) >= 50 and (collector_age_seconds is None or collector_age_seconds <= 90)
+    freshness_limit = max(90, int(settings.collector_freshness_seconds or 180))
+    data_quality_ok = bool(stable_ts) and int(latest_wallets.get('n') or 0) >= 50 and (collector_age_seconds is None or collector_age_seconds <= freshness_limit)
+    latest_live_state_ts_ms = live_rollup.get('latest_live_state_ts_ms') if live_rollup else None
     return {
         'latest_signal_ts_ms': stable_ts,
-        'latest_position_ts_ms': latest_pos_ts['ts_ms'],
+        'latest_position_ts_ms': latest_live_state_ts_ms or latest_pos_ts['ts_ms'],
+        'latest_live_state_ts_ms': latest_live_state_ts_ms,
+        'live_state_active': live_state_active,
         'qualified_wallets': latest_wallets['n'],
         'tracked_account_value_usd': float(total_value['total'] or 0),
         'largest_account_value_usd': float(total_value.get('largest_account_value_usd') or 0),
@@ -253,7 +275,7 @@ def summary(user: dict = Depends(require_active_subscription)):
         'assets_with_signals': assets['n'],
         'data_quality_status': 'healthy' if data_quality_ok else 'checking',
         'data_quality_age_seconds': collector_age_seconds,
-        'data_quality_message': '50-wallet snapshot healthy' if data_quality_ok else 'Waiting for a fresh completed collector snapshot',
+        'data_quality_message': 'Live wallet state active' if live_state_active else ('50-wallet snapshot healthy' if data_quality_ok else 'Waiting for a fresh completed collector snapshot'),
     }
 
 
@@ -315,6 +337,155 @@ def _safe_float(x: Any, default: float = 0.0) -> float:
 
 def _now_ms() -> int:
     return int(time.time() * 1000)
+
+
+
+def _live_state_cutoff_ms() -> int:
+    return _now_ms() - max(15, int(settings.live_state_max_age_seconds or 75)) * 1000
+
+
+def _live_min_wallets(active_wallets: int) -> int:
+    ratio = max(0.1, min(float(settings.live_signal_min_coverage_ratio or 0.8), 1.0))
+    return max(1, int((active_wallets * ratio) + 0.999))
+
+
+def _live_state_coverage() -> dict[str, int]:
+    try:
+        row = fetch_one('''
+            WITH active AS (
+              SELECT wallet FROM qualified_wallets WHERE status='active'
+            )
+            SELECT count(*) AS active_wallets,
+                   count(s.wallet) FILTER (WHERE s.ts_ms >= :fresh_cutoff) AS fresh_wallets
+            FROM active a
+            LEFT JOIN copycat_live_wallet_states s ON lower(s.wallet)=lower(a.wallet)
+        ''', {'fresh_cutoff': _live_state_cutoff_ms()}) or {}
+        return {
+            'active_wallets': int(row.get('active_wallets') or 0),
+            'fresh_wallets': int(row.get('fresh_wallets') or 0),
+        }
+    except Exception:
+        return {'active_wallets': 0, 'fresh_wallets': 0}
+
+
+def _live_state_is_ready() -> bool:
+    cov = _live_state_coverage()
+    active = int(cov.get('active_wallets') or 0)
+    fresh = int(cov.get('fresh_wallets') or 0)
+    return bool(active and fresh >= _live_min_wallets(active))
+
+
+def _live_wallet_state_rollup() -> dict[str, Any] | None:
+    if not _live_state_is_ready():
+        return None
+    try:
+        row = fetch_one('''
+            WITH active AS (
+              SELECT wallet FROM qualified_wallets WHERE status='active'
+            ), fresh AS (
+              SELECT s.*
+              FROM copycat_live_wallet_states s
+              JOIN active a ON lower(a.wallet)=lower(s.wallet)
+              WHERE s.ts_ms >= :fresh_cutoff
+            )
+            SELECT count(*) AS live_wallets,
+                   max(ts_ms) AS latest_live_state_ts_ms,
+                   COALESCE(sum(account_value_usd),0) AS total,
+                   COALESCE(max(account_value_usd),0) AS largest_account_value_usd,
+                   COALESCE(sum(open_position_value_usd),0) AS open_total,
+                   COALESCE(sum(open_positions),0) AS positions
+            FROM fresh
+        ''', {'fresh_cutoff': _live_state_cutoff_ms()}) or {}
+        if int(row.get('live_wallets') or 0) <= 0:
+            return None
+        return row
+    except Exception:
+        return None
+
+
+def _live_signal_rows(limit: int = 500) -> list[dict[str, Any]]:
+    if not _live_state_is_ready():
+        return []
+    try:
+        limit = max(1, min(int(limit or 500), 500))
+        return fetch_all('''
+            WITH active AS (
+              SELECT wallet FROM qualified_wallets WHERE status='active'
+            ), fresh_states AS (
+              SELECT s.wallet, s.account_value_usd
+              FROM copycat_live_wallet_states s
+              JOIN active a ON lower(a.wallet)=lower(s.wallet)
+              WHERE s.ts_ms >= :fresh_cutoff
+            ), p AS (
+              SELECT upper(lp.coin) AS coin,
+                     COALESCE(sum(lp.position_value_usd) FILTER (WHERE lower(lp.side)='long'),0) AS value_long_usd,
+                     COALESCE(sum(lp.position_value_usd) FILTER (WHERE lower(lp.side)='short'),0) AS value_short_usd,
+                     count(DISTINCT lp.wallet) FILTER (WHERE lower(lp.side)='long') AS wallets_long,
+                     count(DISTINCT lp.wallet) FILTER (WHERE lower(lp.side)='short') AS wallets_short,
+                     max(lp.ts_ms) AS ts_ms
+              FROM copycat_live_positions lp
+              JOIN fresh_states fs ON lower(fs.wallet)=lower(lp.wallet)
+              WHERE lp.ts_ms >= :fresh_cutoff
+              GROUP BY upper(lp.coin)
+            ), totals AS (
+              SELECT COALESCE(sum(value_long_usd + value_short_usd),0) AS gross,
+                     COALESCE((SELECT sum(account_value_usd) FROM fresh_states),0) AS tracked_value
+              FROM p
+            ), event_flow AS (
+              SELECT upper(coin) AS coin,
+                     count(DISTINCT wallet) FILTER (
+                       WHERE lower(COALESCE(direction, side, '')) LIKE '%long%' OR upper(COALESCE(side,'')) IN ('B','BUY')
+                     ) - count(DISTINCT wallet) FILTER (
+                       WHERE lower(COALESCE(direction, side, '')) LIKE '%short%' OR upper(COALESCE(side,'')) IN ('A','SELL')
+                     ) AS net_buyer_count,
+                     COALESCE(sum(notional_usd) FILTER (
+                       WHERE lower(COALESCE(direction, side, '')) LIKE '%long%' OR upper(COALESCE(side,'')) IN ('B','BUY')
+                     ),0) AS bullish_value_flow_usd,
+                     COALESCE(sum(notional_usd) FILTER (
+                       WHERE lower(COALESCE(direction, side, '')) LIKE '%short%' OR upper(COALESCE(side,'')) IN ('A','SELL')
+                     ),0) AS bearish_value_flow_usd
+              FROM copycat_live_events
+              WHERE ts_ms >= :flow_cutoff
+                AND coin IS NOT NULL
+              GROUP BY upper(coin)
+            )
+            SELECT p.coin,
+                   p.ts_ms,
+                   CASE WHEN p.value_long_usd + p.value_short_usd > 0
+                        THEN (p.value_long_usd - p.value_short_usd) / (p.value_long_usd + p.value_short_usd)
+                        ELSE 0 END AS signal,
+                   CASE WHEN abs(p.value_long_usd - p.value_short_usd) / GREATEST(p.value_long_usd + p.value_short_usd, 1) >= 0.65 THEN 'High'
+                        WHEN abs(p.value_long_usd - p.value_short_usd) / GREATEST(p.value_long_usd + p.value_short_usd, 1) >= 0.35 THEN 'Medium'
+                        ELSE 'Low' END AS confidence,
+                   p.wallets_long,
+                   p.wallets_short,
+                   0 AS wallets_flat,
+                   p.value_long_usd,
+                   p.value_short_usd,
+                   p.value_long_usd - p.value_short_usd AS net_value_usd,
+                   CASE WHEN totals.gross > 0 THEN p.value_long_usd/totals.gross ELSE 0 END AS value_long_pct_total,
+                   CASE WHEN totals.gross > 0 THEN p.value_short_usd/totals.gross ELSE 0 END AS value_short_pct_total,
+                   COALESCE(event_flow.net_buyer_count,0) AS net_buyer_count,
+                   COALESCE(event_flow.bullish_value_flow_usd,0) AS bullish_value_flow_usd,
+                   COALESCE(event_flow.bearish_value_flow_usd,0) AS bearish_value_flow_usd,
+                   COALESCE(event_flow.bullish_value_flow_usd,0) AS bullish_flow_usd,
+                   COALESCE(event_flow.bearish_value_flow_usd,0) AS bearish_flow_usd,
+                   COALESCE(event_flow.bullish_value_flow_usd,0) - COALESCE(event_flow.bearish_value_flow_usd,0) AS net_value_flow_usd,
+                   totals.tracked_value AS total_tracked_value_usd,
+                   true AS live_state
+            FROM p
+            CROSS JOIN totals
+            LEFT JOIN event_flow ON event_flow.coin=p.coin
+            WHERE (p.value_long_usd + p.value_short_usd) > 0
+            ORDER BY abs(p.value_long_usd - p.value_short_usd) DESC NULLS LAST
+            LIMIT :limit
+        ''', {
+            'limit': limit,
+            'fresh_cutoff': _live_state_cutoff_ms(),
+            'flow_cutoff': _now_ms() - int(settings.signal_lookback_minutes or 60) * 60_000,
+        })
+    except Exception:
+        return []
 
 
 def _within_tolerance(a: float, b: float, pct: float = 0.0075, abs_tol: float = 5000.0) -> bool:
@@ -632,10 +803,13 @@ def audit(live: bool = False, full: bool = False, max_wallets: int = 10, user: d
 
 @app.get('/api/signals')
 def signals(limit: int = 50, user: dict = Depends(require_active_subscription)):
+    live_rows = _live_signal_rows(limit)
+    if live_rows:
+        return live_rows
     return fetch_all(
         """
         WITH latest_ts AS (SELECT max(ts_ms) AS ts_ms FROM asset_signals)
-        SELECT * FROM asset_signals
+        SELECT *, false AS live_state FROM asset_signals
         WHERE ts_ms=(SELECT ts_ms FROM latest_ts)
         ORDER BY signal DESC
         LIMIT :limit
@@ -675,21 +849,24 @@ def targets(user: dict = Depends(require_active_subscription)):
 
 @app.get('/api/insights')
 def insights(user: dict = Depends(require_active_subscription)):
-    # At-a-glance trader/analyst insights from the latest completed snapshot.
-    # Customer-facing signal strength is the signed value-weighted directional
-    # majority so it aligns with the long-vs-short exposure bars.
-    ts_row = fetch_one('SELECT max(ts_ms) AS ts_ms FROM asset_signals') or {'ts_ms': None}
-    ts = ts_row.get('ts_ms')
-    if not ts:
-        return {'status': 'empty', 'insights': []}
-    rows = fetch_all("""
-        SELECT coin, signal, confidence, wallets_long, wallets_short,
-               value_long_usd, value_short_usd, net_value_usd,
-               net_buyer_count, bullish_value_flow_usd, bearish_value_flow_usd,
-               net_value_flow_usd, total_tracked_value_usd
-        FROM asset_signals
-        WHERE ts_ms=:ts
-    """, {'ts': ts})
+    # At-a-glance trader/analyst insights. Prefer fresh Hyperliquid live-state
+    # rows when the live worker has enough wallet coverage; otherwise fall back
+    # to the last completed collector snapshot.
+    rows = _live_signal_rows(500)
+    ts = max([int(r.get('ts_ms') or 0) for r in rows], default=None) if rows else None
+    if not rows:
+        ts_row = fetch_one('SELECT max(ts_ms) AS ts_ms FROM asset_signals') or {'ts_ms': None}
+        ts = ts_row.get('ts_ms')
+        if not ts:
+            return {'status': 'empty', 'insights': []}
+        rows = fetch_all("""
+            SELECT coin, signal, confidence, wallets_long, wallets_short,
+                   value_long_usd, value_short_usd, net_value_usd,
+                   net_buyer_count, bullish_value_flow_usd, bearish_value_flow_usd,
+                   net_value_flow_usd, total_tracked_value_usd, false AS live_state
+            FROM asset_signals
+            WHERE ts_ms=:ts
+        """, {'ts': ts})
     if not rows:
         return {'status': 'empty', 'insights': []}
 
@@ -803,6 +980,9 @@ def signal_explain(coin: str, limit: int = 15, user: dict = Depends(require_acti
 
 @app.get('/api/flow')
 def flow(limit: int = 500, user: dict = Depends(require_active_subscription)):
+    live_rows = _live_signal_rows(limit)
+    if live_rows:
+        return sorted(live_rows, key=lambda r: abs(_safe_float(r.get('net_value_flow_usd'))), reverse=True)[:limit]
     return fetch_all(
         """
         WITH latest_ts AS (SELECT max(ts_ms) AS ts_ms FROM asset_signals)
@@ -814,7 +994,8 @@ def flow(limit: int = 500, user: dict = Depends(require_active_subscription)):
                bearish_value_flow_usd,
                bullish_value_flow_usd AS bullish_flow_usd,
                bearish_value_flow_usd AS bearish_flow_usd,
-               net_value_flow_usd
+               net_value_flow_usd,
+               false AS live_state
         FROM asset_signals
         WHERE ts_ms=(SELECT ts_ms FROM latest_ts)
         ORDER BY abs(net_value_flow_usd) DESC NULLS LAST
@@ -1147,20 +1328,25 @@ def _latest_index_weights() -> tuple[int | None, dict[str, float]]:
     negative weights are shorts. It is the allocation a user would need to follow
     if they wanted to mirror the Copycat Index methodology.
     """
-    latest = fetch_one('SELECT max(ts_ms) AS ts_ms FROM asset_signals') or {'ts_ms': None}
-    ts = latest.get('ts_ms')
-    if not ts:
-        return None, {}
+    live_rows = _live_signal_rows(500)
+    if live_rows:
+        ts = max(int(r.get('ts_ms') or 0) for r in live_rows)
+        rows = live_rows
+    else:
+        latest = fetch_one('SELECT max(ts_ms) AS ts_ms FROM asset_signals') or {'ts_ms': None}
+        ts = latest.get('ts_ms')
+        if not ts:
+            return None, {}
 
-    rows = fetch_all(
-        """
-        SELECT coin, value_long_usd, value_short_usd, net_value_usd
-        FROM asset_signals
-        WHERE ts_ms=:ts
-          AND (COALESCE(value_long_usd,0) + COALESCE(value_short_usd,0)) > 0
-        """,
-        {'ts': ts},
-    )
+        rows = fetch_all(
+            """
+            SELECT coin, value_long_usd, value_short_usd, net_value_usd
+            FROM asset_signals
+            WHERE ts_ms=:ts
+              AND (COALESCE(value_long_usd,0) + COALESCE(value_short_usd,0)) > 0
+            """,
+            {'ts': ts},
+        )
     raw: dict[str, float] = {}
     for r in rows:
         sym = _normalise_index_symbol(r.get('coin'))
