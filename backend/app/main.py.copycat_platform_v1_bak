@@ -43,18 +43,6 @@ from .copycat_data_lake import (
     wallet_universe,
 )
 
-
-from .platform_v1 import (
-    asset_detail as platform_asset_detail,
-    asset_details as platform_asset_details,
-    coverage_preview as platform_coverage_preview,
-    ensure_platform_tables_once,
-    platform_health as platform_health_payload,
-    public_leaderboard_preview as platform_leaderboard_preview,
-    public_token_screener_preview as platform_token_screener_preview,
-    what_changed as platform_what_changed,
-)
-
 settings = get_settings()
 stripe.api_key = settings.stripe_secret_key or None
 
@@ -94,46 +82,6 @@ def me(user: dict = Depends(get_current_user)):
 @app.get('/api/data/v1/status')
 def copycat_data_api_status():
     return data_api_status()
-
-
-@app.get('/api/data/v1/public/platform-health')
-def copycat_platform_health():
-    return platform_health_payload()
-
-
-@app.post('/api/data/v1/admin/migrate-platform')
-def copycat_platform_migrate(user: dict = Depends(require_active_subscription)):
-    return ensure_platform_tables_once()
-
-
-@app.get('/api/data/v1/public/coverage-preview')
-def copycat_coverage_preview():
-    return platform_coverage_preview()
-
-
-@app.get('/api/data/v1/public/leaderboard-preview')
-def copycat_public_leaderboard_preview(limit: int = 25):
-    return platform_leaderboard_preview(limit)
-
-
-@app.get('/api/data/v1/public/token-screener-preview')
-def copycat_public_token_screener_preview(limit: int = 100):
-    return platform_token_screener_preview(limit)
-
-
-@app.get('/api/data/v1/public/asset/{coin}')
-def copycat_public_asset_detail(coin: str):
-    return {'status': 'ok', 'data': platform_asset_detail(coin)}
-
-
-@app.get('/api/data/v1/public/asset-details')
-def copycat_public_asset_details(symbols: str = ''):
-    return platform_asset_details(symbols)
-
-
-@app.get('/api/data/v1/public/what-changed')
-def copycat_public_what_changed(limit: int = 12):
-    return platform_what_changed(limit)
 
 
 @app.post('/api/data/v1/keys')

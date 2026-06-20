@@ -115,12 +115,6 @@ class Settings(BaseSettings):
     stripe_price_id_monthly: str = ''
     stripe_price_id_annual: str = ''
 
-    # Copycat platform v1 / alert cadence.
-    owned_top_claim_min_indexed_wallets: int = 10000
-    platform_worker_heartbeat_max_age_minutes: int = 30
-    telegram_alert_enabled: bool = False
-    telegram_alert_interval_minutes: int = 15
-
 
 @lru_cache
 def get_settings() -> Settings:

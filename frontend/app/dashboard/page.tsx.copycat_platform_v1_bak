@@ -184,13 +184,6 @@ function canonicalToken(symbol: string) {
   if (clean === 'USDC/CASH' || clean === 'USDCCASH' || clean === 'USDCASH' || clean === 'CASH') return 'USDC'
   return clean.replace(/[^A-Z0-9]/g, '')
 }
-
-function tokenFullName(symbol: string) {
-  const clean = canonicalToken(symbol)
-  const names: Record<string, string> = { BTC: 'Bitcoin', ETH: 'Ethereum', HYPE: 'Hyperliquid', SOL: 'Solana', USDC: 'USD Coin', USDT: 'Tether', BNB: 'BNB', XRP: 'XRP', DOGE: 'Dogecoin', AVAX: 'Avalanche', LINK: 'Chainlink', AAVE: 'Aave', SUI: 'Sui', NEAR: 'NEAR Protocol', ZEC: 'Zcash', TRX: 'TRON', XLM: 'Stellar', DOT: 'Polkadot', LTC: 'Litecoin', UNI: 'Uniswap', ARB: 'Arbitrum', OP: 'Optimism', PAXG: 'PAX Gold' }
-  return names[clean] || clean
-}
-
 function displayToken(symbol: string) {
   const clean = String(symbol || '').toUpperCase().trim()
   return canonicalToken(clean) === 'USDC' ? 'USDC' : clean
@@ -214,44 +207,6 @@ function TokenLogo({ coin, icons }: { coin: string, icons: Record<string, string
   return <span className={`cc-token-logo ${canonical === 'USDC' ? 'is-usdc' : ''}`} style={{ ['--coin' as any]: color }}>
     {src ? <img src={src} alt={`${label} logo`} onError={() => setSourceIndex(i => i + 1)} /> : <span className="cc-token-fallback"><i /><b>{label.slice(0, 2)}</b></span>}
   </span>
-}
-
-
-
-type AssetDetail = {
-  coin?: string
-  name?: string
-  current_price?: number
-  max_leverage?: number
-  tilt?: string
-  conviction_pct?: number
-  confidence?: string
-  wallets_long?: number
-  wallets_short?: number
-  gross_exposure_usd?: number
-  net_flow_usd?: number
-  value_long_usd?: number
-  value_short_usd?: number
-}
-
-function priceText(n: any) {
-  const value = Number(n || 0)
-  if (!value) return '—'
-  if (value >= 1000) return '$' + value.toLocaleString(undefined, { maximumFractionDigits: 0 })
-  if (value >= 1) return '$' + value.toLocaleString(undefined, { maximumFractionDigits: 2 })
-  return '$' + value.toLocaleString(undefined, { maximumSignificantDigits: 4 })
-}
-
-function AssetName({ coin, details, row, compact = false }: { coin: any, details: Record<string, AssetDetail>, row?: any, compact?: boolean }) {
-  const symbol = displayToken(String(coin || ''))
-  const canonical = canonicalToken(symbol)
-  const meta = details[canonical] || details[symbol] || {}
-  const longUsd = Number(row?.value_long_usd || meta?.value_long_usd || 0)
-  const shortUsd = Number(row?.value_short_usd || meta?.value_short_usd || 0)
-  const gross = Number(row?.gross_exposure_usd || meta?.gross_exposure_usd || (longUsd + shortUsd) || 0)
-  const tilt = String(meta?.tilt || (longUsd || shortUsd ? (longUsd >= shortUsd ? 'Long' : 'Short') : '—'))
-  const conviction = Number(meta?.conviction_pct || 0)
-  return <span className="cc-asset-hover" tabIndex={0}><b>{symbol}</b><span className="cc-asset-tooltip"><strong>{meta?.name || tokenFullName(symbol)}</strong><em>{symbol} on Hyperliquid</em><dl><dt>Mark price</dt><dd>{priceText(meta?.current_price)}</dd><dt>Tracked tilt</dt><dd className={tilt.toLowerCase().includes('short') ? 'negative' : tilt.toLowerCase().includes('long') ? 'positive' : ''}>{tilt}{conviction ? ` · ${Math.round(conviction)}%` : ''}</dd><dt>Open exposure</dt><dd>{gross ? compactMoney(gross) : '—'}</dd>{meta?.max_leverage ? <><dt>Max leverage</dt><dd>{meta.max_leverage}x</dd></> : null}{!compact ? <><dt>Wallets</dt><dd>{Number(meta?.wallets_long || row?.wallets_long || 0)} long / {Number(meta?.wallets_short || row?.wallets_short || 0)} short</dd><dt>Recent flow</dt><dd>{compactMoney(meta?.net_flow_usd || row?.net_value_flow_usd || 0)}</dd></> : null}</dl></span></span>
 }
 
 function tokenColour(symbol: string, index: number) {
@@ -289,7 +244,7 @@ function AllocationDonut({ targets, signals, trackedValue, icons }: { targets: a
   if (!parts.length) return <div className="cc-empty-state">Targets will appear after refresh.</div>
   return <div className="cc-donut-layout"><div className="cc-donut-stage"><svg viewBox="0 0 220 220" className="cc-donut-svg" aria-label="Copycat Index allocation">{parts.map((p: any) => { const start = angle; angle += p.weight * 360; return <path key={`${p.coin}-${p.direction}`} d={path(110, 110, 92, 50, start, angle - 1)} fill={p.color} onMouseEnter={() => setHovered(p)} onMouseLeave={() => setHovered(null)} onFocus={() => setHovered(p)} onBlur={() => setHovered(null)} tabIndex={0}><title>{p.direction === 'short' ? 'Short ' : p.direction === 'long' ? 'Long ' : ''}{displayToken(p.coin)}: {Math.round(p.originalWeight * 100)}%</title></path> })}<circle className="cc-donut-hole" cx="110" cy="110" r="50" /></svg><div className="cc-donut-tooltip">{hovered ? `${hovered.direction === 'short' ? 'Short ' : hovered.direction === 'long' ? 'Long ' : ''}${displayToken(hovered.coin)} ${Math.round(hovered.originalWeight * 100)}% index allocation` : 'USDC margin is excluded from this allocation.'}</div></div><div className="cc-donut-legend cc-scroll-y">{parts.map((p: any) => <div key={`${p.coin}-${p.direction}`}><TokenLogo coin={p.coin} icons={icons} /><b>{displayToken(p.coin)}{p.direction === 'short' ? ' short' : ''}</b><span>{Math.round(p.originalWeight * 100)}%</span></div>)}</div></div>
 }
-function ExposureBars({ signals, icons, assetDetails }: { signals: any[], icons: Record<string, string>, assetDetails: Record<string, AssetDetail> }) {
+function ExposureBars({ signals, icons }: { signals: any[], icons: Record<string, string> }) {
   const rows = useMemo(() => ([...(signals || [])]
     .filter(r => Number(r.value_long_usd || 0) + Number(r.value_short_usd || 0) > 0)
     .sort((a, b) => (Number(b.value_long_usd || 0) + Number(b.value_short_usd || 0)) - (Number(a.value_long_usd || 0) + Number(a.value_short_usd || 0)))
@@ -301,7 +256,7 @@ function ExposureBars({ signals, icons, assetDetails }: { signals: any[], icons:
     const longPct = total > 0 ? (l / total) * 100 : 0
     const shortPct = Math.max(0, 100 - longPct)
     return <div className="cc-ex-row" key={r.coin}>
-      <div className="cc-ex-name"><TokenLogo coin={r.coin} icons={icons} /><AssetName coin={r.coin} details={assetDetails} row={r} /><span>{longSharePct(l, sh)}</span></div>
+      <div className="cc-ex-name"><TokenLogo coin={r.coin} icons={icons} /><b title={displayToken(r.coin)}>{displayToken(r.coin)}</b><span>{longSharePct(l, sh)}</span></div>
       <div className="cc-ex-track" aria-label={`${displayToken(r.coin)} ${Math.round(longPct)}% long, ${Math.round(shortPct)}% short`}><div><i style={{ width: `${longPct}%` }} /><em style={{ width: `${shortPct}%` }} /></div></div>
       <small>{compactMoney(l)}</small><small>{compactMoney(sh)}</small>
     </div>
@@ -417,7 +372,6 @@ export default function Dashboard() {
   const [audit, setAudit] = useState<any>(null)
   const [showAllOrders, setShowAllOrders] = useState(false)
   const [icons, setIcons] = useState<Record<string, string>>({})
-  const [assetDetails, setAssetDetails] = useState<Record<string, AssetDetail>>({})
   const [err, setErr] = useState('')
   const [signalSort, setSignalSort] = useState<SortState>({ key: 'conviction', dir: 'desc' })
   const [flowSortState, setFlowSortState] = useState<SortState>({ key: 'pressure', dir: 'desc' })
@@ -514,20 +468,6 @@ export default function Dashboard() {
     return () => clearTimeout(timer)
   }, [symbolKey])
 
-  useEffect(() => {
-    if (!symbolKey) return
-    const cacheKey = 'copycat-asset-details:' + symbolKey
-    try {
-      const cached = localStorage.getItem(cacheKey)
-      if (cached) setAssetDetails(JSON.parse(cached))
-    } catch {}
-    apiGet('/api/data/v1/public/asset-details?symbols=' + encodeURIComponent(symbolKey)).then((r: any) => {
-      const next = r.assets || {}
-      setAssetDetails(next)
-      try { localStorage.setItem(cacheKey, JSON.stringify(next)) } catch {}
-    }).catch(() => {})
-  }, [symbolKey])
-
   const longValue = signals.reduce((a, r) => a + Number(r.value_long_usd || 0), 0)
   const shortValue = signals.reduce((a, r) => a + Number(r.value_short_usd || 0), 0)
   const isLong = longValue >= shortValue
@@ -595,7 +535,7 @@ export default function Dashboard() {
         <div className={`cc-orders-card ${showAllOrders ? 'expanded' : ''}`}>
           <h3>Most recent orders</h3>
           <div className="cc-order-list">
-            {visibleOrders.map((o: any) => <div className="cc-order-line" key={orderKey(o)}><TokenLogo coin={o.coin} icons={icons} /><AssetName coin={o.coin} details={assetDetails} row={o} compact /><span className={orderActionClass(o.side)}>{o.side}</span><em>{o.wallet_label || maskWallet(o.wallet)}</em><small>{ago(o.ts_ms)}</small></div>)}
+            {visibleOrders.map((o: any) => <div className="cc-order-line" key={orderKey(o)}><TokenLogo coin={o.coin} icons={icons} /><b>{displayToken(o.coin)}</b><span className={orderActionClass(o.side)}>{o.side}</span><em>{o.wallet_label || maskWallet(o.wallet)}</em><small>{ago(o.ts_ms)}</small></div>)}
           </div>
           <button className="cc-small-action" onClick={() => setShowAllOrders(v => !v)}>{showAllOrders ? 'Show latest 3 ↑' : 'View all orders →'}</button>
         </div>
@@ -623,7 +563,7 @@ export default function Dashboard() {
 
     <section className="cc-chart-grid">
       <div className="cc-card cc-allocation-card"><div className="cc-card-title-row"><h3>Portfolio allocation</h3><span>Last rebalanced: {fmtTime(latestAllocationTs(targets, signals, summary))} UTC</span></div><AllocationDonut targets={targets} signals={signals} trackedValue={Number(summary.tracked_account_value_usd || 0)} icons={icons} /></div>
-      <div className="cc-card cc-exposure-card"><div className="cc-panel-title"><h3>Long vs short exposure</h3><span><i />Long <em />Short</span></div><ExposureBars signals={signals} icons={icons} assetDetails={assetDetails} /></div>
+      <div className="cc-card cc-exposure-card"><div className="cc-panel-title"><h3>Long vs short exposure</h3><span><i />Long <em />Short</span></div><ExposureBars signals={signals} icons={icons} /></div>
     </section>
 
     <PerformanceIndex variant="dashboard" />
@@ -634,7 +574,7 @@ export default function Dashboard() {
         <div className="cc-scroll-table cc-scroll-y">
           <table className="cc-signal-table">
             <thead><tr><th>#</th><SortTh label="Asset" sortKey="asset" sort={signalSort} setSort={setSignalSort} /><SortTh label="Signal" sortKey="conviction" sort={signalSort} setSort={setSignalSort} /><SortTh label="Confidence" sortKey="confidence" sort={signalSort} setSort={setSignalSort} /><SortTh label="Wallets" sortKey="wallets" sort={signalSort} setSort={setSignalSort} /><SortTh label="Value L/S" sortKey="value_ls" sort={signalSort} setSort={setSignalSort} /><SortTh label="Net value" sortKey="net_value_usd" sort={signalSort} setSort={setSignalSort} /><SortTh label="% total value" sortKey="pct_total" sort={signalSort} setSort={setSignalSort} /></tr></thead>
-            <tbody>{sortedSignals.map((r, i) => <tr key={`${r.coin}-${i}`}><td>{i + 1}</td><td><span className="cc-asset-cell"><TokenLogo coin={r.coin} icons={icons} /><AssetName coin={r.coin} details={assetDetails} row={r} /></span></td><td className={cls(displaySignalValue(r))}><span className={`cc-signal-pill ${signalDirectionClass(r)}`}>{displaySignalMagnitudePct(r)} {displaySignalDirection(r)}</span></td><td><span className={`cc-confidence ${String(r.confidence).toLowerCase()}`}>{r.confidence}</span></td><td>{r.wallets_long} long / {r.wallets_short} short</td><td>{money(r.value_long_usd)} / {money(r.value_short_usd)}</td><td className={cls(r.net_value_usd)}>{money(r.net_value_usd)}</td><td>{pct(r.value_long_pct_total)} long / {pct(r.value_short_pct_total)} short</td></tr>)}</tbody>
+            <tbody>{sortedSignals.map((r, i) => <tr key={`${r.coin}-${i}`}><td>{i + 1}</td><td><span className="cc-asset-cell"><TokenLogo coin={r.coin} icons={icons} /><b>{displayToken(r.coin)}</b></span></td><td className={cls(displaySignalValue(r))}><span className={`cc-signal-pill ${signalDirectionClass(r)}`}>{displaySignalMagnitudePct(r)} {displaySignalDirection(r)}</span></td><td><span className={`cc-confidence ${String(r.confidence).toLowerCase()}`}>{r.confidence}</span></td><td>{r.wallets_long} long / {r.wallets_short} short</td><td>{money(r.value_long_usd)} / {money(r.value_short_usd)}</td><td className={cls(r.net_value_usd)}>{money(r.net_value_usd)}</td><td>{pct(r.value_long_pct_total)} long / {pct(r.value_short_pct_total)} short</td></tr>)}</tbody>
           </table>
         </div>
       </div>
@@ -643,7 +583,7 @@ export default function Dashboard() {
         <div className="cc-scroll-table cc-scroll-y">
           <table className="cc-flow-table">
             <thead><tr><SortTh label="Asset" sortKey="asset" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Net buyers" sortKey="net_buyers" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Bullish flow" sortKey="bullish" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Bearish flow" sortKey="bearish" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Net value flow" sortKey="net_value_flow_usd" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Read" sortKey="pressure" sort={flowSortState} setSort={setFlowSortState} /></tr></thead>
-            <tbody>{sortedFlow.map((r, i) => { const read = flowRead(r.net_value_flow_usd); return <tr key={`${r.coin}-${i}`}><td><span className="cc-asset-cell"><TokenLogo coin={r.coin} icons={icons} /><AssetName coin={r.coin} details={assetDetails} row={r} /></span></td><td className={cls(r.net_buyer_count)}>{r.net_buyer_count}</td><td>{money(r.bullish_flow_usd)}</td><td>{money(r.bearish_flow_usd)}</td><td className={cls(r.net_value_flow_usd)}>{money(r.net_value_flow_usd)}</td><td><span className={`cc-read ${read.toLowerCase()}`}>{read}</span></td></tr> })}</tbody>
+            <tbody>{sortedFlow.map((r, i) => { const read = flowRead(r.net_value_flow_usd); return <tr key={`${r.coin}-${i}`}><td><span className="cc-asset-cell"><TokenLogo coin={r.coin} icons={icons} /><b>{displayToken(r.coin)}</b></span></td><td className={cls(r.net_buyer_count)}>{r.net_buyer_count}</td><td>{money(r.bullish_flow_usd)}</td><td>{money(r.bearish_flow_usd)}</td><td className={cls(r.net_value_flow_usd)}>{money(r.net_value_flow_usd)}</td><td><span className={`cc-read ${read.toLowerCase()}`}>{read}</span></td></tr> })}</tbody>
           </table>
         </div>
       </div>

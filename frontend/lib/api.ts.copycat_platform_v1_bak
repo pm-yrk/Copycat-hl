@@ -13,7 +13,6 @@ const PUBLIC_GET_PREFIXES = [
   '/api/backtest-index',
   '/api/token-icons',
   '/api/data/v1/status',
-  '/api/data/v1/public/',
 ]
 
 function isPublicGet(path: string) {

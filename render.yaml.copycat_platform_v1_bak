@@ -178,9 +178,3 @@ services:
       - key: OWNED_DISCOVERY_FETCH_FILLS
         value: "false"
 
-
-
-# Copycat platform v1 optional workers. If your Render blueprint does not create
-# these automatically, create them manually using the same commands/env names.
-# - hwt-copycat-platform-migrate: python -m app.jobs.copycat_platform_migrate
-# - hwt-telegram-alerts-15m: python -m app.jobs.telegram_15m_alerts
