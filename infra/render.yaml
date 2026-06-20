@@ -59,6 +59,20 @@ services:
       - key: TELEGRAM_CHAT_ID
         sync: false
 
+  - type: worker
+    name: hwt-live-events
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    dockerCommand: "python -m app.jobs.live_wallet_events"
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: LIVE_EVENT_WALLET_LIMIT
+        value: "50"
+      - key: LIVE_EVENT_SUBSCRIBE_ORDER_UPDATES
+        value: "false"
+
   - type: cron
     name: hwt-daily-refresh-midnight
     runtime: docker

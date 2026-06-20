@@ -51,6 +51,7 @@ export default function Nav() {
           <i />
         </button>
         <div className="nav-menu" role="menu">
+          <Link href="/api-access" role="menuitem">API</Link>
           <Link href="/pricing" role="menuitem">Pricing</Link>
           <Link href="/login" role="menuitem">Login</Link>
           <Link href="/dashboard" role="menuitem">Dashboard</Link>

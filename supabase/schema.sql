@@ -255,3 +255,69 @@ CREATE TABLE IF NOT EXISTS owned_wallet_metric_history (
 CREATE INDEX IF NOT EXISTS idx_owned_wallet_metric_history_wallet_ts ON owned_wallet_metric_history(wallet, ts_ms DESC);
 CREATE INDEX IF NOT EXISTS idx_owned_wallet_metric_history_ts ON owned_wallet_metric_history(ts_ms DESC);
 CREATE INDEX IF NOT EXISTS idx_owned_wallet_metric_history_score ON owned_wallet_metric_history(ts_ms DESC, qualifies, score DESC);
+
+-- Copycat Data API v1: owned API keys, usage, live tracked-wallet events, and legal data-source registry.
+CREATE TABLE IF NOT EXISTS copycat_api_keys (
+  id bigserial PRIMARY KEY,
+  key_hash text NOT NULL UNIQUE,
+  label text NOT NULL DEFAULT 'Copycat API key',
+  owner_email text,
+  plan text NOT NULL DEFAULT 'internal',
+  active boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  last_used_at timestamptz,
+  rate_limit_per_minute integer NOT NULL DEFAULT 120,
+  metadata_json jsonb NOT NULL DEFAULT '{}'::jsonb
+);
+CREATE INDEX IF NOT EXISTS idx_copycat_api_keys_active ON copycat_api_keys(active);
+
+CREATE TABLE IF NOT EXISTS copycat_api_usage (
+  id bigserial PRIMARY KEY,
+  key_id bigint REFERENCES copycat_api_keys(id) ON DELETE SET NULL,
+  ts_ms bigint NOT NULL,
+  ts timestamptz NOT NULL DEFAULT now(),
+  path text NOT NULL,
+  method text NOT NULL,
+  status_code integer NOT NULL DEFAULT 200,
+  ip text,
+  user_agent text
+);
+CREATE INDEX IF NOT EXISTS idx_copycat_api_usage_key_ts ON copycat_api_usage(key_id, ts_ms DESC);
+CREATE INDEX IF NOT EXISTS idx_copycat_api_usage_ts ON copycat_api_usage(ts_ms DESC);
+
+CREATE TABLE IF NOT EXISTS copycat_live_events (
+  id bigserial PRIMARY KEY,
+  event_id text NOT NULL UNIQUE,
+  wallet text NOT NULL,
+  event_type text NOT NULL,
+  ts_ms bigint NOT NULL,
+  ts timestamptz NOT NULL DEFAULT now(),
+  coin text,
+  side text,
+  direction text,
+  px double precision,
+  size double precision,
+  notional_usd double precision,
+  closed_pnl_usd double precision,
+  fee_usd double precision,
+  source text NOT NULL DEFAULT 'hyperliquid_ws',
+  raw_json jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_copycat_live_events_ts ON copycat_live_events(ts_ms DESC);
+CREATE INDEX IF NOT EXISTS idx_copycat_live_events_wallet_ts ON copycat_live_events(wallet, ts_ms DESC);
+CREATE INDEX IF NOT EXISTS idx_copycat_live_events_coin_ts ON copycat_live_events(coin, ts_ms DESC);
+
+CREATE TABLE IF NOT EXISTS copycat_historical_sources (
+  id bigserial PRIMARY KEY,
+  name text NOT NULL UNIQUE,
+  source_type text NOT NULL,
+  url text,
+  legal_status text NOT NULL,
+  coverage text NOT NULL,
+  limitation text NOT NULL DEFAULT '',
+  active boolean NOT NULL DEFAULT true,
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  metadata_json jsonb NOT NULL DEFAULT '{}'::jsonb
+);
+CREATE INDEX IF NOT EXISTS idx_copycat_historical_sources_active ON copycat_historical_sources(active);

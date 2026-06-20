@@ -13,6 +13,12 @@ class Settings(BaseSettings):
     environment: str = 'local'
 
     hl_info_url: str = 'https://api.hyperliquid.xyz/info'
+
+    # Copycat owned Data API / live-event stream.
+    copycat_api_key_salt: str = ''
+    live_event_wallet_limit: int = 50
+    live_event_subscribe_order_updates: bool = False
+    hl_ws_url: str = 'wss://api.hyperliquid.xyz/ws'
     nansen_api_key: str = ''
     nansen_base_url: str = 'https://api.nansen.ai'
     nansen_lookback_days: int = 30

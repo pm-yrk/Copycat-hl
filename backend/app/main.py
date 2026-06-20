@@ -17,6 +17,18 @@ from sqlalchemy import text
 from .auth import get_current_user, require_active_subscription
 from .db import fetch_all, fetch_one, execute, engine
 from .settings import get_settings
+from .copycat_data_api import (
+    data_api_exposures,
+    data_api_leaderboard,
+    data_api_recent_events,
+    data_api_status,
+    data_api_wallet_fills,
+    data_api_wallet_profile,
+    generate_api_key,
+    historical_sources,
+    recent_live_orders,
+    require_copycat_api_key,
+)
 
 settings = get_settings()
 stripe.api_key = settings.stripe_secret_key or None
@@ -51,6 +63,51 @@ def health():
 @app.get('/api/me')
 def me(user: dict = Depends(get_current_user)):
     return user
+
+
+@app.get('/api/data/v1/status')
+def copycat_data_api_status():
+    return data_api_status()
+
+
+@app.post('/api/data/v1/keys')
+def create_copycat_data_api_key(label: str = 'Copycat API key', user: dict = Depends(require_active_subscription)):
+    """Create a Copycat Data API key for the signed-in account.
+
+    The plain key is only returned once. Store it safely.
+    """
+    owner = user.get('email') or user.get('sub') or None
+    return generate_api_key(label=label, owner_email=owner, plan='internal')
+
+
+@app.get('/api/data/v1/leaderboard')
+def copycat_data_api_leaderboard(limit: int = 50, api_key: dict = Depends(require_copycat_api_key)):
+    return {'status': 'ok', 'data': data_api_leaderboard(limit)}
+
+
+@app.get('/api/data/v1/wallet/{wallet}')
+def copycat_data_api_wallet(wallet: str, api_key: dict = Depends(require_copycat_api_key)):
+    return {'status': 'ok', 'data': data_api_wallet_profile(wallet)}
+
+
+@app.get('/api/data/v1/wallet/{wallet}/fills')
+def copycat_data_api_fills(wallet: str, limit: int = 100, api_key: dict = Depends(require_copycat_api_key)):
+    return {'status': 'ok', 'data': data_api_wallet_fills(wallet, limit)}
+
+
+@app.get('/api/data/v1/exposures')
+def copycat_data_api_exposure(limit: int = 100, api_key: dict = Depends(require_copycat_api_key)):
+    return {'status': 'ok', 'data': data_api_exposures(limit)}
+
+
+@app.get('/api/data/v1/recent-events')
+def copycat_data_api_events(limit: int = 100, api_key: dict = Depends(require_copycat_api_key)):
+    return {'status': 'ok', 'data': data_api_recent_events(limit)}
+
+
+@app.get('/api/data/v1/historical-sources')
+def copycat_data_api_historical_sources():
+    return {'status': 'ok', 'data': historical_sources()}
 
 
 _DASHBOARD_FEED_CACHE: dict[str, Any] = {'ts': 0.0, 'data': None}
@@ -791,6 +848,13 @@ def runs(limit: int = 30, user: dict = Depends(require_active_subscription)):
 
 @app.get('/api/recent-orders')
 def recent_orders(limit: int = 50, user: dict = Depends(require_active_subscription)):
+    # Prefer stored Hyperliquid WebSocket events when the live-events worker is running.
+    # This lets the dashboard show tracked-wallet fills much faster than waiting for
+    # a full 50-wallet position-diff collector cycle.
+    live_rows = recent_live_orders(limit)
+    if live_rows:
+        return live_rows[:limit]
+
     rows = fetch_all(
         """
         WITH completed AS (

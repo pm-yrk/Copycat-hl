@@ -8,3 +8,4 @@ requests==2.32.3
 PyJWT[crypto]==2.10.1
 stripe==11.4.1
 python-multipart==0.0.20
+websockets==14.1
