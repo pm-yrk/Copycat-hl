@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import secrets
+import threading
 import time
 from typing import Any
 
@@ -32,7 +33,22 @@ def short_wallet(wallet: str) -> str:
     return f'{wallet[:6]}…{wallet[-4:]}' if len(wallet) >= 12 else wallet
 
 
+
+_SCHEMA_READY = False
+_SCHEMA_LOCK = threading.Lock()
+_SCHEMA_LOCK_KEY = 88142017
+
+
+def _run_schema_migrations(conn) -> None:
+    # Keep schema migration out of hot write/read paths.  The advisory lock
+    # prevents Render workers and cron jobs from running DDL at the same time,
+    # which can deadlock against live wallet-state writes.
+    conn.execute(text("SET LOCAL lock_timeout = '5s'"))
+    conn.execute(text('SELECT pg_advisory_xact_lock(:key)'), {'key': _SCHEMA_LOCK_KEY})
+
+
 def ensure_copycat_data_api_tables(conn) -> None:
+    _run_schema_migrations(conn)
     conn.execute(text('''
         CREATE TABLE IF NOT EXISTS copycat_api_keys (
           id bigserial PRIMARY KEY,
@@ -158,9 +174,16 @@ def ensure_copycat_data_api_tables(conn) -> None:
     '''))
 
 
-def ensure_copycat_data_api() -> None:
-    with engine.begin() as conn:
-        ensure_copycat_data_api_tables(conn)
+def ensure_copycat_data_api(force: bool = False) -> None:
+    global _SCHEMA_READY
+    if _SCHEMA_READY and not force:
+        return
+    with _SCHEMA_LOCK:
+        if _SCHEMA_READY and not force:
+            return
+        with engine.begin() as conn:
+            ensure_copycat_data_api_tables(conn)
+        _SCHEMA_READY = True
 
 
 def hash_api_key(api_key: str) -> str:
@@ -172,8 +195,8 @@ def hash_api_key(api_key: str) -> str:
 def generate_api_key(label: str = 'Copycat API key', owner_email: str | None = None, plan: str = 'internal') -> dict[str, Any]:
     api_key = f'cc_live_{secrets.token_urlsafe(32)}'
     key_hash = hash_api_key(api_key)
+    ensure_copycat_data_api()
     with engine.begin() as conn:
-        ensure_copycat_data_api_tables(conn)
         row = conn.execute(text('''
             INSERT INTO copycat_api_keys(key_hash,label,owner_email,plan,active,metadata_json)
             VALUES(:key_hash,:label,:owner_email,:plan,true,'{}'::jsonb)
@@ -203,8 +226,8 @@ async def require_copycat_api_key(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Copycat API key required')
     key_hash = hash_api_key(api_key)
     try:
+        ensure_copycat_data_api()
         with engine.begin() as conn:
-            ensure_copycat_data_api_tables(conn)
             row = conn.execute(text('''
                 SELECT id, label, owner_email, plan, active, rate_limit_per_minute
                 FROM copycat_api_keys

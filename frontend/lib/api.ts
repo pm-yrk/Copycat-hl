@@ -4,6 +4,21 @@ import { getApiBaseUrl, getSupabase } from './supabase'
 
 type ApiOptions = { signal?: AbortSignal; timeoutMs?: number }
 
+
+const PUBLIC_GET_PREFIXES = [
+  '/api/dashboard-feed',
+  '/api/dashboard-tick',
+  '/api/performance-index',
+  '/api/performance-backtest',
+  '/api/backtest-index',
+  '/api/token-icons',
+  '/api/data/v1/status',
+]
+
+function isPublicGet(path: string) {
+  return PUBLIC_GET_PREFIXES.some(prefix => path === prefix || path.startsWith(prefix + '?'))
+}
+
 async function authToken() {
   try {
     const supabase = await getSupabase()
@@ -15,14 +30,16 @@ async function authToken() {
 }
 
 export async function apiGet(path: string, options: ApiOptions = {}) {
-  const token = await authToken()
+  const publicRead = isPublicGet(path)
+  const token = publicRead ? null : await authToken()
   const apiBase = await getApiBaseUrl()
   const controller = options.signal ? null : new AbortController()
   const signal = options.signal || controller?.signal
   const timeout = controller ? window.setTimeout(() => controller.abort(), options.timeoutMs || 12000) : null
+  const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
   try {
     const res = await fetch(`${apiBase}${path}`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers,
       cache: 'no-store',
       signal,
     })

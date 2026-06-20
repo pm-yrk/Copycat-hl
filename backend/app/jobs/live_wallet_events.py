@@ -6,11 +6,12 @@ import logging
 import time
 import urllib.request
 from typing import Any
+import threading
 
 import websockets
 from sqlalchemy import text
 
-from ..copycat_data_api import ensure_copycat_data_api_tables, safe_float
+from ..copycat_data_api import ensure_copycat_data_api, safe_float
 from ..db import engine
 from ..settings import get_settings
 
@@ -19,12 +20,21 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(mess
 
 _LAST_EVENT_STATE_REFRESH: dict[str, float] = {}
 _EVENT_STATE_REFRESH_MIN_SECONDS = 2.0
+_STATE_WRITE_LOCK = threading.Lock()
+_SCHEMA_INITIALISED = False
 
+
+def _ensure_schema_once() -> None:
+    global _SCHEMA_INITIALISED
+    if _SCHEMA_INITIALISED:
+        return
+    ensure_copycat_data_api()
+    _SCHEMA_INITIALISED = True
 
 
 def _active_wallets(limit: int) -> list[str]:
+    _ensure_schema_once()
     with engine.begin() as conn:
-        ensure_copycat_data_api_tables(conn)
         rows = conn.execute(text('''
             SELECT wallet
             FROM qualified_wallets
@@ -85,45 +95,49 @@ def _position_rows(wallet: str, state: dict[str, Any], ts_ms: int) -> tuple[dict
 
 
 def _store_wallet_state(state_row: dict[str, Any], position_rows: list[dict[str, Any]]) -> None:
-    with engine.begin() as conn:
-        ensure_copycat_data_api_tables(conn)
-        conn.execute(text('''
-            INSERT INTO copycat_live_wallet_states(
-              wallet, ts_ms, account_value_usd, open_position_value_usd, open_positions, source, raw_json, updated_at
-            ) VALUES (
-              :wallet, :ts_ms, :account_value_usd, :open_position_value_usd, :open_positions,
-              'hyperliquid_info', CAST(:raw_json AS jsonb), now()
-            )
-            ON CONFLICT(wallet) DO UPDATE SET
-              ts_ms=excluded.ts_ms,
-              account_value_usd=excluded.account_value_usd,
-              open_position_value_usd=excluded.open_position_value_usd,
-              open_positions=excluded.open_positions,
-              source=excluded.source,
-              raw_json=excluded.raw_json,
-              updated_at=now()
-        '''), state_row)
-        conn.execute(text('DELETE FROM copycat_live_positions WHERE wallet=:wallet'), {'wallet': state_row['wallet']})
-        for row in position_rows:
+    _ensure_schema_once()
+    # Keep wallet-state writes serial in this worker. This prevents the 5s
+    # poll loop and event-triggered refreshes from updating/deleting the same
+    # live tables at the same time.
+    with _STATE_WRITE_LOCK:
+        with engine.begin() as conn:
             conn.execute(text('''
-                INSERT INTO copycat_live_positions(
-                  wallet, coin, side, ts_ms, size, position_value_usd, mark_px, entry_px,
-                  unrealized_pnl_usd, source, raw_json, updated_at
+                INSERT INTO copycat_live_wallet_states(
+                  wallet, ts_ms, account_value_usd, open_position_value_usd, open_positions, source, raw_json, updated_at
                 ) VALUES (
-                  :wallet, :coin, :side, :ts_ms, :size, :position_value_usd, :mark_px, :entry_px,
-                  :unrealized_pnl_usd, 'hyperliquid_info', CAST(:raw_json AS jsonb), now()
+                  :wallet, :ts_ms, :account_value_usd, :open_position_value_usd, :open_positions,
+                  'hyperliquid_info', CAST(:raw_json AS jsonb), now()
                 )
-                ON CONFLICT(wallet, coin, side) DO UPDATE SET
+                ON CONFLICT(wallet) DO UPDATE SET
                   ts_ms=excluded.ts_ms,
-                  size=excluded.size,
-                  position_value_usd=excluded.position_value_usd,
-                  mark_px=excluded.mark_px,
-                  entry_px=excluded.entry_px,
-                  unrealized_pnl_usd=excluded.unrealized_pnl_usd,
+                  account_value_usd=excluded.account_value_usd,
+                  open_position_value_usd=excluded.open_position_value_usd,
+                  open_positions=excluded.open_positions,
                   source=excluded.source,
                   raw_json=excluded.raw_json,
                   updated_at=now()
-            '''), row)
+            '''), state_row)
+            conn.execute(text('DELETE FROM copycat_live_positions WHERE wallet=:wallet'), {'wallet': state_row['wallet']})
+            if position_rows:
+                conn.execute(text('''
+                    INSERT INTO copycat_live_positions(
+                      wallet, coin, side, ts_ms, size, position_value_usd, mark_px, entry_px,
+                      unrealized_pnl_usd, source, raw_json, updated_at
+                    ) VALUES (
+                      :wallet, :coin, :side, :ts_ms, :size, :position_value_usd, :mark_px, :entry_px,
+                      :unrealized_pnl_usd, 'hyperliquid_info', CAST(:raw_json AS jsonb), now()
+                    )
+                    ON CONFLICT(wallet, coin, side) DO UPDATE SET
+                      ts_ms=excluded.ts_ms,
+                      size=excluded.size,
+                      position_value_usd=excluded.position_value_usd,
+                      mark_px=excluded.mark_px,
+                      entry_px=excluded.entry_px,
+                      unrealized_pnl_usd=excluded.unrealized_pnl_usd,
+                      source=excluded.source,
+                      raw_json=excluded.raw_json,
+                      updated_at=now()
+                '''), position_rows)
 
 
 def _poll_single_wallet_state(wallet: str) -> bool:
@@ -202,8 +216,8 @@ def _event_id(prefix: str, wallet: str, payload: dict[str, Any]) -> str:
 
 
 def _store_event(row: dict[str, Any]) -> None:
+    _ensure_schema_once()
     with engine.begin() as conn:
-        ensure_copycat_data_api_tables(conn)
         conn.execute(text('''
             INSERT INTO copycat_live_events(
               event_id,wallet,event_type,ts_ms,coin,side,direction,px,size,notional_usd,
@@ -338,6 +352,7 @@ async def _websocket_loop() -> None:
 
 
 async def _run_forever() -> None:
+    await asyncio.to_thread(_ensure_schema_once)
     await asyncio.gather(_websocket_loop(), _state_poll_loop())
 
 
