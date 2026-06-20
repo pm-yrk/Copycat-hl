@@ -254,12 +254,8 @@ def summary(user: dict = Depends(require_active_subscription)):
         if live_rows_for_count:
             assets = {'n': len(live_rows_for_count)}
         else:
-            live_asset_count = fetch_one('''
-                SELECT count(DISTINCT upper(coin)) AS n
-                FROM copycat_live_positions
-                WHERE ts_ms >= :fresh_cutoff
-            ''', {'fresh_cutoff': _live_state_cutoff_ms()}) or {'n': assets.get('n', 0)}
-            assets = {'n': int(live_asset_count.get('n') or assets.get('n') or 0)}
+            universe_count = len(_hl_asset_universe())
+            assets = {'n': universe_count or int(assets.get('n') or 0)}
 
     latest_pos_ts = fetch_one('SELECT max(ts_ms) AS ts_ms FROM positions') or {'ts_ms': None}
     latest_run = fetch_one("SELECT ts_ms,status,message FROM collector_runs WHERE run_type='collect_once' ORDER BY ts_ms DESC LIMIT 1") or {}
@@ -274,6 +270,9 @@ def summary(user: dict = Depends(require_active_subscription)):
         'latest_position_ts_ms': latest_live_state_ts_ms or latest_pos_ts['ts_ms'],
         'latest_live_state_ts_ms': latest_live_state_ts_ms,
         'live_state_active': live_state_active,
+        'live_coverage_mode': live_rollup.get('coverage_mode') if live_rollup else 'snapshot',
+        'live_wallets': int(live_rollup.get('live_wallets') or 0) if live_rollup else 0,
+        'snapshot_wallets': int(live_rollup.get('snapshot_wallets') or 0) if live_rollup else 0,
         'qualified_wallets': latest_wallets['n'],
         'tracked_account_value_usd': float(total_value['total'] or 0),
         'largest_account_value_usd': float(total_value.get('largest_account_value_usd') or 0),
@@ -282,7 +281,7 @@ def summary(user: dict = Depends(require_active_subscription)):
         'assets_with_signals': assets['n'],
         'data_quality_status': 'healthy' if data_quality_ok else 'checking',
         'data_quality_age_seconds': collector_age_seconds,
-        'data_quality_message': 'Live wallet state active' if live_state_active else ('50-wallet snapshot healthy' if data_quality_ok else 'Waiting for a fresh completed collector snapshot'),
+        'data_quality_message': ('Live/hybrid Hyperliquid state active' if live_state_active else ('50-wallet snapshot healthy' if data_quality_ok else 'Waiting for a fresh completed collector snapshot')),
     }
 
 
@@ -382,16 +381,53 @@ def _live_state_is_ready() -> bool:
     return bool(active and fresh >= _live_min_wallets(active))
 
 
-def _live_marked_position_rows() -> list[dict[str, Any]]:
-    """Fresh live positions marked to current Hyperliquid mids.
-
-    copycat_live_positions stores the last full user-state snapshot. Between
-    those snapshots, value/exposure should still move with the market. This
-    helper re-marks stored sizes against allMids so dashboard KPIs, signals,
-    allocation and the index move from one consistent live source.
-    """
-    if not _live_state_is_ready():
+def _active_wallet_addresses() -> list[str]:
+    try:
+        rows = fetch_all("""
+            SELECT lower(wallet) AS wallet
+            FROM qualified_wallets
+            WHERE status='active' AND wallet ~* '^0x[0-9a-f]{40}$'
+            ORDER BY rank ASC NULLS LAST, qualified_at_ms DESC NULLS LAST
+        """)
+        return [str(r.get('wallet') or '').lower() for r in rows if r.get('wallet')]
+    except Exception:
         return []
+
+
+def _latest_completed_position_ts() -> int | None:
+    row = fetch_one('SELECT max(ts_ms) AS ts_ms FROM asset_signals') or {'ts_ms': None}
+    if row.get('ts_ms'):
+        return int(row['ts_ms'])
+    row = fetch_one('SELECT max(ts_ms) AS ts_ms FROM positions') or {'ts_ms': None}
+    return int(row['ts_ms']) if row.get('ts_ms') else None
+
+
+def _mark_position_value(row: dict[str, Any], mids: dict[str, float], source: str) -> dict[str, Any]:
+    out = dict(row)
+    sym = _normalise_index_symbol(out.get('coin'))
+    size = _safe_float(out.get('size'))
+    stale_value = abs(_safe_float(out.get('position_value_usd')))
+    stored_mark = _safe_float(out.get('mark_px'))
+    current_mark = _safe_float(mids.get(sym)) or stored_mark
+    current_value = abs(size) * current_mark if abs(size) > 0 and current_mark > 0 else stale_value
+    mark_delta_pnl = size * (current_mark - stored_mark) if abs(size) > 0 and stored_mark > 0 and current_mark > 0 else 0.0
+    out['coin'] = sym or out.get('coin')
+    out['side'] = 'short' if size < 0 or str(out.get('side')).lower().startswith('short') else 'long'
+    out['current_mark_px'] = current_mark
+    out['current_position_value_usd'] = current_value
+    out['mark_delta_pnl_usd'] = mark_delta_pnl
+    out['data_source'] = source
+    return out
+
+
+def _live_marked_position_rows() -> list[dict[str, Any]]:
+    """Fresh live wallet positions marked to current Hyperliquid mids.
+
+    This returns whatever fresh wallet states are available. The dashboard then
+    merges these with the latest completed snapshot for wallets that have not
+    been refreshed yet, so one slow wallet cannot force the whole page back into
+    static snapshot mode.
+    """
     try:
         ensure_copycat_data_api()
         rows = fetch_all("""
@@ -417,23 +453,54 @@ def _live_marked_position_rows() -> list[dict[str, Any]]:
     except Exception:
         return []
     mids = _hl_all_mids()
-    out: list[dict[str, Any]] = []
-    for r in rows:
-        row = dict(r)
-        sym = _normalise_index_symbol(row.get('coin'))
-        size = _safe_float(row.get('size'))
-        stale_value = abs(_safe_float(row.get('position_value_usd')))
-        stored_mark = _safe_float(row.get('mark_px'))
-        current_mark = _safe_float(mids.get(sym)) or stored_mark
-        current_value = abs(size) * current_mark if abs(size) > 0 and current_mark > 0 else stale_value
-        mark_delta_pnl = size * (current_mark - stored_mark) if abs(size) > 0 and stored_mark > 0 and current_mark > 0 else 0.0
-        row['coin'] = sym or row.get('coin')
-        row['side'] = 'short' if size < 0 or str(row.get('side')).lower().startswith('short') else 'long'
-        row['current_mark_px'] = current_mark
-        row['current_position_value_usd'] = current_value
-        row['mark_delta_pnl_usd'] = mark_delta_pnl
-        out.append(row)
-    return out
+    return [_mark_position_value(dict(r), mids, 'live') for r in rows]
+
+
+def _snapshot_marked_position_rows(exclude_wallets: set[str] | None = None) -> list[dict[str, Any]]:
+    ts = _latest_completed_position_ts()
+    if not ts:
+        return []
+    exclude_wallets = {str(w).lower() for w in (exclude_wallets or set()) if w}
+    params: dict[str, Any] = {'ts': ts}
+    exclude_sql = ''
+    if exclude_wallets:
+        names = []
+        for i, wallet in enumerate(sorted(exclude_wallets)):
+            key = f'exw{i}'
+            params[key] = wallet
+            names.append(f':{key}')
+        exclude_sql = f"AND lower(p.wallet) NOT IN ({','.join(names)})"
+    try:
+        rows = fetch_all(f"""
+            SELECT lower(p.wallet) AS wallet,
+                   upper(p.coin) AS coin,
+                   lower(p.side) AS side,
+                   p.ts_ms,
+                   COALESCE(p.size,0) AS size,
+                   COALESCE(p.position_value_usd,0) AS position_value_usd,
+                   COALESCE(p.mark_px,
+                            CASE WHEN abs(COALESCE(p.size,0)) > 0
+                                 THEN abs(COALESCE(p.position_value_usd,0)) / abs(COALESCE(p.size,0))
+                                 ELSE NULL END) AS mark_px,
+                   COALESCE(p.entry_px,0) AS entry_px,
+                   COALESCE(p.unrealized_pnl_usd,0) AS unrealized_pnl_usd
+            FROM positions p
+            JOIN qualified_wallets q ON lower(q.wallet)=lower(p.wallet) AND q.status='active'
+            WHERE p.ts_ms=:ts
+              AND upper(p.coin) NOT IN ('USDC','USDC/CASH','CASH','USD')
+              {exclude_sql}
+        """, params)
+    except Exception:
+        return []
+    mids = _hl_all_mids()
+    return [_mark_position_value(dict(r), mids, 'snapshot_marked') for r in rows]
+
+
+def _hybrid_marked_position_rows() -> list[dict[str, Any]]:
+    live_rows = _live_marked_position_rows()
+    live_wallets = {str(r.get('wallet') or '').lower() for r in live_rows if r.get('wallet')}
+    snapshot_rows = _snapshot_marked_position_rows(exclude_wallets=live_wallets)
+    return live_rows + snapshot_rows
 
 
 def _live_event_flow_map() -> dict[str, dict[str, Any]]:
@@ -493,35 +560,78 @@ def _live_event_flow_map() -> dict[str, dict[str, Any]]:
 
 
 def _live_wallet_state_rollup() -> dict[str, Any] | None:
-    if not _live_state_is_ready():
+    """Hybrid live rollup for all active wallets.
+
+    Fresh live wallet states are used first. For wallets that have not refreshed
+    yet, the latest completed collector snapshot is used and its open positions
+    are marked to current Hyperliquid mids. This keeps the whole dashboard
+    internally synced instead of showing live orders with static exposure cards.
+    """
+    active_wallets = _active_wallet_addresses()
+    active_set = set(active_wallets)
+    if not active_wallets:
         return None
+
+    by_wallet: dict[str, dict[str, float]] = {
+        w: {'account': 0.0, 'open': 0.0, 'positions': 0.0, 'adjustment': 0.0, 'source_live': 0.0}
+        for w in active_wallets
+    }
+    latest_ts = 0
+    fresh_wallets: set[str] = set()
+
     try:
         states = fetch_all("""
             SELECT lower(s.wallet) AS wallet,
                    s.ts_ms,
-                   COALESCE(s.account_value_usd,0) AS account_value_usd,
-                   COALESCE(s.open_position_value_usd,0) AS open_position_value_usd,
-                   COALESCE(s.open_positions,0) AS open_positions
+                   COALESCE(s.account_value_usd,0) AS account_value_usd
             FROM copycat_live_wallet_states s
             JOIN qualified_wallets q ON lower(q.wallet)=lower(s.wallet) AND q.status='active'
             WHERE s.ts_ms >= :fresh_cutoff
         """, {'fresh_cutoff': _live_state_cutoff_ms()})
     except Exception:
-        return None
-    if not states:
-        return None
-    by_wallet: dict[str, dict[str, float]] = {}
-    latest_ts = 0
+        states = []
+
     for srow in states:
         wallet = str(srow.get('wallet') or '').lower()
+        if wallet not in active_set:
+            continue
         latest_ts = max(latest_ts, int(srow.get('ts_ms') or 0))
-        by_wallet[wallet] = {
-            'account': _safe_float(srow.get('account_value_usd')),
-            'open': 0.0,
-            'positions': 0.0,
-            'adjustment': 0.0,
-        }
-    for p in _live_marked_position_rows():
+        by_wallet[wallet]['account'] = _safe_float(srow.get('account_value_usd'))
+        by_wallet[wallet]['source_live'] = 1.0
+        fresh_wallets.add(wallet)
+
+    snapshot_ts = _latest_completed_position_ts()
+    if snapshot_ts:
+        params: dict[str, Any] = {'ts': snapshot_ts}
+        exclude_sql = ''
+        if fresh_wallets:
+            keys = []
+            for i, wallet in enumerate(sorted(fresh_wallets)):
+                key = f'fw{i}'
+                params[key] = wallet
+                keys.append(f':{key}')
+            exclude_sql = f"AND lower(ws.wallet) NOT IN ({','.join(keys)})"
+        try:
+            snaps = fetch_all(f"""
+                SELECT lower(ws.wallet) AS wallet,
+                       ws.ts_ms,
+                       COALESCE(ws.account_value_usd,0) AS account_value_usd
+                FROM wallet_snapshots ws
+                JOIN qualified_wallets q ON lower(q.wallet)=lower(ws.wallet) AND q.status='active'
+                WHERE ws.ts_ms=:ts
+                  {exclude_sql}
+            """, params)
+        except Exception:
+            snaps = []
+        for snap in snaps:
+            wallet = str(snap.get('wallet') or '').lower()
+            if wallet not in by_wallet:
+                continue
+            latest_ts = max(latest_ts, int(snap.get('ts_ms') or 0))
+            by_wallet[wallet]['account'] = _safe_float(snap.get('account_value_usd'))
+
+    positions = _hybrid_marked_position_rows()
+    for p in positions:
         wallet = str(p.get('wallet') or '').lower()
         bucket = by_wallet.get(wallet)
         if not bucket:
@@ -530,14 +640,20 @@ def _live_wallet_state_rollup() -> dict[str, Any] | None:
         bucket['positions'] += 1
         bucket['adjustment'] += _safe_float(p.get('mark_delta_pnl_usd'))
         latest_ts = max(latest_ts, int(p.get('ts_ms') or 0))
+
     account_values = [max(0.0, v['account'] + v['adjustment']) for v in by_wallet.values()]
+    if not account_values:
+        return None
     return {
-        'live_wallets': len(by_wallet),
-        'latest_live_state_ts_ms': latest_ts,
+        'active_wallets': len(active_wallets),
+        'live_wallets': len(fresh_wallets),
+        'snapshot_wallets': max(0, len(active_wallets) - len(fresh_wallets)),
+        'latest_live_state_ts_ms': latest_ts or None,
         'total': sum(account_values),
         'largest_account_value_usd': max(account_values) if account_values else 0.0,
         'open_total': sum(v['open'] for v in by_wallet.values()),
         'positions': int(sum(v['positions'] for v in by_wallet.values())),
+        'coverage_mode': 'live_hybrid' if fresh_wallets else 'snapshot_live_marked',
     }
 
 
@@ -547,15 +663,14 @@ def _live_signal_rows(limit: int = 500) -> list[dict[str, Any]]:
     cached_rows = _LIVE_SIGNAL_ROWS_CACHE.get('rows')
     if isinstance(cached_rows, list) and cached_rows and now - float(_LIVE_SIGNAL_ROWS_CACHE.get('ts') or 0) < _LIVE_SIGNAL_ROWS_CACHE_TTL_SECONDS:
         return cached_rows[:requested_limit]
-    if not _live_state_is_ready():
-        return []
     try:
-        positions = _live_marked_position_rows()
+        positions = _hybrid_marked_position_rows()
         flow_map = _live_event_flow_map()
+        asset_universe = _hl_asset_universe()
         rollup = _live_wallet_state_rollup() or {}
     except Exception:
         return []
-    if not positions and not flow_map:
+    if not positions and not flow_map and not asset_universe:
         return []
     gross = 0.0
     agg: dict[str, dict[str, Any]] = {}
@@ -587,7 +702,7 @@ def _live_signal_rows(limit: int = 500) -> list[dict[str, Any]]:
             row['value_long_usd'] += value
             row['wallets_long_set'].add(wallet)
 
-    for coin in flow_map:
+    for coin in sorted(set(list(flow_map.keys()) + list(asset_universe or []))):
         agg.setdefault(coin, {
             'coin': coin,
             'ts_ms': latest_ts or _now_ms(),
@@ -629,7 +744,11 @@ def _live_signal_rows(limit: int = 500) -> list[dict[str, Any]]:
             'total_tracked_value_usd': tracked_value,
             'live_state': True,
         })
-    out.sort(key=lambda r: (_safe_float(r.get('value_long_usd')) + _safe_float(r.get('value_short_usd')), abs(_safe_float(r.get('net_value_flow_usd')))), reverse=True)
+    out.sort(key=lambda r: (
+        _safe_float(r.get('value_long_usd')) + _safe_float(r.get('value_short_usd')),
+        abs(_safe_float(r.get('net_value_flow_usd'))),
+        1 if _normalise_index_symbol(r.get('coin')) in set(asset_universe or []) else 0,
+    ), reverse=True)
     _LIVE_SIGNAL_ROWS_CACHE['ts'] = time.time()
     _LIVE_SIGNAL_ROWS_CACHE['rows'] = out[:500]
     return out[:requested_limit]
@@ -1356,6 +1475,8 @@ _SPX_CACHE: dict[str, Any] = {'ts': 0.0, 'price': None}
 _SPX_CACHE_TTL_SECONDS = 60 * 30
 _HL_MIDS_CACHE: dict[str, Any] = {'ts': 0.0, 'mids': None}
 _HL_MIDS_CACHE_TTL_SECONDS = 0.9
+_ASSET_UNIVERSE_CACHE: dict[str, Any] = {'ts': 0.0, 'symbols': []}
+_ASSET_UNIVERSE_TTL_SECONDS = 60 * 30
 
 
 def _normalise_index_symbol(symbol: str) -> str:
@@ -1429,6 +1550,42 @@ def _hl_all_mids() -> dict[str, float]:
     _HL_MIDS_CACHE['ts'] = now
     _HL_MIDS_CACHE['mids'] = out
     return out
+
+
+def _hl_asset_universe() -> list[str]:
+    """All Hyperliquid perpetual markets from the official meta endpoint.
+
+    The signal/flow boards merge this universe with Copycat's tracked-wallet
+    exposure, so an asset can appear even when tracked wallets currently have
+    no open exposure. That solves the visual mismatch where a recent fill asset
+    exists on the tape but cannot be found anywhere else on the dashboard.
+    """
+    now = time.time()
+    cached = _ASSET_UNIVERSE_CACHE.get('symbols')
+    if isinstance(cached, list) and cached and now - float(_ASSET_UNIVERSE_CACHE.get('ts') or 0) < _ASSET_UNIVERSE_TTL_SECONDS:
+        return cached
+    symbols: list[str] = []
+    try:
+        payload = _hl_info({'type': 'meta'})
+        universe = payload.get('universe') if isinstance(payload, dict) else []
+        for item in universe or []:
+            if not isinstance(item, dict):
+                continue
+            sym = _normalise_index_symbol(item.get('name') or item.get('coin') or item.get('symbol'))
+            if sym and not _index_is_margin_symbol(sym) and sym not in symbols:
+                symbols.append(sym)
+    except Exception:
+        symbols = []
+    if not symbols:
+        try:
+            symbols = [sym for sym in _hl_all_mids().keys() if sym and not _index_is_margin_symbol(sym)]
+        except Exception:
+            symbols = []
+    if symbols:
+        symbols = sorted(set(symbols))
+        _ASSET_UNIVERSE_CACHE['ts'] = now
+        _ASSET_UNIVERSE_CACHE['symbols'] = symbols
+    return symbols
 
 
 def _spx_latest_price() -> float | None:

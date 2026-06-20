@@ -2405,7 +2405,7 @@ html[data-theme='light'] .cc-api-endpoints code{background:rgba(255,251,244,.62)
   to{opacity:1; transform:translateY(0); filter:blur(0)}
 }
 .cc-order-line{
-  animation:ccOrderTapeIn .28s cubic-bezier(.2,.8,.2,1) both;
+  animation:none;
 }
 
 /* Live sync polish: slower stacked order tape and moving exposure bars. */
@@ -2418,8 +2418,10 @@ html[data-theme='light'] .cc-api-endpoints code{background:rgba(255,251,244,.62)
 .cc-order-line{
   transform-origin:top center;
   will-change:transform, opacity, filter;
-  animation:ccOrderBrickStackIn .72s cubic-bezier(.16,1,.3,1) both !important;
   transition:transform .55s cubic-bezier(.16,1,.3,1), background-color .55s ease, border-color .55s ease;
+}
+.cc-order-line.is-new{
+  animation:ccOrderBrickStackIn .92s cubic-bezier(.16,1,.3,1) both !important;
 }
 .cc-ex-track i,
 .cc-ex-track em{
@@ -2431,5 +2433,5 @@ html[data-theme='light'] .cc-api-endpoints code{background:rgba(255,251,244,.62)
   transition:all .85s cubic-bezier(.16,1,.3,1);
 }
 @media (prefers-reduced-motion: reduce){
-  .cc-order-line,.cc-ex-track i,.cc-ex-track em,.cc-index-chart path,.cc-donut-svg path{animation:none !important; transition:none !important;}
+  .cc-order-line,.cc-order-line.is-new,.cc-ex-track i,.cc-ex-track em,.cc-index-chart path,.cc-donut-svg path{animation:none !important; transition:none !important;}
 }

@@ -264,6 +264,7 @@ export default function Dashboard() {
   const hasLoaded = useRef(false)
   const stagedOrderKeys = useRef<Set<string>>(new Set())
   const orderStageTimers = useRef<number[]>([])
+  const hasInitialOrders = useRef(false)
 
   async function load() {
     // One browser tab should never stack multiple refreshes. When a mobile tab
@@ -322,24 +323,32 @@ export default function Dashboard() {
     orderStageTimers.current = []
     const next = orderRows.slice(0, 50)
     const nextKeys = new Set(next.map(orderKey))
-    const orderIndex = new Map(next.map((o, i) => [orderKey(o), i]))
-    setStagedOrders((prev) => {
-      const kept = prev
-        .filter((o) => nextKeys.has(orderKey(o)))
-        .sort((a, b) => (orderIndex.get(orderKey(a)) ?? 9999) - (orderIndex.get(orderKey(b)) ?? 9999))
-      stagedOrderKeys.current = new Set(kept.map(orderKey))
-      return kept
-    })
-    const incoming = next.filter((o) => !stagedOrderKeys.current.has(orderKey(o))).reverse()
+    const orderIndex = new Map<string, number>(next.map((o, i) => [orderKey(o), i]))
+
+    if (!hasInitialOrders.current) {
+      hasInitialOrders.current = true
+      stagedOrderKeys.current = new Set(next.map(orderKey))
+      setStagedOrders(next)
+      return
+    }
+
+    const knownBefore = new Set(stagedOrderKeys.current)
+    const incoming = next.filter((o) => !knownBefore.has(orderKey(o)))
+
+    setStagedOrders((prev) => prev
+      .filter((o) => nextKeys.has(orderKey(o)))
+      .sort((a, b) => (orderIndex.get(orderKey(a)) ?? 9999) - (orderIndex.get(orderKey(b)) ?? 9999))
+      .slice(0, 50))
+
     incoming.forEach((order, i) => {
       const timer = window.setTimeout(() => {
         const key = orderKey(order)
         stagedOrderKeys.current.add(key)
-        setStagedOrders((prev) => [order, ...prev.filter((p) => orderKey(p) !== key)]
+        setStagedOrders((prev) => [{ ...order, __new: true }, ...prev.filter((p) => orderKey(p) !== key)]
           .filter((p) => nextKeys.has(orderKey(p)))
           .sort((a, b) => (orderIndex.get(orderKey(a)) ?? 9999) - (orderIndex.get(orderKey(b)) ?? 9999))
           .slice(0, 50))
-      }, i * 360)
+      }, i * 520)
       orderStageTimers.current.push(timer)
     })
     return () => orderStageTimers.current.forEach((timer) => window.clearTimeout(timer))
@@ -360,7 +369,7 @@ export default function Dashboard() {
         <div className={`cc-orders-card ${showAllOrders ? 'expanded' : ''}`}>
           <h3>Most recent orders</h3>
           <div className="cc-order-list">
-            {visibleOrders.map((o: any) => <div className="cc-order-line" key={orderKey(o)}><TokenLogo coin={o.coin} icons={icons} /><b>{displayToken(o.coin)}</b><span className={orderActionClass(o.side)}>{o.side}</span><em>{o.wallet_label || maskWallet(o.wallet)}</em><small>{ago(o.ts_ms)}</small></div>)}
+            {visibleOrders.map((o: any) => <div className={`cc-order-line ${o.__new ? 'is-new' : ''}`} key={orderKey(o)}><TokenLogo coin={o.coin} icons={icons} /><b>{displayToken(o.coin)}</b><span className={orderActionClass(o.side)}>{o.side}</span><em>{o.wallet_label || maskWallet(o.wallet)}</em><small>{ago(o.ts_ms)}</small></div>)}
           </div>
           <button className="cc-small-action" onClick={() => setShowAllOrders(v => !v)}>{showAllOrders ? 'Show latest 3 ↑' : 'View all orders →'}</button>
         </div>
@@ -410,6 +419,6 @@ export default function Dashboard() {
       </div>
     </section>
 
-    <footer className="cc-warning-banner"><span className="cc-shield" aria-hidden><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5.2c0 4.5-2.7 8.4-7 9.8-4.3-1.4-7-5.3-7-9.8V6l7-3z"/><path d="M9.2 12.1l1.7 1.7 3.9-4.1"/></svg></span><strong>Market intelligence only.</strong><em>Not financial advice. Crypto trading can result in loss.</em><div className={`cc-footer-meta ${dataHealthy ? 'healthy' : 'checking'}`}><span className="cc-footer-quality"><span className="cc-pulse-dot" /><b>{dataHealthy ? 'Data quality healthy' : 'Data quality checking'}</b></span><small>Signal refresh: {fmtTime(summary.latest_signal_ts_ms)} UTC · {summary.live_state_active ? `Live state: ${fmtTime(summary.latest_live_state_ts_ms)} UTC` : 'Snapshot mode'} · Page checks every 1s</small></div></footer>
+    <footer className="cc-warning-banner"><span className="cc-shield" aria-hidden><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5.2c0 4.5-2.7 8.4-7 9.8-4.3-1.4-7-5.3-7-9.8V6l7-3z"/><path d="M9.2 12.1l1.7 1.7 3.9-4.1"/></svg></span><strong>Market intelligence only.</strong><em>Not financial advice. Crypto trading can result in loss.</em><div className={`cc-footer-meta ${dataHealthy ? 'healthy' : 'checking'}`}><span className="cc-footer-quality"><span className="cc-pulse-dot" /><b>{dataHealthy ? 'Data quality healthy' : 'Data quality checking'}</b></span><small>Signal refresh: {fmtTime(summary.latest_signal_ts_ms)} UTC · {summary.live_state_active ? `Live/hybrid: ${fmtTime(summary.latest_live_state_ts_ms)} UTC` : 'Snapshot mode'} · Page checks every 1s</small></div></footer>
   </main></>
 }
