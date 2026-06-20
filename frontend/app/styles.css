@@ -2560,3 +2560,6 @@ html[data-theme='light'] .cc-footer-main small { color: #6b4b12 !important; }
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
+.cc-signal-pill.long { color: var(--cc-green); }
+.cc-signal-pill.short { color: var(--cc-red); }
+.cc-signal-pill.neutral { color: var(--cc-muted); }

@@ -98,7 +98,27 @@ function signalConvictionParts(row: any) {
   const gross = Number(row?.value_long_usd || 0) + Number(row?.value_short_usd || 0)
   return { strength, net, gross }
 }
+
+function signalDirectionClass(row: any) {
+  const direction = displaySignalDirection(row).toLowerCase()
+  if (direction === 'long') return 'long'
+  if (direction === 'short') return 'short'
+  return 'neutral'
+}
+
 function cls(n: any) { return Number(n) >= 0 ? 'positive' : 'negative' }
+
+function flowPressureScore(row: any) {
+  const bullish = Math.abs(Number(row?.bullish_flow_usd || row?.bullish_value_flow_usd || 0))
+  const bearish = Math.abs(Number(row?.bearish_flow_usd || row?.bearish_value_flow_usd || 0))
+  const net = Math.abs(Number(row?.net_value_flow_usd || 0))
+  const gross = bullish + bearish
+  const netBuyerScore = Math.abs(Number(row?.net_buyer_count || 0)) * 1000
+  // Most useful recent pressure = clear net value flow, with some credit for
+  // heavy gross activity and several wallets leaning the same way.
+  return net + gross * 0.25 + netBuyerScore
+}
+
 function flowRead(netValueFlowUsd: any) {
   const n = Number(netValueFlowUsd || 0)
   return n > 1000 ? 'Accumulation' : n < -1000 ? 'Distribution' : 'Neutral'
@@ -308,6 +328,7 @@ function sorterValue(row: any, key: string) {
     const rank: Record<string, number> = { high: 3, medium: 2, med: 2, low: 1, reserve: 0 }
     return rank[String(row.confidence || '').toLowerCase()] ?? -1
   }
+  if (key === 'pressure') return flowPressureScore(row)
   if (key === 'read') {
     const rank: Record<string, number> = { Accumulation: 2, Neutral: 1, Distribution: 0 }
     return rank[flowRead(row.net_value_flow_usd)] ?? 0
@@ -353,7 +374,7 @@ export default function Dashboard() {
   const [icons, setIcons] = useState<Record<string, string>>({})
   const [err, setErr] = useState('')
   const [signalSort, setSignalSort] = useState<SortState>({ key: 'conviction', dir: 'desc' })
-  const [flowSortState, setFlowSortState] = useState<SortState>({ key: 'net_value_flow_usd', dir: 'desc' })
+  const [flowSortState, setFlowSortState] = useState<SortState>({ key: 'pressure', dir: 'desc' })
 
   const fullInFlight = useRef(false)
   const tickInFlight = useRef(false)
@@ -537,7 +558,7 @@ export default function Dashboard() {
       <article><small>Copycat-ranked wallets</small><RollingInteger value={summary.qualified_wallets || 0} /><span>{summary.owned_wallets_indexed ? `${summary.owned_wallets_indexed} wallets indexed` : 'owned ranking universe'}</span></article>
       <article className="cc-tracked-value-card"><small>Tracked account value</small><RollingMoney value={summary.tracked_account_value_usd} /><span>{summary.live_state_active ? 'live wallet state' : 'latest snapshots'}</span>{summary.largest_account_value_usd ? <em>Largest account: {money(summary.largest_account_value_usd)}</em> : null}</article>
       <article className="cc-open-position-card"><small>Open position value</small><RollingMoney value={summary.tracked_open_position_value_usd} /><span>{summary.open_positions || 0} live positions</span>{grossLeverageValue ? <em>{leverageText(grossLeverageValue)}</em> : null}</article>
-      <article><small>Assets with signals</small><RollingInteger value={summary.assets_with_signals || 0} /><span>{summary.markets_monitored ? `${summary.markets_monitored} markets monitored` : 'cross-asset breadth'}</span></article>
+      <article><small>Assets with signals</small><RollingInteger value={signals.length || summary.assets_with_signals || 0} /><span>{summary.markets_monitored ? `${summary.markets_monitored} markets monitored` : 'cross-asset breadth'}</span></article>
     </section>
 
     <section className="cc-chart-grid">
@@ -553,7 +574,7 @@ export default function Dashboard() {
         <div className="cc-scroll-table cc-scroll-y">
           <table className="cc-signal-table">
             <thead><tr><th>#</th><SortTh label="Asset" sortKey="asset" sort={signalSort} setSort={setSignalSort} /><SortTh label="Signal" sortKey="conviction" sort={signalSort} setSort={setSignalSort} /><SortTh label="Confidence" sortKey="confidence" sort={signalSort} setSort={setSignalSort} /><SortTh label="Wallets" sortKey="wallets" sort={signalSort} setSort={setSignalSort} /><SortTh label="Value L/S" sortKey="value_ls" sort={signalSort} setSort={setSignalSort} /><SortTh label="Net value" sortKey="net_value_usd" sort={signalSort} setSort={setSignalSort} /><SortTh label="% total value" sortKey="pct_total" sort={signalSort} setSort={setSignalSort} /></tr></thead>
-            <tbody>{sortedSignals.map((r, i) => <tr key={`${r.coin}-${i}`}><td>{i + 1}</td><td><span className="cc-asset-cell"><TokenLogo coin={r.coin} icons={icons} /><b>{displayToken(r.coin)}</b></span></td><td className={cls(displaySignalValue(r))}><span className="cc-signal-pill">{displaySignalMagnitudePct(r)} {displaySignalDirection(r)}</span></td><td><span className={`cc-confidence ${String(r.confidence).toLowerCase()}`}>{r.confidence}</span></td><td>{r.wallets_long} long / {r.wallets_short} short</td><td>{money(r.value_long_usd)} / {money(r.value_short_usd)}</td><td className={cls(r.net_value_usd)}>{money(r.net_value_usd)}</td><td>{pct(r.value_long_pct_total)} long / {pct(r.value_short_pct_total)} short</td></tr>)}</tbody>
+            <tbody>{sortedSignals.map((r, i) => <tr key={`${r.coin}-${i}`}><td>{i + 1}</td><td><span className="cc-asset-cell"><TokenLogo coin={r.coin} icons={icons} /><b>{displayToken(r.coin)}</b></span></td><td className={cls(displaySignalValue(r))}><span className={`cc-signal-pill ${signalDirectionClass(r)}`}>{displaySignalMagnitudePct(r)} {displaySignalDirection(r)}</span></td><td><span className={`cc-confidence ${String(r.confidence).toLowerCase()}`}>{r.confidence}</span></td><td>{r.wallets_long} long / {r.wallets_short} short</td><td>{money(r.value_long_usd)} / {money(r.value_short_usd)}</td><td className={cls(r.net_value_usd)}>{money(r.net_value_usd)}</td><td>{pct(r.value_long_pct_total)} long / {pct(r.value_short_pct_total)} short</td></tr>)}</tbody>
           </table>
         </div>
       </div>
@@ -561,7 +582,7 @@ export default function Dashboard() {
         <div className="cc-panel-title"><h3>Recent buyer / seller pressure</h3><span>{flowContextText}</span></div>
         <div className="cc-scroll-table cc-scroll-y">
           <table className="cc-flow-table">
-            <thead><tr><SortTh label="Asset" sortKey="asset" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Net buyers" sortKey="net_buyers" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Bullish flow" sortKey="bullish" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Bearish flow" sortKey="bearish" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Net value flow" sortKey="net_value_flow_usd" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Read" sortKey="read" sort={flowSortState} setSort={setFlowSortState} /></tr></thead>
+            <thead><tr><SortTh label="Asset" sortKey="asset" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Net buyers" sortKey="net_buyers" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Bullish flow" sortKey="bullish" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Bearish flow" sortKey="bearish" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Net value flow" sortKey="net_value_flow_usd" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Read" sortKey="pressure" sort={flowSortState} setSort={setFlowSortState} /></tr></thead>
             <tbody>{sortedFlow.map((r, i) => { const read = flowRead(r.net_value_flow_usd); return <tr key={`${r.coin}-${i}`}><td><span className="cc-asset-cell"><TokenLogo coin={r.coin} icons={icons} /><b>{displayToken(r.coin)}</b></span></td><td className={cls(r.net_buyer_count)}>{r.net_buyer_count}</td><td>{money(r.bullish_flow_usd)}</td><td>{money(r.bearish_flow_usd)}</td><td className={cls(r.net_value_flow_usd)}>{money(r.net_value_flow_usd)}</td><td><span className={`cc-read ${read.toLowerCase()}`}>{read}</span></td></tr> })}</tbody>
           </table>
         </div>
