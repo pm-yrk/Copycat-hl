@@ -74,15 +74,15 @@ class Nansen:
             'Accept': 'application/json',
         })
 
-    def leaderboard(self, page: int, per_page: int = 100) -> Any:
-        end = date.today()
-        start = end - timedelta(days=self.settings.nansen_lookback_days)
+    def leaderboard(self, page: int, per_page: int = 100, start: date | None = None, end: date | None = None, min_account_value_usd: float | None = None, min_total_pnl_usd: float | None = None) -> Any:
+        end = end or date.today()
+        start = start or (end - timedelta(days=self.settings.nansen_lookback_days))
         payload = {
             'date': {'from': start.isoformat(), 'to': end.isoformat()},
             'pagination': {'page': page, 'per_page': per_page},
             'filters': {
-                'account_value': {'min': self.settings.nansen_min_account_value_usd},
-                'total_pnl': {'min': self.settings.nansen_min_total_pnl_usd},
+                'account_value': {'min': self.settings.nansen_min_account_value_usd if min_account_value_usd is None else min_account_value_usd},
+                'total_pnl': {'min': self.settings.nansen_min_total_pnl_usd if min_total_pnl_usd is None else min_total_pnl_usd},
             },
             'order_by': [{'field': 'total_pnl', 'direction': 'DESC'}],
         }

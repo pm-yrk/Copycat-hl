@@ -19,6 +19,12 @@ class Settings(BaseSettings):
     nansen_max_candidates: int = 500
     nansen_min_account_value_usd: float = 50_000
     nansen_min_total_pnl_usd: float = 1_000
+    nansen_backtest_days: int = 400
+    nansen_backtest_rebalance_days: int = 7
+    nansen_backtest_max_candidates: int = 150
+    nansen_backtest_min_wallets: int = 10
+    nansen_backtest_min_rows: int = 26
+    nansen_backtest_replace_existing: bool = True
 
     qualified_wallet_limit: int = 50
     collector_interval_seconds: int = 1

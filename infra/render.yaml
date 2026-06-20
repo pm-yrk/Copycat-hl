@@ -75,3 +75,17 @@ services:
         sync: false
       - key: TELEGRAM_CHAT_ID
         sync: false
+
+  - type: cron
+    name: hwt-backtest-weekly
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    schedule: "0 2 * * 0"
+    dockerCommand: "python -m app.jobs.backfill_backtest"
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: NANSEN_API_KEY
+        sync: false
+
