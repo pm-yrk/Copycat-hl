@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
 import Nav from '../../components/Nav'
 import LineBackdrop from '../../components/LineBackdrop'
 import { apiGet } from '../../lib/api'
@@ -243,31 +242,16 @@ function priceText(n: any) {
   return '$' + value.toLocaleString(undefined, { maximumSignificantDigits: 4 })
 }
 
-
 function AssetName({ coin, details, row, compact = false }: { coin: any, details: Record<string, AssetDetail>, row?: any, compact?: boolean }) {
-  const [anchor, setAnchor] = useState<{ left: number, top: number } | null>(null)
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
   const symbol = displayToken(String(coin || ''))
   const canonical = canonicalToken(symbol)
   const meta = details[canonical] || details[symbol] || {}
   const longUsd = Number(row?.value_long_usd || meta?.value_long_usd || 0)
   const shortUsd = Number(row?.value_short_usd || meta?.value_short_usd || 0)
   const gross = Number(row?.gross_exposure_usd || meta?.gross_exposure_usd || (longUsd + shortUsd) || 0)
-  const tilt = String(meta?.tilt || row?.tilt || (longUsd || shortUsd ? (longUsd >= shortUsd ? 'Long' : 'Short') : '—'))
-  const conviction = Number(meta?.conviction_pct || row?.conviction_pct || 0)
-  const flowValue = Number(meta?.net_flow_usd || row?.net_value_flow_usd || row?.delta_value_usd || row?.notional_usd || 0)
-  const place = (el: HTMLElement) => {
-    const rect = el.getBoundingClientRect()
-    const width = 288
-    const left = Math.max(12, Math.min(rect.left, window.innerWidth - width - 12))
-    const top = Math.max(12, Math.min(rect.bottom + 10, window.innerHeight - 240))
-    setAnchor({ left, top })
-  }
-  const show = (e: any) => place(e.currentTarget as HTMLElement)
-  const hide = () => setAnchor(null)
-  const tooltip = anchor && mounted ? createPortal(<div className="cc-asset-tooltip-portal" style={{ left: anchor.left, top: anchor.top }}><strong>{meta?.name || tokenFullName(symbol)}</strong><em>{symbol} on Hyperliquid</em><dl><dt>Mark price</dt><dd>{priceText(meta?.current_price)}</dd><dt>Tracked tilt</dt><dd className={tilt.toLowerCase().includes('short') ? 'negative' : tilt.toLowerCase().includes('long') ? 'positive' : ''}>{tilt}{conviction ? ` · ${Math.round(conviction)}%` : ''}</dd><dt>Open exposure</dt><dd>{gross ? compactMoney(gross) : '—'}</dd>{meta?.max_leverage ? <><dt>Max leverage</dt><dd>{meta.max_leverage}x</dd></> : null}{!compact ? <><dt>Wallets</dt><dd>{Number(meta?.wallets_long || row?.wallets_long || 0)} long / {Number(meta?.wallets_short || row?.wallets_short || 0)} short</dd><dt>Recent flow</dt><dd className={flowValue < 0 ? 'negative' : flowValue > 0 ? 'positive' : ''}>{flowValue ? compactMoney(flowValue) : '—'}</dd></> : null}</dl></div>, document.body) : null
-  return <span className="cc-asset-hover" tabIndex={0} onMouseEnter={show} onMouseMove={show} onMouseLeave={hide} onFocus={show} onBlur={hide}><b>{symbol}</b>{tooltip}</span>
+  const tilt = String(meta?.tilt || (longUsd || shortUsd ? (longUsd >= shortUsd ? 'Long' : 'Short') : '—'))
+  const conviction = Number(meta?.conviction_pct || 0)
+  return <span className="cc-asset-hover" tabIndex={0}><b>{symbol}</b><span className="cc-asset-tooltip"><strong>{meta?.name || tokenFullName(symbol)}</strong><em>{symbol} on Hyperliquid</em><dl><dt>Mark price</dt><dd>{priceText(meta?.current_price)}</dd><dt>Tracked tilt</dt><dd className={tilt.toLowerCase().includes('short') ? 'negative' : tilt.toLowerCase().includes('long') ? 'positive' : ''}>{tilt}{conviction ? ` · ${Math.round(conviction)}%` : ''}</dd><dt>Open exposure</dt><dd>{gross ? compactMoney(gross) : '—'}</dd>{meta?.max_leverage ? <><dt>Max leverage</dt><dd>{meta.max_leverage}x</dd></> : null}{!compact ? <><dt>Wallets</dt><dd>{Number(meta?.wallets_long || row?.wallets_long || 0)} long / {Number(meta?.wallets_short || row?.wallets_short || 0)} short</dd><dt>Recent flow</dt><dd>{compactMoney(meta?.net_flow_usd || row?.net_value_flow_usd || 0)}</dd></> : null}</dl></span></span>
 }
 
 function tokenColour(symbol: string, index: number) {
@@ -277,7 +261,7 @@ function tokenColour(symbol: string, index: number) {
 
 type Segment = { coin: string; weight: number; color: string; originalWeight: number; direction?: string }
 
-function AllocationDonut({ targets, signals, trackedValue, icons, assetDetails }: { targets: any[]; signals: any[]; trackedValue: number; icons: Record<string, string>; assetDetails: Record<string, AssetDetail> }) {
+function AllocationDonut({ targets, signals, trackedValue, icons }: { targets: any[]; signals: any[]; trackedValue: number; icons: Record<string, string> }) {
   const [hovered, setHovered] = useState<Segment | null>(null)
   const parts: Segment[] = useMemo(() => {
     let rows = [...(targets || [])]
@@ -303,7 +287,7 @@ function AllocationDonut({ targets, signals, trackedValue, icons, assetDetails }
     return `M ${s1.x} ${s1.y} A ${r1} ${r1} 0 ${large} 1 ${e1.x} ${e1.y} L ${s2.x} ${s2.y} A ${r2} ${r2} 0 ${large} 0 ${e2.x} ${e2.y} Z`
   }
   if (!parts.length) return <div className="cc-empty-state">Targets will appear after refresh.</div>
-  return <div className="cc-donut-layout"><div className="cc-donut-stage"><svg viewBox="0 0 220 220" className="cc-donut-svg" aria-label="Copycat Index allocation">{parts.map((p: any) => { const start = angle; angle += p.weight * 360; return <path key={`${p.coin}-${p.direction}`} d={path(110, 110, 92, 50, start, angle - 1)} fill={p.color} onMouseEnter={() => setHovered(p)} onMouseLeave={() => setHovered(null)} onFocus={() => setHovered(p)} onBlur={() => setHovered(null)} tabIndex={0}><title>{p.direction === 'short' ? 'Short ' : p.direction === 'long' ? 'Long ' : ''}{displayToken(p.coin)}: {Math.round(p.originalWeight * 100)}%</title></path> })}<circle className="cc-donut-hole" cx="110" cy="110" r="50" /></svg><div className="cc-donut-tooltip">{hovered ? `${hovered.direction === 'short' ? 'Short ' : hovered.direction === 'long' ? 'Long ' : ''}${displayToken(hovered.coin)} ${Math.round(hovered.originalWeight * 100)}% index allocation` : 'USDC margin is excluded from this allocation.'}</div></div><div className="cc-donut-legend cc-scroll-y">{parts.map((p: any) => <div key={`${p.coin}-${p.direction}`}><TokenLogo coin={p.coin} icons={icons} /><AssetName coin={p.coin} details={assetDetails} row={{ gross_exposure_usd: p.originalWeight * trackedValue, tilt: p.direction }} compact /><b className={p.direction === 'short' ? 'negative' : p.direction === 'long' ? 'positive' : ''}>{p.direction === 'short' ? 'short' : p.direction === 'long' ? 'long' : ''}</b><span>{Math.round(p.originalWeight * 100)}%</span></div>)}</div></div>
+  return <div className="cc-donut-layout"><div className="cc-donut-stage"><svg viewBox="0 0 220 220" className="cc-donut-svg" aria-label="Copycat Index allocation">{parts.map((p: any) => { const start = angle; angle += p.weight * 360; return <path key={`${p.coin}-${p.direction}`} d={path(110, 110, 92, 50, start, angle - 1)} fill={p.color} onMouseEnter={() => setHovered(p)} onMouseLeave={() => setHovered(null)} onFocus={() => setHovered(p)} onBlur={() => setHovered(null)} tabIndex={0}><title>{p.direction === 'short' ? 'Short ' : p.direction === 'long' ? 'Long ' : ''}{displayToken(p.coin)}: {Math.round(p.originalWeight * 100)}%</title></path> })}<circle className="cc-donut-hole" cx="110" cy="110" r="50" /></svg><div className="cc-donut-tooltip">{hovered ? `${hovered.direction === 'short' ? 'Short ' : hovered.direction === 'long' ? 'Long ' : ''}${displayToken(hovered.coin)} ${Math.round(hovered.originalWeight * 100)}% index allocation` : 'USDC margin is excluded from this allocation.'}</div></div><div className="cc-donut-legend cc-scroll-y">{parts.map((p: any) => <div key={`${p.coin}-${p.direction}`}><TokenLogo coin={p.coin} icons={icons} /><b>{displayToken(p.coin)}{p.direction === 'short' ? ' short' : ''}</b><span>{Math.round(p.originalWeight * 100)}%</span></div>)}</div></div>
 }
 function ExposureBars({ signals, icons, assetDetails }: { signals: any[], icons: Record<string, string>, assetDetails: Record<string, AssetDetail> }) {
   const rows = useMemo(() => ([...(signals || [])]
@@ -638,7 +622,7 @@ export default function Dashboard() {
     </section>
 
     <section className="cc-chart-grid">
-      <div className="cc-card cc-allocation-card"><div className="cc-card-title-row"><h3>Portfolio allocation</h3><span>Last rebalanced: {fmtTime(latestAllocationTs(targets, signals, summary))} UTC</span></div><AllocationDonut targets={targets} signals={signals} trackedValue={Number(summary.tracked_account_value_usd || 0)} icons={icons} assetDetails={assetDetails} /></div>
+      <div className="cc-card cc-allocation-card"><div className="cc-card-title-row"><h3>Portfolio allocation</h3><span>Last rebalanced: {fmtTime(latestAllocationTs(targets, signals, summary))} UTC</span></div><AllocationDonut targets={targets} signals={signals} trackedValue={Number(summary.tracked_account_value_usd || 0)} icons={icons} /></div>
       <div className="cc-card cc-exposure-card"><div className="cc-panel-title"><h3>Long vs short exposure</h3><span><i />Long <em />Short</span></div><ExposureBars signals={signals} icons={icons} assetDetails={assetDetails} /></div>
     </section>
 
