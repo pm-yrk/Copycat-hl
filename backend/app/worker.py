@@ -399,7 +399,21 @@ def score_wallets(limit: int | None = None) -> int:
     qualified.sort(key=lambda x: x['score'], reverse=True)
     qualified = qualified[:(limit or settings.qualified_wallet_limit)]
     ts = now_ms()
+    min_replacement = max(1, int(settings.qualified_wallet_limit * 0.80))
     with engine.begin() as conn:
+        existing_active = conn.execute(text("SELECT count(*) FROM qualified_wallets WHERE status='active'")).scalar() or 0
+        if existing_active >= min_replacement and len(qualified) < min_replacement:
+            insert_run(
+                conn,
+                'score_wallets',
+                'warning',
+                f'kept existing cohort; scored={len(scored)} qualified={len(qualified)} below safe replacement threshold={min_replacement}',
+            )
+            return len(scored)
+        if not qualified:
+            insert_run(conn, 'score_wallets', 'warning', f'no qualified wallets from scored={len(scored)}; kept existing cohort')
+            return len(scored)
+
         conn.execute(text("UPDATE qualified_wallets SET status='inactive'"))
         for rank, s in enumerate(qualified, start=1):
             conn.execute(text('''
@@ -487,11 +501,16 @@ def collect_once() -> dict[str, Any]:
                 VALUES(:ts_ms,:wallet,:coin,:side,:size,:position_value_usd,:entry_px,:mark_px,:unrealized_pnl_usd,:return_on_equity,:leverage,:liquidation_px,CAST(:raw_json AS jsonb))'''), p)
 
     signals = compute_signals()
-    check_alerts()
+    alerts_sent = 0
+    try:
+        alerts_sent = check_alerts()
+    except Exception as exc:
+        log.exception('alert check failed')
+        errors.append(f'alerts: {exc}')
     elapsed = time.time() - started
     with engine.begin() as conn:
-        insert_run(conn, 'collect_once', 'ok' if errors == [] else 'partial', f'wallets_ok={ok}/{len(wallets)}; errors={len(errors)}; positions={len(position_rows)}; signals={len(signals)}; elapsed={elapsed:.1f}s; workers={max_workers}')
-    return {'wallets_ok': ok, 'errors': errors[:5], 'positions': len(position_rows), 'signals': len(signals), 'elapsed_seconds': round(elapsed, 1)}
+        insert_run(conn, 'collect_once', 'ok' if errors == [] else 'partial', f'wallets_ok={ok}/{len(wallets)}; errors={len(errors)}; positions={len(position_rows)}; signals={len(signals)}; alerts={alerts_sent}; elapsed={elapsed:.1f}s; workers={max_workers}')
+    return {'wallets_ok': ok, 'errors': errors[:5], 'positions': len(position_rows), 'signals': len(signals), 'alerts': alerts_sent, 'elapsed_seconds': round(elapsed, 1)}
 
 def latest_snapshot_maps(conn, target_ts: int | None = None):
     # IMPORTANT: signal calculations must only use the current active 50-wallet
@@ -659,6 +678,14 @@ def send_telegram(text_msg: str) -> bool:
     return True
 
 
+def safe_send_telegram(text_msg: str) -> bool:
+    try:
+        return send_telegram(text_msg)
+    except Exception as exc:
+        log.warning('Telegram send failed: %s', exc)
+        return False
+
+
 def check_alerts() -> int:
     settings = get_settings()
     sent = 0
@@ -684,15 +711,60 @@ def check_alerts() -> int:
                    f'Net value flow: ${s["net_value_flow_usd"]:,.0f}\n'
                    f'Current value: ${s["value_long_usd"]:,.0f} long / ${s["value_short_usd"]:,.0f} short\n'
                    f'Signal: {s["signal"]:.2f} ({s["confidence"]})')
-            send_telegram(msg)
-            conn.execute(text('INSERT INTO notification_events(ts_ms,coin,alert_type,severity,message,key) VALUES(:ts,:coin,:type,:sev,:msg,:key)'), {'ts': now_ms(), 'coin': s['coin'], 'type': alert_type, 'sev': 'high', 'msg': msg, 'key': key})
-            sent += 1
+            if safe_send_telegram(msg):
+                conn.execute(text('INSERT INTO notification_events(ts_ms,coin,alert_type,severity,message,key) VALUES(:ts,:coin,:type,:sev,:msg,:key)'), {'ts': now_ms(), 'coin': s['coin'], 'type': alert_type, 'sev': 'high', 'msg': msg, 'key': key})
+                sent += 1
     return sent
 
 
 def daily_refresh() -> dict[str, Any]:
-    c = discover_candidates()
-    s = score_wallets(get_settings().qualified_wallet_limit)
+    """Run the daily cohort refresh without breaking the live dashboard.
+
+    Nansen credit failures should not wipe or replace the current active wallet
+    cohort. If discovery/scoring cannot complete safely, keep the existing cohort
+    and still run a collection so the dashboard remains fresh.
+    """
+    settings = get_settings()
+    notes: list[str] = []
+    candidates = 0
+    scored = 0
+    discovery_ok = False
+
+    try:
+        candidates = discover_candidates()
+        discovery_ok = True
+    except Exception as exc:
+        msg = f'candidate discovery skipped; kept existing candidates/cohort: {str(exc)[:300]}'
+        notes.append(msg)
+        log.warning(msg)
+        with engine.begin() as conn:
+            insert_run(conn, 'discover_candidates', 'warning', msg)
+
+    if discovery_ok:
+        try:
+            scored = score_wallets(settings.qualified_wallet_limit)
+        except Exception as exc:
+            msg = f'scoring failed; kept existing active cohort: {str(exc)[:300]}'
+            notes.append(msg)
+            log.warning(msg)
+            with engine.begin() as conn:
+                insert_run(conn, 'score_wallets', 'warning', msg)
+    else:
+        with engine.begin() as conn:
+            active = conn.execute(text("SELECT count(*) FROM qualified_wallets WHERE status='active'")).scalar() or 0
+        notes.append(f'active cohort retained={active}')
+
     collected = collect_once()
-    send_telegram(f'✅ Daily wallet refresh complete\nCandidates: {c}\nScored: {s}\nWallets collected: {collected.get("wallets_ok")}')
-    return {'candidates': c, 'scored': s, 'collection': collected}
+    status = 'ok' if not notes else 'partial'
+    message = '; '.join(notes)[:800] if notes else 'daily refresh complete'
+    with engine.begin() as conn:
+        insert_run(conn, 'daily_refresh', status, message)
+
+    safe_send_telegram(
+        f'✅ Daily wallet refresh {status}\n'
+        f'Candidates: {candidates}\n'
+        f'Scored: {scored}\n'
+        f'Wallets collected: {collected.get("wallets_ok")}\n'
+        f'{message}'
+    )
+    return {'status': status, 'candidates': candidates, 'scored': scored, 'collection': collected, 'notes': notes}

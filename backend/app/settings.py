@@ -22,6 +22,7 @@ class Settings(BaseSettings):
 
     qualified_wallet_limit: int = 50
     collector_interval_seconds: int = 1
+    collector_freshness_seconds: int = 180
     signal_lookback_minutes: int = 60
     min_wallets_for_signal: int = 5
 

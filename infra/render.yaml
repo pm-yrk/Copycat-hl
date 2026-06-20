@@ -25,6 +25,8 @@ services:
         sync: false
       - key: NANSEN_API_KEY
         sync: false
+      - key: COLLECTOR_FRESHNESS_SECONDS
+        value: "180"
 
   - type: web
     name: hwt-frontend

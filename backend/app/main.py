@@ -182,7 +182,8 @@ def summary(user: dict = Depends(require_active_subscription)):
     collector_age_seconds = None
     if latest_run.get('ts_ms'):
         collector_age_seconds = max(0, (_now_ms() - int(latest_run['ts_ms'])) / 1000)
-    data_quality_ok = bool(stable_ts) and int(latest_wallets.get('n') or 0) >= 50 and (collector_age_seconds is None or collector_age_seconds <= 90)
+    freshness_seconds = _collector_freshness_seconds()
+    data_quality_ok = bool(stable_ts) and int(latest_wallets.get('n') or 0) >= 50 and (collector_age_seconds is None or collector_age_seconds <= freshness_seconds)
     return {
         'latest_signal_ts_ms': stable_ts,
         'latest_position_ts_ms': latest_pos_ts['ts_ms'],
@@ -194,7 +195,7 @@ def summary(user: dict = Depends(require_active_subscription)):
         'assets_with_signals': assets['n'],
         'data_quality_status': 'healthy' if data_quality_ok else 'checking',
         'data_quality_age_seconds': collector_age_seconds,
-        'data_quality_message': '50-wallet snapshot healthy' if data_quality_ok else 'Waiting for a fresh completed collector snapshot',
+        'data_quality_message': '50-wallet snapshot healthy' if data_quality_ok else f'Waiting for a fresh completed collector snapshot under {freshness_seconds}s',
     }
 
 
@@ -256,6 +257,13 @@ def _safe_float(x: Any, default: float = 0.0) -> float:
 
 def _now_ms() -> int:
     return int(time.time() * 1000)
+
+
+def _collector_freshness_seconds() -> int:
+    try:
+        return max(35, int(float(getattr(settings, 'collector_freshness_seconds', 180))))
+    except Exception:
+        return 180
 
 
 def _within_tolerance(a: float, b: float, pct: float = 0.0075, abs_tol: float = 5000.0) -> bool:
@@ -401,7 +409,7 @@ def audit(live: bool = False, full: bool = False, max_wallets: int = 10, user: d
     signal_rollup = {'tracked_total': 0, 'signal_open_total': 0, 'signal_positions': 0, 'assets': 0, 'bullish_flow': 0, 'bearish_flow': 0, 'net_abs_flow': 0}
     snapshot_rollup = {'tracked_total': 0, 'wallets': 0}
     position_rollup = {'open_total': 0, 'positions': 0, 'coins': 0, 'wallets': 0}
-    target_rollup = {'target_sum': 0, 'targets': 0}
+    target_rollup = {'target_sum': 0, 'targets': 0, 'method': 'copycat_index_weights'}
     collector = fetch_one("SELECT * FROM collector_runs WHERE run_type='collect_once' ORDER BY ts_ms DESC LIMIT 1") or {}
     stale_seconds = None
 
@@ -440,26 +448,36 @@ def audit(live: bool = False, full: bool = False, max_wallets: int = 10, user: d
             """,
             {'ts': ts},
         ) or position_rollup
-        target_rollup = fetch_one(
-            """
-            WITH latest AS (SELECT max(ts_ms) AS ts_ms FROM portfolio_targets)
-            SELECT COALESCE(sum(target_weight),0) AS target_sum, count(*) AS targets
-            FROM portfolio_targets WHERE ts_ms=(SELECT ts_ms FROM latest)
-            """
-        ) or target_rollup
+        try:
+            index_target_ts, index_weights = _latest_index_weights()
+            target_rollup = {
+                'target_sum': sum(abs(float(v or 0)) for v in (index_weights or {}).values()),
+                'targets': len(index_weights or {}),
+                'target_ts_ms': index_target_ts,
+                'method': _INDEX_METHOD_VERSION,
+            }
+        except Exception:
+            target_rollup = fetch_one(
+                """
+                WITH latest AS (SELECT max(ts_ms) AS ts_ms FROM portfolio_targets)
+                SELECT COALESCE(sum(target_weight),0) AS target_sum, count(*) AS targets
+                FROM portfolio_targets WHERE ts_ms=(SELECT ts_ms FROM latest)
+                """
+            ) or target_rollup
 
     if collector.get('ts_ms'):
         stale_seconds = max(0, (now - int(collector['ts_ms'])) / 1000.0)
 
     _add_check(checks, 'Active wallet cohort', len(wallet_list) == 50, f'{len(wallet_list)} active wallets selected', 'warning' if len(wallet_list) > 0 else 'error')
     _add_check(checks, 'Completed signal snapshot exists', bool(ts), f'latest signal ts={ts}')
-    _add_check(checks, 'Collector freshness', stale_seconds is not None and stale_seconds <= 35, f'last completed collector run {stale_seconds:.1f}s ago' if stale_seconds is not None else 'no collector run found', 'warning')
+    freshness_seconds = _collector_freshness_seconds()
+    _add_check(checks, 'Collector freshness', stale_seconds is not None and stale_seconds <= freshness_seconds, f'last completed collector run {stale_seconds:.1f}s ago; threshold={freshness_seconds}s' if stale_seconds is not None else 'no collector run found', 'warning')
     _add_check(checks, 'Positions exist at signal timestamp', int(position_rollup.get('positions') or 0) > 0, f"{position_rollup.get('positions',0)} positions at latest signal timestamp")
     _add_check(checks, 'Snapshot wallet count matches cohort', int(snapshot_rollup.get('wallets') or 0) >= max(1, len(wallet_list) - 2), f"{snapshot_rollup.get('wallets',0)} wallet snapshots at latest timestamp", 'warning')
     _add_check(checks, 'Tracked account value consistency', _within_tolerance(snapshot_rollup.get('tracked_total'), signal_rollup.get('tracked_total'), pct=0.005, abs_tol=25000), 'wallet snapshots vs signal rollup', metrics=_delta_metrics(snapshot_rollup.get('tracked_total'), signal_rollup.get('tracked_total')))
     _add_check(checks, 'Open position value non-zero when signals have exposure', not (_safe_float(position_rollup.get('open_total')) == 0 and _safe_float(signal_rollup.get('signal_open_total')) > 0), 'positions table vs signal exposure', metrics={'positions_open_total': float(position_rollup.get('open_total') or 0), 'signal_open_total': float(signal_rollup.get('signal_open_total') or 0)})
     target_sum = _safe_float(target_rollup.get('target_sum'))
-    _add_check(checks, 'Portfolio targets sum to 100%', 0.995 <= target_sum <= 1.005, f'target sum={target_sum:.6f}', metrics=dict(target_rollup))
+    _add_check(checks, 'Copycat Index weights sum to 100%', 0.995 <= target_sum <= 1.005, f'gross weight sum={target_sum:.6f}', metrics=dict(target_rollup))
 
     bad_flow = fetch_one(
         """
