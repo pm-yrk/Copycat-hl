@@ -1,0 +1,9 @@
+{
+  "status": "warming",
+  "source": "bundled_fallback",
+  "updated_at_ms": 1782074074841,
+  "wallets_scanned": 0,
+  "selected_wallet_count": 0,
+  "wallets": [],
+  "method_note": "Waiting for local scanner/publisher to upload R2 snapshot."
+}

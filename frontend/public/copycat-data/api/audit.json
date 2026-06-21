@@ -1,0 +1,14 @@
+{
+  "overall_status": "warming",
+  "latest_signal_ts_ms": 1782074074841,
+  "checks": [
+    {
+      "name": "R2 snapshot publisher",
+      "status": "warming",
+      "severity": "info",
+      "detail": "Waiting for local publisher."
+    }
+  ],
+  "totals": {},
+  "free_mode": true
+}

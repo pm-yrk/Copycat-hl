@@ -305,160 +305,8 @@ def fill_is_bullish(fill: Dict[str, Any]) -> bool:
     return side == "B"
 
 
-
-def read_scanner_results() -> Dict[str, Any]:
-    path = SCRIPT_DIR / "scanner_state" / "scanner_results.json"
-    if not path.exists():
-        return {}
-    try:
-        raw = json.loads(path.read_text(encoding="utf-8"))
-        return raw if isinstance(raw, dict) else {}
-    except Exception:
-        return {}
-
-
-def clamp(value: float, lo: float, hi: float) -> float:
-    return max(lo, min(hi, value))
-
-
-def build_performance_index_snapshot(now_ms: int, mids: Dict[str, float], signals: List[Dict[str, Any]], targets: List[Dict[str, Any]], config: Config) -> Dict[str, Any]:
-    """Maintain a tiny from-now performance index without Supabase.
-
-    This is a live snapshot-mode index: it starts at 100 when this local publisher
-    first runs, then updates using the current value-weighted signed exposure.
-    It is not a historical backfill and does not claim all-Hyperliquid ranking.
-    """
-    state_dir = SCRIPT_DIR / "scanner_state"
-    state_dir.mkdir(parents=True, exist_ok=True)
-    path = state_dir / "performance_index_state.json"
-    try:
-        state = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
-        if not isinstance(state, dict):
-            state = {}
-    except Exception:
-        state = {}
-
-    current_weights: List[Dict[str, Any]] = []
-    rows = targets or []
-    for row in rows:
-        coin = clean_coin(row.get("coin"))
-        if not coin or coin == "USDC":
-            continue
-        signed = safe_float(row.get("signed_weight"), safe_float(row.get("index_weight"), safe_float(row.get("target_weight"))))
-        direction = str(row.get("direction") or ("short" if signed < 0 else "long")).lower()
-        weight = abs(signed)
-        if weight > 0:
-            current_weights.append({"coin": coin, "weight": weight, "signed_weight": signed, "direction": direction})
-    if not current_weights:
-        total_gross = sum(abs(safe_float(s.get("net_value_usd"))) for s in signals) or sum(safe_float(s.get("gross_value_usd")) for s in signals) or 1.0
-        for s in signals[:30]:
-            coin = clean_coin(s.get("coin"))
-            if not coin or coin == "USDC":
-                continue
-            net = safe_float(s.get("net_value_usd"), safe_float(s.get("signal")) * safe_float(s.get("gross_value_usd")))
-            signed = net / total_gross if total_gross else 0.0
-            if signed:
-                current_weights.append({"coin": coin, "weight": abs(signed), "signed_weight": signed, "direction": "short" if signed < 0 else "long"})
-    total_abs = sum(abs(safe_float(w.get("signed_weight"))) for w in current_weights) or 1.0
-    for w in current_weights:
-        signed = safe_float(w.get("signed_weight")) / total_abs
-        w["signed_weight"] = signed
-        w["weight"] = abs(signed)
-
-    last_mids = state.get("last_mids") if isinstance(state.get("last_mids"), dict) else {}
-    copycat_nav = safe_float(state.get("copycat_nav"), 100.0)
-    btc_nav = safe_float(state.get("btc_nav"), 100.0)
-    eth_nav = safe_float(state.get("eth_nav"), 100.0)
-    movement = 0.0
-    for w in current_weights:
-        coin = str(w.get("coin"))
-        prev = safe_float(last_mids.get(coin))
-        cur = safe_float(mids.get(coin))
-        if prev > 0 and cur > 0:
-            movement += safe_float(w.get("signed_weight")) * ((cur / prev) - 1.0)
-    movement = clamp(movement, -0.08, 0.08)
-    copycat_nav = copycat_nav * (1.0 + movement)
-
-    def update_benchmark(symbol: str, nav_value: float) -> float:
-        prev = safe_float(last_mids.get(symbol))
-        cur = safe_float(mids.get(symbol))
-        if prev > 0 and cur > 0:
-            return nav_value * (1.0 + clamp((cur / prev) - 1.0, -0.08, 0.08))
-        return nav_value
-
-    btc_nav = update_benchmark("BTC", btc_nav)
-    eth_nav = update_benchmark("ETH", eth_nav)
-    start_ts = int(state.get("start_ts_ms") or now_ms)
-    points = state.get("points") if isinstance(state.get("points"), list) else []
-    point = {
-        "ts_ms": now_ms,
-        "copycat_nav": round(copycat_nav, 6),
-        "btc_nav": round(btc_nav, 6),
-        "eth_nav": round(eth_nav, 6),
-        "spx_nav": 100.0,
-        "copycat_return_pct": round(copycat_nav - 100.0, 6),
-        "btc_return_pct": round(btc_nav - 100.0, 6),
-        "eth_return_pct": round(eth_nav - 100.0, 6),
-        "spx_return_pct": 0.0,
-        "live": True,
-    }
-    if not points or int(points[-1].get("ts_ms", 0)) < now_ms - 20_000:
-        points.append(point)
-    else:
-        points[-1] = point
-    points = points[-720:]
-    peak = 100.0
-    max_dd = 0.0
-    for p in points:
-        nav = safe_float(p.get("copycat_nav"), 100.0)
-        peak = max(peak, nav)
-        if peak:
-            max_dd = min(max_dd, (nav / peak - 1.0) * 100.0)
-
-    next_state = {
-        "start_ts_ms": start_ts,
-        "latest_ts_ms": now_ms,
-        "copycat_nav": copycat_nav,
-        "btc_nav": btc_nav,
-        "eth_nav": eth_nav,
-        "points": points,
-        "last_mids": {k: v for k, v in mids.items() if k in {"BTC", "ETH"} or any(w.get("coin") == k for w in current_weights)},
-    }
-    try:
-        path.write_text(json.dumps(next_state, separators=(",", ":")), encoding="utf-8")
-    except Exception:
-        pass
-
-    return {
-        "status": "ok",
-        "source": "local_snapshot_index_v1",
-        "method": "copycat_free_mode_live_signed_exposure_from_publish_time",
-        "method_note": "Free-mode index starts when the local publisher runs. It uses current value-weighted signed exposure from the locally tracked wallets and is not a historical profit backfill.",
-        "start_ts_ms": start_ts,
-        "latest_ts_ms": now_ms,
-        "copycat_nav": round(copycat_nav, 6),
-        "btc_nav": round(btc_nav, 6),
-        "eth_nav": round(eth_nav, 6),
-        "spx_nav": 100.0,
-        "copycat_return_pct": round(copycat_nav - 100.0, 6),
-        "btc_return_pct": round(btc_nav - 100.0, 6),
-        "eth_return_pct": round(eth_nav - 100.0, 6),
-        "spx_return_pct": 0.0,
-        "max_drawdown_pct": round(max_dd, 6),
-        "points_count": len(points),
-        "points": points,
-        "current_weights": current_weights[:20],
-        "cache_ttl_ms": config.interval_seconds * 1000,
-        "public_readonly": True,
-        "snapshot_mode": True,
-    }
-
 def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, Dict[str, Any]]]:
     now_ms = int(time.time() * 1000)
-    scanner = read_scanner_results()
-    scanner_scored = safe_int(scanner.get('candidate_wallets_scored'))
-    scanner_discovered = safe_int(scanner.get('wallets_discovered_from_recent_trades'))
-    scanner_selected = safe_int(scanner.get('selected_wallet_count'))
     mids = get_mids(config.request_timeout_seconds)
     meta = get_meta(config.request_timeout_seconds)
     states: List[Dict[str, Any]] = []
@@ -646,13 +494,7 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
         "live_coverage_mode": "local_snapshot",
         "live_wallets": len(states),
         "snapshot_wallets": 0,
-        "qualified_wallets": len(states) or len(wallets),
-        "tracked_active_wallets": len(states),
-        "selected_wallet_count": scanner_selected or len(wallets),
-        "scanner_candidate_wallets_scored": scanner_scored,
-        "wallets_discovered_from_recent_trades": scanner_discovered,
-        "indexed_wallets": scanner_scored,
-        "known_wallet_candidates": scanner_scored,
+        "qualified_wallets": len(wallets),
         "tracked_account_value_usd": round(tracked_account_value, 2),
         "largest_account_value_usd": round(largest_account_value, 2),
         "tracked_open_position_value_usd": round(open_value_total, 2),
@@ -664,9 +506,6 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
         "data_quality_message": data_msg,
         "snapshot_mode": True,
         "snapshot_source": "local_hyperliquid_to_r2",
-        "top_claim_ready": False,
-        "top_claim_min_indexed_wallets": 10000,
-        "claim_label": f"Top Copycat-ranked wallets from {scanner_scored or len(wallets):,} locally indexed Hyperliquid candidates",
     }
 
     insights: List[Dict[str, Any]] = []
@@ -714,9 +553,6 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
         "source": "local_hyperliquid_snapshot",
         "updated_at_ms": now_ms,
         "wallet_count": len(wallet_rows),
-        "scanner_candidate_wallets_scored": scanner_scored,
-        "wallets_discovered_from_recent_trades": scanner_discovered,
-        "selected_wallet_count": scanner_selected or len(wallet_rows),
         "rows": sorted(wallet_rows, key=lambda r: (r.get("account_value_usd", 0), r.get("open_position_value_usd", 0)), reverse=True)[:50],
     }
     token_screener = {
@@ -739,9 +575,6 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
             for s in signals[:100]
         ],
     }
-    leaderboard["data"] = leaderboard.get("rows", [])
-    token_screener["data"] = token_screener.get("rows", [])
-
     coverage = {
         "status": "ok" if states else "degraded",
         "source": "local_hyperliquid_snapshot",
@@ -754,11 +587,6 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
         "supabase_required": False,
         "historical_backfill_enabled": False,
         "message": data_msg,
-        "scanner_candidate_wallets_scored": scanner_scored,
-        "wallets_discovered_from_recent_trades": scanner_discovered,
-        "selected_wallet_count": scanner_selected or len(wallets),
-        "top_claim_ready": False,
-        "claim_label": f"Top Copycat-ranked wallets from {scanner_scored or len(wallets):,} locally indexed Hyperliquid candidates",
     }
     platform_health = {
         "status": "ok" if states else "degraded",
@@ -768,11 +596,6 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
         "data_delivery": "cloudflare_r2_snapshots",
         "database_required_for_dashboard": False,
         "wallets": len(states),
-        "scanner_candidate_wallets_scored": scanner_scored,
-        "wallets_discovered_from_recent_trades": scanner_discovered,
-        "selected_wallet_count": scanner_selected or len(wallets),
-        "render_required": False,
-        "supabase_required": False,
     }
     status = {
         "status": "ok" if states else "degraded",
@@ -781,72 +604,19 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
         "source": "local_hyperliquid_snapshot",
         "updated_at_ms": now_ms,
         "tracked_active_wallets": len(states),
-        "selected_wallet_count": scanner_selected or len(wallets),
-        "scanner_candidate_wallets_scored": scanner_scored,
-        "wallets_discovered_from_recent_trades": scanner_discovered,
         "assets_with_signals": len(signals),
-        "recent_orders": len(orders),
         "snapshot_mode": True,
-        "top_claim_ready": False,
     }
-    performance_index = build_performance_index_snapshot(now_ms, mids, signals, targets, config)
-
-    scanner_rows = scanner.get('top_rows') if isinstance(scanner.get('top_rows'), list) else []
-    ranking_wallets = []
-    source_rows = scanner_rows or sorted(wallet_rows, key=lambda r: (r.get('account_value_usd', 0), r.get('open_position_value_usd', 0)), reverse=True)
-    for i, row in enumerate(source_rows[:50], 1):
-        item = dict(row)
-        item['rank'] = item.get('rank') or i
-        item['wallet_label'] = item.get('short_wallet') or item.get('wallet_label') or short_wallet(str(item.get('wallet', '')))
-        item['copycat_score'] = item.get('copycat_score') or item.get('score') or 0
-        item['ranking_formula'] = item.get('ranking_formula') or 'local_scanner_v1_live_state'
-        ranking_wallets.append(item)
-    ranking_audit = {
-        'status': 'ok' if ranking_wallets else 'degraded',
-        'source': 'local_scanner_v1_snapshot',
-        'updated_at_ms': now_ms,
-        'wallets_scanned': scanner_scored,
-        'wallets_discovered_from_recent_trades': scanner_discovered,
-        'selected_wallet_count': scanner_selected or len(ranking_wallets),
-        'method_note': scanner.get('method_note') or 'Local scanner v1 ranking from visible Hyperliquid live state, not a full historical profit audit.',
-        'wallets': ranking_wallets,
-    }
-    audit_snapshot = {
-        'overall_status': 'free_mode_ok' if states else 'degraded',
-        'latest_signal_ts_ms': now_ms,
-        'checks': [
-            {'name': 'R2 snapshot publisher', 'status': 'pass' if states else 'fail', 'severity': 'critical', 'detail': data_msg},
-            {'name': 'Supabase dependency', 'status': 'pass', 'severity': 'info', 'detail': 'Public dashboard does not require Supabase in free mode.'},
-            {'name': 'Render dependency', 'status': 'pass', 'severity': 'info', 'detail': 'Public read-only pages are served by Cloudflare/R2 snapshots.'},
-            {'name': 'Ranking claim guard', 'status': 'pass', 'severity': 'info', 'detail': 'Broad all-Hyperliquid top-50 claim is disabled until a larger audited universe exists.'},
+    performance_index = {
+        "status": "ok",
+        "source": "local_snapshot_placeholder",
+        "updated_at_ms": now_ms,
+        "points": [
+            {"ts_ms": now_ms - 3 * 3600_000, "copycat": 100.0, "btc": 100.0, "eth": 100.0},
+            {"ts_ms": now_ms - 2 * 3600_000, "copycat": 100.0, "btc": 100.0, "eth": 100.0},
+            {"ts_ms": now_ms - 1 * 3600_000, "copycat": 100.0, "btc": 100.0, "eth": 100.0},
+            {"ts_ms": now_ms, "copycat": 100.0, "btc": 100.0, "eth": 100.0},
         ],
-        'totals': {
-            'snapshot_rollup': {'tracked_total': round(tracked_account_value, 2)},
-            'position_rollup': {'open_total': round(open_value_total, 2), 'positions': open_positions},
-            'scanner_rollup': {'candidate_wallets_scored': scanner_scored, 'selected_wallet_count': scanner_selected or len(wallets)},
-        },
-        'free_mode': True,
-    }
-    free_mode_status = {
-        'status': 'ok' if states else 'degraded',
-        'updated_at_ms': now_ms,
-        'site_mode': 'cloudflare_pages_r2_snapshot',
-        'render_required': False,
-        'supabase_required': False,
-        'public_readonly': True,
-        'tracked_wallets': len(states),
-        'scanner_candidate_wallets_scored': scanner_scored,
-        'wallets_discovered_from_recent_trades': scanner_discovered,
-        'disabled_until_paid_backend': ['login_auth', 'private_api_keys', 'dynamic_database_queries', 'full_historical_backtests'],
-    }
-    scanner_status = {
-        'status': scanner.get('status') or ('ok' if scanner_scored else 'warming'),
-        'updated_at_ms': scanner.get('updated_at_ms') or now_ms,
-        'candidate_wallets_scored': scanner_scored,
-        'wallets_discovered_from_recent_trades': scanner_discovered,
-        'selected_wallet_count': scanner_selected or len(wallets),
-        'coins_scanned': scanner.get('coins_scanned') or [],
-        'method_note': scanner.get('method_note') or 'Scanner results appear after run_local_scanner_update_wallets.cmd.',
     }
     token_icons = {s["coin"]: None for s in signals[:100]}
 
@@ -860,10 +630,6 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
         "api/coverage-preview.json": ("application/json", coverage),
         "api/platform-health.json": ("application/json", platform_health),
         "api/status.json": ("application/json", status),
-        "api/ranking-audit.json": ("application/json", ranking_audit),
-        "api/audit.json": ("application/json", audit_snapshot),
-        "api/free-mode-status.json": ("application/json", free_mode_status),
-        "api/scanner-status.json": ("application/json", scanner_status),
     }
 
 

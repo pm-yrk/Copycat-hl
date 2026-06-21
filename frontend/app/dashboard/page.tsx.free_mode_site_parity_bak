@@ -177,23 +177,6 @@ function fmtTime(ms: any) {
 }
 function maskWallet(w: string) { return w ? `Wallet ${w.slice(0, 4)}…${w.slice(-4)}` : 'Wallet 0x…' }
 
-function walletUniverseCaption(summary: any) {
-  const scanned = Number(summary?.scanner_candidate_wallets_scored || summary?.indexed_wallets || 0)
-  const discovered = Number(summary?.wallets_discovered_from_recent_trades || 0)
-  if (scanned > 0 && discovered > 0) return `${scanned.toLocaleString()} scanned · ${discovered.toLocaleString()} recent-trade discoveries`
-  if (scanned > 0) return `${scanned.toLocaleString()} wallets scanned locally`
-  if (summary?.live_coverage_mode === 'local_snapshot') return 'local scanner universe'
-  return 'ranked daily'
-}
-function footerUniverseCaption(summary: any) {
-  const live = Number(summary?.live_wallets || summary?.tracked_active_wallets || 0)
-  const scanned = Number(summary?.scanner_candidate_wallets_scored || 0)
-  if (live && scanned) return ` · ${live} live wallets · ${scanned} scanned`
-  if (live) return ` · ${live} live wallets`
-  return ''
-}
-
-
 const USDC_LOGO_DATA_URI = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxMjggMTI4Jz48Y2lyY2xlIGN4PSc2NCcgY3k9JzY0JyByPSc2NCcgZmlsbD0nIzI3NzVDQScvPjxwYXRoIGQ9J000MiAzMGE0MiA0MiAwIDAgMCAwIDY4JyBmaWxsPSdub25lJyBzdHJva2U9JyNmZmYnIHN0cm9rZS13aWR0aD0nOCcgc3Ryb2tlLWxpbmVjYXA9J3JvdW5kJy8+PHBhdGggZD0nTTg2IDMwYTQyIDQyIDAgMCAxIDAgNjgnIGZpbGw9J25vbmUnIHN0cm9rZT0nI2ZmZicgc3Ryb2tlLXdpZHRoPSc4JyBzdHJva2UtbGluZWNhcD0ncm91bmQnLz48dGV4dCB4PSc2NCcgeT0nODQnIHRleHQtYW5jaG9yPSdtaWRkbGUnIGZvbnQtZmFtaWx5PSdBcmlhbCxIZWx2ZXRpY2Esc2Fucy1zZXJpZicgZm9udC1zaXplPSc1OCcgZm9udC13ZWlnaHQ9JzgwMCcgZmlsbD0nI2ZmZic+JDwvdGV4dD48L3N2Zz4='
 const palette = ['#43E8D0', '#8057FF', '#44BDEC', '#FFB020', '#25D366', '#F35EA6', '#A6E22E', '#FF5B72', '#38BDF8', '#F97316']
 const fallbackColours: Record<string, string> = { HYPE:'#43E8D0', ETH:'#627EEA', BTC:'#F7931A', SOL:'#14F195', ZEC:'#F4B728', NEAR:'#00EC97', AAVE:'#8B7DFF', TRX:'#FF4B4B', XRP:'#4B9FFF', USDC:'#2775CA', 'USDC/CASH':'#2775CA', MELANIA:'#D7A785', WLD:'#8492A6', PAXG:'#F0C419', PUMP:'#61C685', LIT:'#35D0B4', BNB:'#F3BA2F', XLM:'#44BDEC', PENGU:'#A0D7F8' }

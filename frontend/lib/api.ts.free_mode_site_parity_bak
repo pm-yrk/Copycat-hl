@@ -24,10 +24,6 @@ function copycatSnapshotFileForPath(path: string) {
     '/api/data/v1/public/coverage-preview': 'api/coverage-preview.json',
     '/api/data/v1/public/platform-health': 'api/platform-health.json',
     '/api/token-icons': 'token-icons.json',
-    '/api/ranking-audit': 'api/ranking-audit.json',
-    '/api/audit': 'api/audit.json',
-    '/api/free-mode-status': 'api/free-mode-status.json',
-    '/api/scanner-status': 'api/scanner-status.json',
   }
   return map[clean] || ''
 }

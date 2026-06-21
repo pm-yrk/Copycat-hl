@@ -1,0 +1,8 @@
+{
+  "status": "warming",
+  "updated_at_ms": 1782074074841,
+  "site_mode": "cloudflare_pages_r2_snapshot",
+  "render_required": false,
+  "supabase_required": false,
+  "public_readonly": true
+}

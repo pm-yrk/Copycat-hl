@@ -42,33 +42,6 @@ function ret(n: any) { const v = Number(n || 0); return `${v >= 0 ? '+' : ''}${v
 function cls(n: any) { return Number(n || 0) >= 0 ? 'positive' : 'negative' }
 function shortDate(ms: any) { if (!ms) return 'Starting now'; return new Date(Number(ms)).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' }) }
 
-function normalisePerfPoint(p: any): Point {
-  return {
-    ...p,
-    ts_ms: Number(p?.ts_ms || p?.time || Date.now()),
-    copycat_nav: Number(p?.copycat_nav ?? p?.copycat ?? 100),
-    btc_nav: Number(p?.btc_nav ?? p?.btc ?? 100),
-    eth_nav: Number(p?.eth_nav ?? p?.eth ?? 100),
-  }
-}
-function normalisePerfData(raw: any): PerfData {
-  const points = Array.isArray(raw?.points) ? raw.points.map(normalisePerfPoint) : []
-  const last = points[points.length - 1] || {}
-  return {
-    ...(raw || {}),
-    points,
-    start_ts_ms: Number(raw?.start_ts_ms || points[0]?.ts_ms || 0),
-    latest_ts_ms: Number(raw?.latest_ts_ms || raw?.updated_at_ms || last?.ts_ms || 0),
-    copycat_nav: Number(raw?.copycat_nav ?? last?.copycat_nav ?? 100),
-    btc_nav: Number(raw?.btc_nav ?? last?.btc_nav ?? 100),
-    eth_nav: Number(raw?.eth_nav ?? last?.eth_nav ?? 100),
-    copycat_return_pct: Number(raw?.copycat_return_pct ?? (Number(raw?.copycat_nav ?? last?.copycat_nav ?? 100) - 100)),
-    btc_return_pct: Number(raw?.btc_return_pct ?? (Number(raw?.btc_nav ?? last?.btc_nav ?? 100) - 100)),
-    eth_return_pct: Number(raw?.eth_return_pct ?? (Number(raw?.eth_nav ?? last?.eth_nav ?? 100) - 100)),
-  }
-}
-
-
 function chartDomain(points: Point[]) {
   const vals: number[] = []
   points.forEach((p: any) => {
