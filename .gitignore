@@ -2,3 +2,5 @@ scripts/local_snapshot_publisher/publisher.env
 copycat_snapshot_out/
 scripts/local_snapshot_publisher/logs/
 scripts/local_snapshot_publisher/*.log
+scripts/local_snapshot_publisher/scanner_state/
+scripts/local_snapshot_publisher/wallets.backup-*.txt
