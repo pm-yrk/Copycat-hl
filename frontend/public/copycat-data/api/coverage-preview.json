@@ -1,0 +1,10 @@
+{
+  "product": "Copycat Coverage",
+  "mode": "snapshot",
+  "as_of_ms": 1782060218583,
+  "tracked_wallets": 50,
+  "assets_with_signals": 166,
+  "markets_monitored": 230,
+  "data_quality_status": "snapshot",
+  "message": "Running from Cloudflare snapshot storage to avoid Supabase egress."
+}

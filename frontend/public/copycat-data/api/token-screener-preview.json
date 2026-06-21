@@ -1,0 +1,807 @@
+{
+  "product": "Copycat Asset Screener",
+  "mode": "snapshot",
+  "as_of_ms": 1782060218583,
+  "rows": [
+    {
+      "coin": "ETH",
+      "signal": -0.909558,
+      "confidence": "High",
+      "wallets_long": 6,
+      "wallets_short": 22,
+      "value_long_usd": 5981780.77,
+      "value_short_usd": 126296565.42,
+      "net_value_usd": -120314784.65
+    },
+    {
+      "coin": "BTC",
+      "signal": -0.527579,
+      "confidence": "Medium",
+      "wallets_long": 17,
+      "wallets_short": 17,
+      "value_long_usd": 24190091.11,
+      "value_short_usd": 78219024.2,
+      "net_value_usd": -54028933.09
+    },
+    {
+      "coin": "HYPE",
+      "signal": 0.940508,
+      "confidence": "High",
+      "wallets_long": 29,
+      "wallets_short": 6,
+      "value_long_usd": 95669105.3,
+      "value_short_usd": 2933014.97,
+      "net_value_usd": 92736090.33
+    },
+    {
+      "coin": "ZEC",
+      "signal": 0.346312,
+      "confidence": "Low",
+      "wallets_long": 5,
+      "wallets_short": 12,
+      "value_long_usd": 15520452.96,
+      "value_short_usd": 7535797.76,
+      "net_value_usd": 7984655.19
+    },
+    {
+      "coin": "SOL",
+      "signal": -0.508641,
+      "confidence": "Medium",
+      "wallets_long": 7,
+      "wallets_short": 16,
+      "value_long_usd": 3520033.29,
+      "value_short_usd": 10807719.81,
+      "net_value_usd": -7287686.52
+    },
+    {
+      "coin": "XRP",
+      "signal": -0.403064,
+      "confidence": "Medium",
+      "wallets_long": 3,
+      "wallets_short": 17,
+      "value_long_usd": 3549822.05,
+      "value_short_usd": 8343656.57,
+      "net_value_usd": -4793834.51
+    },
+    {
+      "coin": "XMR",
+      "signal": -0.957614,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 7,
+      "value_long_usd": 190941.0,
+      "value_short_usd": 8818760.93,
+      "net_value_usd": -8627819.93
+    },
+    {
+      "coin": "LIT",
+      "signal": -0.168985,
+      "confidence": "Low",
+      "wallets_long": 7,
+      "wallets_short": 7,
+      "value_long_usd": 3047165.9,
+      "value_short_usd": 4286434.41,
+      "net_value_usd": -1239268.51
+    },
+    {
+      "coin": "NEAR",
+      "signal": -0.073628,
+      "confidence": "Low",
+      "wallets_long": 9,
+      "wallets_short": 11,
+      "value_long_usd": 2914124.64,
+      "value_short_usd": 3377352.61,
+      "net_value_usd": -463227.97
+    },
+    {
+      "coin": "WLD",
+      "signal": -0.180853,
+      "confidence": "Low",
+      "wallets_long": 3,
+      "wallets_short": 14,
+      "value_long_usd": 2103838.62,
+      "value_short_usd": 3032821.08,
+      "net_value_usd": -928982.46
+    },
+    {
+      "coin": "AVAX",
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 13,
+      "value_long_usd": 0.0,
+      "value_short_usd": 4663659.76,
+      "net_value_usd": -4663659.76
+    },
+    {
+      "coin": "DOGE",
+      "signal": -0.82717,
+      "confidence": "High",
+      "wallets_long": 3,
+      "wallets_short": 10,
+      "value_long_usd": 349412.4,
+      "value_short_usd": 3694007.58,
+      "net_value_usd": -3344595.18
+    },
+    {
+      "coin": "AERO",
+      "signal": 0.335785,
+      "confidence": "Low",
+      "wallets_long": 3,
+      "wallets_short": 5,
+      "value_long_usd": 2258347.86,
+      "value_short_usd": 1122956.46,
+      "net_value_usd": 1135391.4
+    },
+    {
+      "coin": "ZRO",
+      "signal": -0.932747,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 9,
+      "value_long_usd": 72972.92,
+      "value_short_usd": 2097142.02,
+      "net_value_usd": -2024169.11
+    },
+    {
+      "coin": "BNB",
+      "signal": -0.243288,
+      "confidence": "Low",
+      "wallets_long": 5,
+      "wallets_short": 6,
+      "value_long_usd": 800957.26,
+      "value_short_usd": 1315984.35,
+      "net_value_usd": -515027.09
+    },
+    {
+      "coin": "MON",
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 8,
+      "value_long_usd": 0.0,
+      "value_short_usd": 2085060.84,
+      "net_value_usd": -2085060.84
+    },
+    {
+      "coin": "GRASS",
+      "signal": 0.689386,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 5,
+      "value_long_usd": 1748773.0,
+      "value_short_usd": 321532.94,
+      "net_value_usd": 1427240.06
+    },
+    {
+      "coin": "AAVE",
+      "signal": 0.135976,
+      "confidence": "Low",
+      "wallets_long": 4,
+      "wallets_short": 7,
+      "value_long_usd": 1153433.43,
+      "value_short_usd": 877301.4,
+      "net_value_usd": 276132.03
+    },
+    {
+      "coin": "ADA",
+      "signal": -0.995351,
+      "confidence": "High",
+      "wallets_long": 2,
+      "wallets_short": 12,
+      "value_long_usd": 4707.02,
+      "value_short_usd": 2020279.1,
+      "net_value_usd": -2015572.08
+    },
+    {
+      "coin": "XPL",
+      "signal": -0.357186,
+      "confidence": "Medium",
+      "wallets_long": 5,
+      "wallets_short": 7,
+      "value_long_usd": 557556.77,
+      "value_short_usd": 1177181.51,
+      "net_value_usd": -619624.74
+    },
+    {
+      "coin": "ASTER",
+      "signal": -0.163336,
+      "confidence": "Low",
+      "wallets_long": 2,
+      "wallets_short": 8,
+      "value_long_usd": 719625.16,
+      "value_short_usd": 1000599.97,
+      "net_value_usd": -280974.81
+    },
+    {
+      "coin": "EIGEN",
+      "signal": -0.973891,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 8,
+      "value_long_usd": 21684.37,
+      "value_short_usd": 1639352.65,
+      "net_value_usd": -1617668.28
+    },
+    {
+      "coin": "WLFI",
+      "signal": -0.815114,
+      "confidence": "High",
+      "wallets_long": 4,
+      "wallets_short": 5,
+      "value_long_usd": 132503.57,
+      "value_short_usd": 1300852.5,
+      "net_value_usd": -1168348.93
+    },
+    {
+      "coin": "PUMP",
+      "signal": 0.150872,
+      "confidence": "Low",
+      "wallets_long": 5,
+      "wallets_short": 5,
+      "value_long_usd": 708090.66,
+      "value_short_usd": 522437.79,
+      "net_value_usd": 185652.87
+    },
+    {
+      "coin": "TAO",
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 9,
+      "value_long_usd": 0.0,
+      "value_short_usd": 1201099.46,
+      "net_value_usd": -1201099.46
+    },
+    {
+      "coin": "UNI",
+      "signal": -0.972247,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 10,
+      "value_long_usd": 15961.93,
+      "value_short_usd": 1134327.15,
+      "net_value_usd": -1118365.22
+    },
+    {
+      "coin": "ENA",
+      "signal": 0.616807,
+      "confidence": "Medium",
+      "wallets_long": 6,
+      "wallets_short": 5,
+      "value_long_usd": 909643.14,
+      "value_short_usd": 215590.82,
+      "net_value_usd": 694052.32
+    },
+    {
+      "coin": "SUI",
+      "signal": -0.906657,
+      "confidence": "High",
+      "wallets_long": 3,
+      "wallets_short": 13,
+      "value_long_usd": 51203.25,
+      "value_short_usd": 1045895.63,
+      "net_value_usd": -994692.38
+    },
+    {
+      "coin": "VVV",
+      "signal": 0.028334,
+      "confidence": "Low",
+      "wallets_long": 1,
+      "wallets_short": 6,
+      "value_long_usd": 558993.75,
+      "value_short_usd": 528189.17,
+      "net_value_usd": 30804.58
+    },
+    {
+      "coin": "TRUMP",
+      "signal": -0.982132,
+      "confidence": "High",
+      "wallets_long": 3,
+      "wallets_short": 6,
+      "value_long_usd": 9642.65,
+      "value_short_usd": 1069669.45,
+      "net_value_usd": -1060026.8
+    },
+    {
+      "coin": "LINK",
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 8,
+      "value_long_usd": 0.0,
+      "value_short_usd": 1074874.53,
+      "net_value_usd": -1074874.53
+    },
+    {
+      "coin": "FARTCOIN",
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 8,
+      "value_long_usd": 0.0,
+      "value_short_usd": 1064608.81,
+      "net_value_usd": -1064608.81
+    },
+    {
+      "coin": "PAXG",
+      "signal": 0.988416,
+      "confidence": "High",
+      "wallets_long": 2,
+      "wallets_short": 3,
+      "value_long_usd": 948704.01,
+      "value_short_usd": 5526.78,
+      "net_value_usd": 943177.24
+    },
+    {
+      "coin": "KPEPE",
+      "signal": -0.574053,
+      "confidence": "Medium",
+      "wallets_long": 3,
+      "wallets_short": 6,
+      "value_long_usd": 186814.42,
+      "value_short_usd": 690358.05,
+      "net_value_usd": -503543.63
+    },
+    {
+      "coin": "APT",
+      "signal": -0.940528,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 7,
+      "value_long_usd": 24663.51,
+      "value_short_usd": 804755.49,
+      "net_value_usd": -780091.98
+    },
+    {
+      "coin": "LTC",
+      "signal": -0.998545,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 8,
+      "value_long_usd": 594.52,
+      "value_short_usd": 816780.9,
+      "net_value_usd": -816186.38
+    },
+    {
+      "coin": "DOT",
+      "signal": -0.998774,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 6,
+      "value_long_usd": 499.75,
+      "value_short_usd": 814617.56,
+      "net_value_usd": -814117.81
+    },
+    {
+      "coin": "TRX",
+      "signal": 0.682016,
+      "confidence": "High",
+      "wallets_long": 2,
+      "wallets_short": 4,
+      "value_long_usd": 538338.29,
+      "value_short_usd": 101772.47,
+      "net_value_usd": 436565.82
+    },
+    {
+      "coin": "STRK",
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 4,
+      "value_long_usd": 0.0,
+      "value_short_usd": 609504.39,
+      "net_value_usd": -609504.39
+    },
+    {
+      "coin": "JTO",
+      "signal": -0.464319,
+      "confidence": "Medium",
+      "wallets_long": 2,
+      "wallets_short": 6,
+      "value_long_usd": 150947.15,
+      "value_short_usd": 412623.9,
+      "net_value_usd": -261676.75
+    },
+    {
+      "coin": "PENDLE",
+      "signal": -0.10038,
+      "confidence": "Low",
+      "wallets_long": 3,
+      "wallets_short": 2,
+      "value_long_usd": 220392.74,
+      "value_short_usd": 269576.04,
+      "net_value_usd": -49183.3
+    },
+    {
+      "coin": "OP",
+      "signal": -0.992213,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 5,
+      "value_long_usd": 1799.42,
+      "value_short_usd": 460340.72,
+      "net_value_usd": -458541.3
+    },
+    {
+      "coin": "CRV",
+      "signal": -0.961052,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 8,
+      "value_long_usd": 8927.12,
+      "value_short_usd": 449486.31,
+      "net_value_usd": -440559.19
+    },
+    {
+      "coin": "CHIP",
+      "signal": -0.249264,
+      "confidence": "Low",
+      "wallets_long": 2,
+      "wallets_short": 2,
+      "value_long_usd": 162744.14,
+      "value_short_usd": 270814.54,
+      "net_value_usd": -108070.4
+    },
+    {
+      "coin": "BCH",
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 7,
+      "value_long_usd": 0.0,
+      "value_short_usd": 414828.36,
+      "net_value_usd": -414828.36
+    },
+    {
+      "coin": "XLM",
+      "signal": -0.93706,
+      "confidence": "High",
+      "wallets_long": 2,
+      "wallets_short": 6,
+      "value_long_usd": 13027.77,
+      "value_short_usd": 400947.05,
+      "net_value_usd": -387919.29
+    },
+    {
+      "coin": "ONDO",
+      "signal": -0.581746,
+      "confidence": "Medium",
+      "wallets_long": 2,
+      "wallets_short": 6,
+      "value_long_usd": 85395.0,
+      "value_short_usd": 322945.83,
+      "net_value_usd": -237550.83
+    },
+    {
+      "coin": "FET",
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 4,
+      "value_long_usd": 0.0,
+      "value_short_usd": 385901.25,
+      "net_value_usd": -385901.25
+    },
+    {
+      "coin": "KSHIB",
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 6,
+      "value_long_usd": 0.0,
+      "value_short_usd": 276528.55,
+      "net_value_usd": -276528.55
+    },
+    {
+      "coin": "INJ",
+      "signal": -0.984819,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 4,
+      "value_long_usd": 1853.89,
+      "value_short_usd": 242390.95,
+      "net_value_usd": -240537.06
+    },
+    {
+      "coin": "MNT",
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 3,
+      "value_long_usd": 0.0,
+      "value_short_usd": 237095.83,
+      "net_value_usd": -237095.83
+    },
+    {
+      "coin": "MORPHO",
+      "signal": -0.619127,
+      "confidence": "Medium",
+      "wallets_long": 2,
+      "wallets_short": 5,
+      "value_long_usd": 40649.14,
+      "value_short_usd": 172803.14,
+      "net_value_usd": -132154.01
+    },
+    {
+      "coin": "ARB",
+      "signal": -0.992099,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 3,
+      "value_long_usd": 827.23,
+      "value_short_usd": 208573.9,
+      "net_value_usd": -207746.67
+    },
+    {
+      "coin": "WIF",
+      "signal": -0.997428,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 4,
+      "value_long_usd": 266.2,
+      "value_short_usd": 206753.57,
+      "net_value_usd": -206487.37
+    },
+    {
+      "coin": "SPX",
+      "signal": -0.41898,
+      "confidence": "Medium",
+      "wallets_long": 2,
+      "wallets_short": 6,
+      "value_long_usd": 54019.95,
+      "value_short_usd": 131928.72,
+      "net_value_usd": -77908.77
+    },
+    {
+      "coin": "KBONK",
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 3,
+      "value_long_usd": 0.0,
+      "value_short_usd": 181689.71,
+      "net_value_usd": -181689.71
+    },
+    {
+      "coin": "STBL",
+      "signal": -0.998426,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 2,
+      "value_long_usd": 134.73,
+      "value_short_usd": 171057.47,
+      "net_value_usd": -170922.74
+    },
+    {
+      "coin": "NIL",
+      "signal": -0.637113,
+      "confidence": "Medium",
+      "wallets_long": 2,
+      "wallets_short": 2,
+      "value_long_usd": 30739.58,
+      "value_short_usd": 138677.16,
+      "net_value_usd": -107937.58
+    },
+    {
+      "coin": "FIL",
+      "signal": -0.438082,
+      "confidence": "Medium",
+      "wallets_long": 2,
+      "wallets_short": 2,
+      "value_long_usd": 45096.34,
+      "value_short_usd": 115412.41,
+      "net_value_usd": -70316.07
+    },
+    {
+      "coin": "ATOM",
+      "signal": -0.865953,
+      "confidence": "High",
+      "wallets_long": 2,
+      "wallets_short": 3,
+      "value_long_usd": 10491.51,
+      "value_short_usd": 146043.89,
+      "net_value_usd": -135552.37
+    },
+    {
+      "coin": "VIRTUAL",
+      "signal": 0.092388,
+      "confidence": "Low",
+      "wallets_long": 1,
+      "wallets_short": 3,
+      "value_long_usd": 79890.3,
+      "value_short_usd": 66377.0,
+      "net_value_usd": 13513.3
+    },
+    {
+      "coin": "STABLE",
+      "signal": -0.708431,
+      "confidence": "High",
+      "wallets_long": 3,
+      "wallets_short": 2,
+      "value_long_usd": 21080.96,
+      "value_short_usd": 123522.42,
+      "net_value_usd": -102441.46
+    },
+    {
+      "coin": "TIA",
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 3,
+      "value_long_usd": 0.0,
+      "value_short_usd": 140862.81,
+      "net_value_usd": -140862.81
+    },
+    {
+      "coin": "JUP",
+      "signal": -0.366902,
+      "confidence": "Medium",
+      "wallets_long": 1,
+      "wallets_short": 4,
+      "value_long_usd": 44562.63,
+      "value_short_usd": 96213.71,
+      "net_value_usd": -51651.08
+    },
+    {
+      "coin": "CC",
+      "signal": -0.839735,
+      "confidence": "High",
+      "wallets_long": 2,
+      "wallets_short": 2,
+      "value_long_usd": 10891.63,
+      "value_short_usd": 125028.36,
+      "net_value_usd": -114136.73
+    },
+    {
+      "coin": "PENGU",
+      "signal": 0.123964,
+      "confidence": "Low",
+      "wallets_long": 4,
+      "wallets_short": 1,
+      "value_long_usd": 76264.96,
+      "value_short_usd": 59442.14,
+      "net_value_usd": 16822.82
+    },
+    {
+      "coin": "DASH",
+      "signal": -0.998814,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 3,
+      "value_long_usd": 79.36,
+      "value_short_usd": 133712.68,
+      "net_value_usd": -133633.32
+    },
+    {
+      "coin": "ICP",
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 5,
+      "value_long_usd": 0.0,
+      "value_short_usd": 130127.75,
+      "net_value_usd": -130127.75
+    },
+    {
+      "coin": "POPCAT",
+      "signal": -0.879321,
+      "confidence": "High",
+      "wallets_long": 2,
+      "wallets_short": 4,
+      "value_long_usd": 7313.7,
+      "value_short_usd": 113895.69,
+      "net_value_usd": -106581.99
+    },
+    {
+      "coin": "SEI",
+      "signal": -0.990238,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 3,
+      "value_long_usd": 559.74,
+      "value_short_usd": 114119.94,
+      "net_value_usd": -113560.2
+    },
+    {
+      "coin": "PYTH",
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 1,
+      "value_long_usd": 0.0,
+      "value_short_usd": 108452.81,
+      "net_value_usd": -108452.81
+    },
+    {
+      "coin": "IP",
+      "signal": -0.998706,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 3,
+      "value_long_usd": 66.06,
+      "value_short_usd": 102050.0,
+      "net_value_usd": -101983.94
+    },
+    {
+      "coin": "AVNT",
+      "signal": -0.824521,
+      "confidence": "High",
+      "wallets_long": 2,
+      "wallets_short": 1,
+      "value_long_usd": 8916.73,
+      "value_short_usd": 92710.66,
+      "net_value_usd": -83793.93
+    },
+    {
+      "coin": "ETHFI",
+      "signal": -0.715859,
+      "confidence": "High",
+      "wallets_long": 2,
+      "wallets_short": 3,
+      "value_long_usd": 13686.67,
+      "value_short_usd": 82650.49,
+      "net_value_usd": -68963.82
+    },
+    {
+      "coin": "LAYER",
+      "signal": -0.998966,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 1,
+      "value_long_usd": 46.95,
+      "value_short_usd": 90784.11,
+      "net_value_usd": -90737.16
+    },
+    {
+      "coin": "BLUR",
+      "signal": -0.998435,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 1,
+      "value_long_usd": 65.11,
+      "value_short_usd": 83139.03,
+      "net_value_usd": -83073.92
+    },
+    {
+      "coin": "ZORA",
+      "signal": -0.491284,
+      "confidence": "Medium",
+      "wallets_long": 2,
+      "wallets_short": 3,
+      "value_long_usd": 20810.0,
+      "value_short_usd": 61003.86,
+      "net_value_usd": -40193.86
+    },
+    {
+      "coin": "MINA",
+      "signal": -0.993654,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 1,
+      "value_long_usd": 254.94,
+      "value_short_usd": 80096.32,
+      "net_value_usd": -79841.37
+    },
+    {
+      "coin": "MERL",
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 2,
+      "value_long_usd": 0.0,
+      "value_short_usd": 79358.3,
+      "net_value_usd": -79358.3
+    },
+    {
+      "coin": "MET",
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 4,
+      "value_long_usd": 0.0,
+      "value_short_usd": 74953.77,
+      "net_value_usd": -74953.77
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "status": "ok",
+  "product": "Copycat Data API",
+  "version": "v1",
+  "source": "hyperliquid_native",
+  "nansen_required": false,
+  "tracked_active_wallets": 50,
+  "owned_wallets_indexed": 75,
+  "owned_wallets_qualified": 62,
+  "stored_owned_fills": 5612,
+  "stored_live_events": 1128,
+  "latest_metric_ts_ms": 1781947217301,
+  "latest_fill_ts_ms": 1781909778359,
+  "latest_live_event_ts_ms": 1781949899163,
+  "snapshot_mode": true,
+  "snapshot_generated_at_ms": 1782060218583
+}

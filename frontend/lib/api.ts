@@ -5,6 +5,50 @@ import { getApiBaseUrl, getSupabase } from './supabase'
 type ApiOptions = { signal?: AbortSignal; timeoutMs?: number }
 
 
+function copycatSnapshotBaseUrl() {
+  const configured = process.env.NEXT_PUBLIC_SNAPSHOT_BASE_URL || ''
+  const fallback = process.env.NEXT_PUBLIC_STATIC_EXPORT === 'true' ? '/copycat-data' : ''
+  return (configured || fallback).replace(/\/+$/, '')
+}
+
+function copycatPrefersSnapshot() {
+  return process.env.NEXT_PUBLIC_SNAPSHOT_FIRST === 'true' || process.env.NEXT_PUBLIC_STATIC_EXPORT === 'true'
+}
+
+function copycatSnapshotUrlForPath(path: string) {
+  const base = copycatSnapshotBaseUrl()
+  if (!base) return ''
+  const clean = path.split('?')[0].replace(/\/+$/, '')
+  const map: Record<string, string> = {
+    '/api/dashboard-feed': 'dashboard-feed.json',
+    '/api/dashboard-tick': 'dashboard-tick.json',
+    '/api/performance-index': 'performance-index.json',
+    '/api/data/v1/status': 'api/status.json',
+    '/api/data/v1/public/leaderboard-preview': 'api/leaderboard-preview.json',
+    '/api/data/v1/public/token-screener-preview': 'api/token-screener-preview.json',
+    '/api/data/v1/public/coverage-preview': 'api/coverage-preview.json',
+    '/api/data/v1/public/platform-health': 'api/platform-health.json',
+    '/api/token-icons': 'token-icons.json',
+  }
+  const file = map[clean]
+  if (!file) return ''
+  return `${base}/${file}`
+}
+
+async function copycatFetchJson(url: string, options: ApiOptions = {}, cache: RequestCache = 'default') {
+  const controller = options.signal ? null : new AbortController()
+  const signal = options.signal || controller?.signal
+  const timeout = controller ? window.setTimeout(() => controller.abort(), options.timeoutMs || 12000) : null
+  try {
+    const res = await fetch(url, { cache, signal })
+    if (!res.ok) throw new Error(`Snapshot request failed: ${res.status}`)
+    return await res.json()
+  } finally {
+    if (timeout) window.clearTimeout(timeout)
+  }
+}
+
+
 const PUBLIC_GET_PREFIXES = [
   '/api/dashboard-feed',
   '/api/dashboard-tick',

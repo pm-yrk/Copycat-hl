@@ -1,0 +1,5388 @@
+{
+  "summary": {
+    "latest_signal_ts_ms": 1781950172678,
+    "latest_position_ts_ms": 1781950401390,
+    "latest_live_state_ts_ms": 1781950401390,
+    "live_state_active": true,
+    "live_coverage_mode": "live_hybrid",
+    "live_wallets": 18,
+    "snapshot_wallets": 32,
+    "qualified_wallets": 50,
+    "tracked_account_value_usd": 113751097.84,
+    "largest_account_value_usd": 27209222.54,
+    "tracked_open_position_value_usd": 466919397.08,
+    "open_positions": 828,
+    "assets_with_signals": 166,
+    "markets_monitored": 230,
+    "data_quality_status": "healthy",
+    "data_quality_age_seconds": 119.412,
+    "data_quality_message": "Live/hybrid Hyperliquid state active",
+    "snapshot_mode": true
+  },
+  "signals": [
+    {
+      "coin": "ETH",
+      "ts_ms": 1781950377007,
+      "signal": -0.909558,
+      "confidence": "High",
+      "wallets_long": 6,
+      "wallets_short": 22,
+      "value_long_usd": 5981780.77,
+      "value_short_usd": 126296565.42,
+      "net_value_usd": -120314784.65,
+      "value_long_pct_total": 0.012809,
+      "value_short_pct_total": 0.270435,
+      "live_state": true
+    },
+    {
+      "coin": "BTC",
+      "ts_ms": 1781950378602,
+      "signal": -0.527579,
+      "confidence": "Medium",
+      "wallets_long": 17,
+      "wallets_short": 17,
+      "value_long_usd": 24190091.11,
+      "value_short_usd": 78219024.2,
+      "net_value_usd": -54028933.09,
+      "value_long_pct_total": 0.051797,
+      "value_short_pct_total": 0.167488,
+      "live_state": true
+    },
+    {
+      "coin": "HYPE",
+      "ts_ms": 1781950378602,
+      "signal": 0.940508,
+      "confidence": "High",
+      "wallets_long": 29,
+      "wallets_short": 6,
+      "value_long_usd": 95669105.3,
+      "value_short_usd": 2933014.97,
+      "net_value_usd": 92736090.33,
+      "value_long_pct_total": 0.204853,
+      "value_short_pct_total": 0.00628,
+      "live_state": true
+    },
+    {
+      "coin": "ZEC",
+      "ts_ms": 1781950373784,
+      "signal": 0.346312,
+      "confidence": "Low",
+      "wallets_long": 5,
+      "wallets_short": 12,
+      "value_long_usd": 15520452.96,
+      "value_short_usd": 7535797.76,
+      "net_value_usd": 7984655.19,
+      "value_long_pct_total": 0.033233,
+      "value_short_pct_total": 0.016136,
+      "live_state": true
+    },
+    {
+      "coin": "SOL",
+      "ts_ms": 1781950377007,
+      "signal": -0.508641,
+      "confidence": "Medium",
+      "wallets_long": 7,
+      "wallets_short": 16,
+      "value_long_usd": 3520033.29,
+      "value_short_usd": 10807719.81,
+      "net_value_usd": -7287686.52,
+      "value_long_pct_total": 0.007537,
+      "value_short_pct_total": 0.023142,
+      "live_state": true
+    },
+    {
+      "coin": "XRP",
+      "ts_ms": 1781950370665,
+      "signal": -0.403064,
+      "confidence": "Medium",
+      "wallets_long": 3,
+      "wallets_short": 17,
+      "value_long_usd": 3549822.05,
+      "value_short_usd": 8343656.57,
+      "net_value_usd": -4793834.51,
+      "value_long_pct_total": 0.007601,
+      "value_short_pct_total": 0.017866,
+      "live_state": true
+    },
+    {
+      "coin": "XMR",
+      "ts_ms": 1781950377007,
+      "signal": -0.957614,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 7,
+      "value_long_usd": 190941.0,
+      "value_short_usd": 8818760.93,
+      "net_value_usd": -8627819.93,
+      "value_long_pct_total": 0.000409,
+      "value_short_pct_total": 0.018883,
+      "live_state": true
+    },
+    {
+      "coin": "LIT",
+      "ts_ms": 1781950375373,
+      "signal": -0.168985,
+      "confidence": "Low",
+      "wallets_long": 7,
+      "wallets_short": 7,
+      "value_long_usd": 3047165.9,
+      "value_short_usd": 4286434.41,
+      "net_value_usd": -1239268.51,
+      "value_long_pct_total": 0.006525,
+      "value_short_pct_total": 0.009178,
+      "live_state": true
+    },
+    {
+      "coin": "NEAR",
+      "ts_ms": 1781950375373,
+      "signal": -0.073628,
+      "confidence": "Low",
+      "wallets_long": 9,
+      "wallets_short": 11,
+      "value_long_usd": 2914124.64,
+      "value_short_usd": 3377352.61,
+      "net_value_usd": -463227.97,
+      "value_long_pct_total": 0.00624,
+      "value_short_pct_total": 0.007232,
+      "live_state": true
+    },
+    {
+      "coin": "WLD",
+      "ts_ms": 1781950373784,
+      "signal": -0.180853,
+      "confidence": "Low",
+      "wallets_long": 3,
+      "wallets_short": 14,
+      "value_long_usd": 2103838.62,
+      "value_short_usd": 3032821.08,
+      "net_value_usd": -928982.46,
+      "value_long_pct_total": 0.004505,
+      "value_short_pct_total": 0.006494,
+      "live_state": true
+    },
+    {
+      "coin": "AVAX",
+      "ts_ms": 1781950377007,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 13,
+      "value_long_usd": 0.0,
+      "value_short_usd": 4663659.76,
+      "net_value_usd": -4663659.76,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.009986,
+      "live_state": true
+    },
+    {
+      "coin": "DOGE",
+      "ts_ms": 1781950377007,
+      "signal": -0.82717,
+      "confidence": "High",
+      "wallets_long": 3,
+      "wallets_short": 10,
+      "value_long_usd": 349412.4,
+      "value_short_usd": 3694007.58,
+      "net_value_usd": -3344595.18,
+      "value_long_pct_total": 0.000748,
+      "value_short_pct_total": 0.00791,
+      "live_state": true
+    },
+    {
+      "coin": "AERO",
+      "ts_ms": 1781950362718,
+      "signal": 0.335785,
+      "confidence": "Low",
+      "wallets_long": 3,
+      "wallets_short": 5,
+      "value_long_usd": 2258347.86,
+      "value_short_usd": 1122956.46,
+      "net_value_usd": 1135391.4,
+      "value_long_pct_total": 0.004836,
+      "value_short_pct_total": 0.002405,
+      "live_state": true
+    },
+    {
+      "coin": "ZRO",
+      "ts_ms": 1781950356138,
+      "signal": -0.932747,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 9,
+      "value_long_usd": 72972.92,
+      "value_short_usd": 2097142.02,
+      "net_value_usd": -2024169.11,
+      "value_long_pct_total": 0.000156,
+      "value_short_pct_total": 0.004491,
+      "live_state": true
+    },
+    {
+      "coin": "BNB",
+      "ts_ms": 1781950377007,
+      "signal": -0.243288,
+      "confidence": "Low",
+      "wallets_long": 5,
+      "wallets_short": 6,
+      "value_long_usd": 800957.26,
+      "value_short_usd": 1315984.35,
+      "net_value_usd": -515027.09,
+      "value_long_pct_total": 0.001715,
+      "value_short_pct_total": 0.002818,
+      "live_state": true
+    },
+    {
+      "coin": "MON",
+      "ts_ms": 1781950365947,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 8,
+      "value_long_usd": 0.0,
+      "value_short_usd": 2085060.84,
+      "net_value_usd": -2085060.84,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.004465,
+      "live_state": true
+    },
+    {
+      "coin": "GRASS",
+      "ts_ms": 1781950362718,
+      "signal": 0.689386,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 5,
+      "value_long_usd": 1748773.0,
+      "value_short_usd": 321532.94,
+      "net_value_usd": 1427240.06,
+      "value_long_pct_total": 0.003745,
+      "value_short_pct_total": 0.000688,
+      "live_state": true
+    },
+    {
+      "coin": "AAVE",
+      "ts_ms": 1781950377007,
+      "signal": 0.135976,
+      "confidence": "Low",
+      "wallets_long": 4,
+      "wallets_short": 7,
+      "value_long_usd": 1153433.43,
+      "value_short_usd": 877301.4,
+      "net_value_usd": 276132.03,
+      "value_long_pct_total": 0.00247,
+      "value_short_pct_total": 0.001879,
+      "live_state": true
+    },
+    {
+      "coin": "ADA",
+      "ts_ms": 1781950375373,
+      "signal": -0.995351,
+      "confidence": "High",
+      "wallets_long": 2,
+      "wallets_short": 12,
+      "value_long_usd": 4707.02,
+      "value_short_usd": 2020279.1,
+      "net_value_usd": -2015572.08,
+      "value_long_pct_total": 1e-05,
+      "value_short_pct_total": 0.004326,
+      "live_state": true
+    },
+    {
+      "coin": "XPL",
+      "ts_ms": 1781950373784,
+      "signal": -0.357186,
+      "confidence": "Medium",
+      "wallets_long": 5,
+      "wallets_short": 7,
+      "value_long_usd": 557556.77,
+      "value_short_usd": 1177181.51,
+      "net_value_usd": -619624.74,
+      "value_long_pct_total": 0.001194,
+      "value_short_pct_total": 0.002521,
+      "live_state": true
+    },
+    {
+      "coin": "ASTER",
+      "ts_ms": 1781950356138,
+      "signal": -0.163336,
+      "confidence": "Low",
+      "wallets_long": 2,
+      "wallets_short": 8,
+      "value_long_usd": 719625.16,
+      "value_short_usd": 1000599.97,
+      "net_value_usd": -280974.81,
+      "value_long_pct_total": 0.001541,
+      "value_short_pct_total": 0.002143,
+      "live_state": true
+    },
+    {
+      "coin": "EIGEN",
+      "ts_ms": 1781950375373,
+      "signal": -0.973891,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 8,
+      "value_long_usd": 21684.37,
+      "value_short_usd": 1639352.65,
+      "net_value_usd": -1617668.28,
+      "value_long_pct_total": 4.6e-05,
+      "value_short_pct_total": 0.00351,
+      "live_state": true
+    },
+    {
+      "coin": "WLFI",
+      "ts_ms": 1781950375373,
+      "signal": -0.815114,
+      "confidence": "High",
+      "wallets_long": 4,
+      "wallets_short": 5,
+      "value_long_usd": 132503.57,
+      "value_short_usd": 1300852.5,
+      "net_value_usd": -1168348.93,
+      "value_long_pct_total": 0.000284,
+      "value_short_pct_total": 0.002785,
+      "live_state": true
+    },
+    {
+      "coin": "PUMP",
+      "ts_ms": 1781950357979,
+      "signal": 0.150872,
+      "confidence": "Low",
+      "wallets_long": 5,
+      "wallets_short": 5,
+      "value_long_usd": 708090.66,
+      "value_short_usd": 522437.79,
+      "net_value_usd": 185652.87,
+      "value_long_pct_total": 0.001516,
+      "value_short_pct_total": 0.001119,
+      "live_state": true
+    },
+    {
+      "coin": "TAO",
+      "ts_ms": 1781950370665,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 9,
+      "value_long_usd": 0.0,
+      "value_short_usd": 1201099.46,
+      "net_value_usd": -1201099.46,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.002572,
+      "live_state": true
+    },
+    {
+      "coin": "UNI",
+      "ts_ms": 1781950377007,
+      "signal": -0.972247,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 10,
+      "value_long_usd": 15961.93,
+      "value_short_usd": 1134327.15,
+      "net_value_usd": -1118365.22,
+      "value_long_pct_total": 3.4e-05,
+      "value_short_pct_total": 0.002429,
+      "live_state": true
+    },
+    {
+      "coin": "ENA",
+      "ts_ms": 1781950373784,
+      "signal": 0.616807,
+      "confidence": "Medium",
+      "wallets_long": 6,
+      "wallets_short": 5,
+      "value_long_usd": 909643.14,
+      "value_short_usd": 215590.82,
+      "net_value_usd": 694052.32,
+      "value_long_pct_total": 0.001948,
+      "value_short_pct_total": 0.000462,
+      "live_state": true
+    },
+    {
+      "coin": "SUI",
+      "ts_ms": 1781950375373,
+      "signal": -0.906657,
+      "confidence": "High",
+      "wallets_long": 3,
+      "wallets_short": 13,
+      "value_long_usd": 51203.25,
+      "value_short_usd": 1045895.63,
+      "net_value_usd": -994692.38,
+      "value_long_pct_total": 0.00011,
+      "value_short_pct_total": 0.00224,
+      "live_state": true
+    },
+    {
+      "coin": "VVV",
+      "ts_ms": 1781950362718,
+      "signal": 0.028334,
+      "confidence": "Low",
+      "wallets_long": 1,
+      "wallets_short": 6,
+      "value_long_usd": 558993.75,
+      "value_short_usd": 528189.17,
+      "net_value_usd": 30804.58,
+      "value_long_pct_total": 0.001197,
+      "value_short_pct_total": 0.001131,
+      "live_state": true
+    },
+    {
+      "coin": "TRUMP",
+      "ts_ms": 1781950375373,
+      "signal": -0.982132,
+      "confidence": "High",
+      "wallets_long": 3,
+      "wallets_short": 6,
+      "value_long_usd": 9642.65,
+      "value_short_usd": 1069669.45,
+      "net_value_usd": -1060026.8,
+      "value_long_pct_total": 2.1e-05,
+      "value_short_pct_total": 0.00229,
+      "live_state": true
+    },
+    {
+      "coin": "LINK",
+      "ts_ms": 1781950377007,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 8,
+      "value_long_usd": 0.0,
+      "value_short_usd": 1074874.53,
+      "net_value_usd": -1074874.53,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.002302,
+      "live_state": true
+    },
+    {
+      "coin": "FARTCOIN",
+      "ts_ms": 1781950356138,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 8,
+      "value_long_usd": 0.0,
+      "value_short_usd": 1064608.81,
+      "net_value_usd": -1064608.81,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.00228,
+      "live_state": true
+    },
+    {
+      "coin": "PAXG",
+      "ts_ms": 1781950377007,
+      "signal": 0.988416,
+      "confidence": "High",
+      "wallets_long": 2,
+      "wallets_short": 3,
+      "value_long_usd": 948704.01,
+      "value_short_usd": 5526.78,
+      "net_value_usd": 943177.24,
+      "value_long_pct_total": 0.002031,
+      "value_short_pct_total": 1.2e-05,
+      "live_state": true
+    },
+    {
+      "coin": "KPEPE",
+      "ts_ms": 1781950375373,
+      "signal": -0.574053,
+      "confidence": "Medium",
+      "wallets_long": 3,
+      "wallets_short": 6,
+      "value_long_usd": 186814.42,
+      "value_short_usd": 690358.05,
+      "net_value_usd": -503543.63,
+      "value_long_pct_total": 0.0004,
+      "value_short_pct_total": 0.001478,
+      "live_state": true
+    },
+    {
+      "coin": "APT",
+      "ts_ms": 1781950375373,
+      "signal": -0.940528,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 7,
+      "value_long_usd": 24663.51,
+      "value_short_usd": 804755.49,
+      "net_value_usd": -780091.98,
+      "value_long_pct_total": 5.3e-05,
+      "value_short_pct_total": 0.001723,
+      "live_state": true
+    },
+    {
+      "coin": "LTC",
+      "ts_ms": 1781950377007,
+      "signal": -0.998545,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 8,
+      "value_long_usd": 594.52,
+      "value_short_usd": 816780.9,
+      "net_value_usd": -816186.38,
+      "value_long_pct_total": 1e-06,
+      "value_short_pct_total": 0.001749,
+      "live_state": true
+    },
+    {
+      "coin": "DOT",
+      "ts_ms": 1781950375373,
+      "signal": -0.998774,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 6,
+      "value_long_usd": 499.75,
+      "value_short_usd": 814617.56,
+      "net_value_usd": -814117.81,
+      "value_long_pct_total": 1e-06,
+      "value_short_pct_total": 0.001744,
+      "live_state": true
+    },
+    {
+      "coin": "TRX",
+      "ts_ms": 1781950377007,
+      "signal": 0.682016,
+      "confidence": "High",
+      "wallets_long": 2,
+      "wallets_short": 4,
+      "value_long_usd": 538338.29,
+      "value_short_usd": 101772.47,
+      "net_value_usd": 436565.82,
+      "value_long_pct_total": 0.001153,
+      "value_short_pct_total": 0.000218,
+      "live_state": true
+    },
+    {
+      "coin": "STRK",
+      "ts_ms": 1781950375373,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 4,
+      "value_long_usd": 0.0,
+      "value_short_usd": 609504.39,
+      "net_value_usd": -609504.39,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.001305,
+      "live_state": true
+    },
+    {
+      "coin": "JTO",
+      "ts_ms": 1781950356138,
+      "signal": -0.464319,
+      "confidence": "Medium",
+      "wallets_long": 2,
+      "wallets_short": 6,
+      "value_long_usd": 150947.15,
+      "value_short_usd": 412623.9,
+      "net_value_usd": -261676.75,
+      "value_long_pct_total": 0.000323,
+      "value_short_pct_total": 0.000884,
+      "live_state": true
+    },
+    {
+      "coin": "PENDLE",
+      "ts_ms": 1781950357979,
+      "signal": -0.10038,
+      "confidence": "Low",
+      "wallets_long": 3,
+      "wallets_short": 2,
+      "value_long_usd": 220392.74,
+      "value_short_usd": 269576.04,
+      "net_value_usd": -49183.3,
+      "value_long_pct_total": 0.000472,
+      "value_short_pct_total": 0.000577,
+      "live_state": true
+    },
+    {
+      "coin": "OP",
+      "ts_ms": 1781950377007,
+      "signal": -0.992213,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 5,
+      "value_long_usd": 1799.42,
+      "value_short_usd": 460340.72,
+      "net_value_usd": -458541.3,
+      "value_long_pct_total": 4e-06,
+      "value_short_pct_total": 0.000986,
+      "live_state": true
+    },
+    {
+      "coin": "CRV",
+      "ts_ms": 1781950357979,
+      "signal": -0.961052,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 8,
+      "value_long_usd": 8927.12,
+      "value_short_usd": 449486.31,
+      "net_value_usd": -440559.19,
+      "value_long_pct_total": 1.9e-05,
+      "value_short_pct_total": 0.000962,
+      "live_state": true
+    },
+    {
+      "coin": "CHIP",
+      "ts_ms": 1781950356138,
+      "signal": -0.249264,
+      "confidence": "Low",
+      "wallets_long": 2,
+      "wallets_short": 2,
+      "value_long_usd": 162744.14,
+      "value_short_usd": 270814.54,
+      "net_value_usd": -108070.4,
+      "value_long_pct_total": 0.000348,
+      "value_short_pct_total": 0.00058,
+      "live_state": true
+    },
+    {
+      "coin": "BCH",
+      "ts_ms": 1781950377007,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 7,
+      "value_long_usd": 0.0,
+      "value_short_usd": 414828.36,
+      "net_value_usd": -414828.36,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.000888,
+      "live_state": true
+    },
+    {
+      "coin": "XLM",
+      "ts_ms": 1781950370665,
+      "signal": -0.93706,
+      "confidence": "High",
+      "wallets_long": 2,
+      "wallets_short": 6,
+      "value_long_usd": 13027.77,
+      "value_short_usd": 400947.05,
+      "net_value_usd": -387919.29,
+      "value_long_pct_total": 2.8e-05,
+      "value_short_pct_total": 0.000859,
+      "live_state": true
+    },
+    {
+      "coin": "ONDO",
+      "ts_ms": 1781950356138,
+      "signal": -0.581746,
+      "confidence": "Medium",
+      "wallets_long": 2,
+      "wallets_short": 6,
+      "value_long_usd": 85395.0,
+      "value_short_usd": 322945.83,
+      "net_value_usd": -237550.83,
+      "value_long_pct_total": 0.000183,
+      "value_short_pct_total": 0.000692,
+      "live_state": true
+    },
+    {
+      "coin": "FET",
+      "ts_ms": 1781950356138,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 4,
+      "value_long_usd": 0.0,
+      "value_short_usd": 385901.25,
+      "net_value_usd": -385901.25,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.000826,
+      "live_state": true
+    },
+    {
+      "coin": "KSHIB",
+      "ts_ms": 1781950370665,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 6,
+      "value_long_usd": 0.0,
+      "value_short_usd": 276528.55,
+      "net_value_usd": -276528.55,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.000592,
+      "live_state": true
+    },
+    {
+      "coin": "INJ",
+      "ts_ms": 1781950370665,
+      "signal": -0.984819,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 4,
+      "value_long_usd": 1853.89,
+      "value_short_usd": 242390.95,
+      "net_value_usd": -240537.06,
+      "value_long_pct_total": 4e-06,
+      "value_short_pct_total": 0.000519,
+      "live_state": true
+    },
+    {
+      "coin": "MNT",
+      "ts_ms": 1781950370665,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 3,
+      "value_long_usd": 0.0,
+      "value_short_usd": 237095.83,
+      "net_value_usd": -237095.83,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.000508,
+      "live_state": true
+    },
+    {
+      "coin": "MORPHO",
+      "ts_ms": 1781950356138,
+      "signal": -0.619127,
+      "confidence": "Medium",
+      "wallets_long": 2,
+      "wallets_short": 5,
+      "value_long_usd": 40649.14,
+      "value_short_usd": 172803.14,
+      "net_value_usd": -132154.01,
+      "value_long_pct_total": 8.7e-05,
+      "value_short_pct_total": 0.00037,
+      "live_state": true
+    },
+    {
+      "coin": "ARB",
+      "ts_ms": 1781950356138,
+      "signal": -0.992099,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 3,
+      "value_long_usd": 827.23,
+      "value_short_usd": 208573.9,
+      "net_value_usd": -207746.67,
+      "value_long_pct_total": 2e-06,
+      "value_short_pct_total": 0.000447,
+      "live_state": true
+    },
+    {
+      "coin": "WIF",
+      "ts_ms": 1781950370665,
+      "signal": -0.997428,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 4,
+      "value_long_usd": 266.2,
+      "value_short_usd": 206753.57,
+      "net_value_usd": -206487.37,
+      "value_long_pct_total": 1e-06,
+      "value_short_pct_total": 0.000443,
+      "live_state": true
+    },
+    {
+      "coin": "SPX",
+      "ts_ms": 1781950370665,
+      "signal": -0.41898,
+      "confidence": "Medium",
+      "wallets_long": 2,
+      "wallets_short": 6,
+      "value_long_usd": 54019.95,
+      "value_short_usd": 131928.72,
+      "net_value_usd": -77908.77,
+      "value_long_pct_total": 0.000116,
+      "value_short_pct_total": 0.000282,
+      "live_state": true
+    },
+    {
+      "coin": "KBONK",
+      "ts_ms": 1781950356138,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 3,
+      "value_long_usd": 0.0,
+      "value_short_usd": 181689.71,
+      "net_value_usd": -181689.71,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.000389,
+      "live_state": true
+    },
+    {
+      "coin": "STBL",
+      "ts_ms": 1781950356138,
+      "signal": -0.998426,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 2,
+      "value_long_usd": 134.73,
+      "value_short_usd": 171057.47,
+      "net_value_usd": -170922.74,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.000366,
+      "live_state": true
+    },
+    {
+      "coin": "NIL",
+      "ts_ms": 1781950356138,
+      "signal": -0.637113,
+      "confidence": "Medium",
+      "wallets_long": 2,
+      "wallets_short": 2,
+      "value_long_usd": 30739.58,
+      "value_short_usd": 138677.16,
+      "net_value_usd": -107937.58,
+      "value_long_pct_total": 6.6e-05,
+      "value_short_pct_total": 0.000297,
+      "live_state": true
+    },
+    {
+      "coin": "FIL",
+      "ts_ms": 1781950367413,
+      "signal": -0.438082,
+      "confidence": "Medium",
+      "wallets_long": 2,
+      "wallets_short": 2,
+      "value_long_usd": 45096.34,
+      "value_short_usd": 115412.41,
+      "net_value_usd": -70316.07,
+      "value_long_pct_total": 9.7e-05,
+      "value_short_pct_total": 0.000247,
+      "live_state": true
+    },
+    {
+      "coin": "ATOM",
+      "ts_ms": 1781950370665,
+      "signal": -0.865953,
+      "confidence": "High",
+      "wallets_long": 2,
+      "wallets_short": 3,
+      "value_long_usd": 10491.51,
+      "value_short_usd": 146043.89,
+      "net_value_usd": -135552.37,
+      "value_long_pct_total": 2.2e-05,
+      "value_short_pct_total": 0.000313,
+      "live_state": true
+    },
+    {
+      "coin": "VIRTUAL",
+      "ts_ms": 1781950356138,
+      "signal": 0.092388,
+      "confidence": "Low",
+      "wallets_long": 1,
+      "wallets_short": 3,
+      "value_long_usd": 79890.3,
+      "value_short_usd": 66377.0,
+      "net_value_usd": 13513.3,
+      "value_long_pct_total": 0.000171,
+      "value_short_pct_total": 0.000142,
+      "live_state": true
+    },
+    {
+      "coin": "STABLE",
+      "ts_ms": 1781950172678,
+      "signal": -0.708431,
+      "confidence": "High",
+      "wallets_long": 3,
+      "wallets_short": 2,
+      "value_long_usd": 21080.96,
+      "value_short_usd": 123522.42,
+      "net_value_usd": -102441.46,
+      "value_long_pct_total": 4.5e-05,
+      "value_short_pct_total": 0.000264,
+      "live_state": true
+    },
+    {
+      "coin": "TIA",
+      "ts_ms": 1781950370665,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 3,
+      "value_long_usd": 0.0,
+      "value_short_usd": 140862.81,
+      "net_value_usd": -140862.81,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.000302,
+      "live_state": true
+    },
+    {
+      "coin": "JUP",
+      "ts_ms": 1781950356138,
+      "signal": -0.366902,
+      "confidence": "Medium",
+      "wallets_long": 1,
+      "wallets_short": 4,
+      "value_long_usd": 44562.63,
+      "value_short_usd": 96213.71,
+      "net_value_usd": -51651.08,
+      "value_long_pct_total": 9.5e-05,
+      "value_short_pct_total": 0.000206,
+      "live_state": true
+    },
+    {
+      "coin": "CC",
+      "ts_ms": 1781950356138,
+      "signal": -0.839735,
+      "confidence": "High",
+      "wallets_long": 2,
+      "wallets_short": 2,
+      "value_long_usd": 10891.63,
+      "value_short_usd": 125028.36,
+      "net_value_usd": -114136.73,
+      "value_long_pct_total": 2.3e-05,
+      "value_short_pct_total": 0.000268,
+      "live_state": true
+    },
+    {
+      "coin": "PENGU",
+      "ts_ms": 1781950364182,
+      "signal": 0.123964,
+      "confidence": "Low",
+      "wallets_long": 4,
+      "wallets_short": 1,
+      "value_long_usd": 76264.96,
+      "value_short_usd": 59442.14,
+      "net_value_usd": 16822.82,
+      "value_long_pct_total": 0.000163,
+      "value_short_pct_total": 0.000127,
+      "live_state": true
+    },
+    {
+      "coin": "DASH",
+      "ts_ms": 1781950377007,
+      "signal": -0.998814,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 3,
+      "value_long_usd": 79.36,
+      "value_short_usd": 133712.68,
+      "net_value_usd": -133633.32,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.000286,
+      "live_state": true
+    },
+    {
+      "coin": "ICP",
+      "ts_ms": 1781950356138,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 5,
+      "value_long_usd": 0.0,
+      "value_short_usd": 130127.75,
+      "net_value_usd": -130127.75,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.000279,
+      "live_state": true
+    },
+    {
+      "coin": "POPCAT",
+      "ts_ms": 1781950370665,
+      "signal": -0.879321,
+      "confidence": "High",
+      "wallets_long": 2,
+      "wallets_short": 4,
+      "value_long_usd": 7313.7,
+      "value_short_usd": 113895.69,
+      "net_value_usd": -106581.99,
+      "value_long_pct_total": 1.6e-05,
+      "value_short_pct_total": 0.000244,
+      "live_state": true
+    },
+    {
+      "coin": "SEI",
+      "ts_ms": 1781950370665,
+      "signal": -0.990238,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 3,
+      "value_long_usd": 559.74,
+      "value_short_usd": 114119.94,
+      "net_value_usd": -113560.2,
+      "value_long_pct_total": 1e-06,
+      "value_short_pct_total": 0.000244,
+      "live_state": true
+    },
+    {
+      "coin": "PYTH",
+      "ts_ms": 1781950172678,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 1,
+      "value_long_usd": 0.0,
+      "value_short_usd": 108452.81,
+      "net_value_usd": -108452.81,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.000232,
+      "live_state": true
+    },
+    {
+      "coin": "IP",
+      "ts_ms": 1781950356138,
+      "signal": -0.998706,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 3,
+      "value_long_usd": 66.06,
+      "value_short_usd": 102050.0,
+      "net_value_usd": -101983.94,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.000219,
+      "live_state": true
+    },
+    {
+      "coin": "AVNT",
+      "ts_ms": 1781950356138,
+      "signal": -0.824521,
+      "confidence": "High",
+      "wallets_long": 2,
+      "wallets_short": 1,
+      "value_long_usd": 8916.73,
+      "value_short_usd": 92710.66,
+      "net_value_usd": -83793.93,
+      "value_long_pct_total": 1.9e-05,
+      "value_short_pct_total": 0.000199,
+      "live_state": true
+    },
+    {
+      "coin": "ETHFI",
+      "ts_ms": 1781950356138,
+      "signal": -0.715859,
+      "confidence": "High",
+      "wallets_long": 2,
+      "wallets_short": 3,
+      "value_long_usd": 13686.67,
+      "value_short_usd": 82650.49,
+      "net_value_usd": -68963.82,
+      "value_long_pct_total": 2.9e-05,
+      "value_short_pct_total": 0.000177,
+      "live_state": true
+    },
+    {
+      "coin": "LAYER",
+      "ts_ms": 1781950356138,
+      "signal": -0.998966,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 1,
+      "value_long_usd": 46.95,
+      "value_short_usd": 90784.11,
+      "net_value_usd": -90737.16,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.000194,
+      "live_state": true
+    },
+    {
+      "coin": "BLUR",
+      "ts_ms": 1781950356138,
+      "signal": -0.998435,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 1,
+      "value_long_usd": 65.11,
+      "value_short_usd": 83139.03,
+      "net_value_usd": -83073.92,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.000178,
+      "live_state": true
+    },
+    {
+      "coin": "ZORA",
+      "ts_ms": 1781950370665,
+      "signal": -0.491284,
+      "confidence": "Medium",
+      "wallets_long": 2,
+      "wallets_short": 3,
+      "value_long_usd": 20810.0,
+      "value_short_usd": 61003.86,
+      "net_value_usd": -40193.86,
+      "value_long_pct_total": 4.5e-05,
+      "value_short_pct_total": 0.000131,
+      "live_state": true
+    },
+    {
+      "coin": "MINA",
+      "ts_ms": 1781950356138,
+      "signal": -0.993654,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 1,
+      "value_long_usd": 254.94,
+      "value_short_usd": 80096.32,
+      "net_value_usd": -79841.37,
+      "value_long_pct_total": 1e-06,
+      "value_short_pct_total": 0.000172,
+      "live_state": true
+    },
+    {
+      "coin": "MERL",
+      "ts_ms": 1781950356138,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 2,
+      "value_long_usd": 0.0,
+      "value_short_usd": 79358.3,
+      "net_value_usd": -79358.3,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.00017,
+      "live_state": true
+    },
+    {
+      "coin": "MET",
+      "ts_ms": 1781950356138,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 4,
+      "value_long_usd": 0.0,
+      "value_short_usd": 74953.77,
+      "net_value_usd": -74953.77,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.00016,
+      "live_state": true
+    },
+    {
+      "coin": "ZETA",
+      "ts_ms": 1781950356138,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 2,
+      "value_long_usd": 0.0,
+      "value_short_usd": 73232.1,
+      "net_value_usd": -73232.1,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.000157,
+      "live_state": true
+    },
+    {
+      "coin": "KAS",
+      "ts_ms": 1781950361149,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 2,
+      "value_long_usd": 0.0,
+      "value_short_usd": 70218.96,
+      "net_value_usd": -70218.96,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.00015,
+      "live_state": true
+    },
+    {
+      "coin": "CFX",
+      "ts_ms": 1781950356138,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 3,
+      "value_long_usd": 0.0,
+      "value_short_usd": 68544.28,
+      "net_value_usd": -68544.28,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.000147,
+      "live_state": true
+    },
+    {
+      "coin": "BERA",
+      "ts_ms": 1781950356138,
+      "signal": -0.976722,
+      "confidence": "High",
+      "wallets_long": 2,
+      "wallets_short": 1,
+      "value_long_usd": 738.95,
+      "value_short_usd": 62748.95,
+      "net_value_usd": -62010.0,
+      "value_long_pct_total": 2e-06,
+      "value_short_pct_total": 0.000134,
+      "live_state": true
+    },
+    {
+      "coin": "S",
+      "ts_ms": 1781950172678,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 1,
+      "value_long_usd": 0.0,
+      "value_short_usd": 63032.43,
+      "net_value_usd": -63032.43,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.000135,
+      "live_state": true
+    },
+    {
+      "coin": "DYDX",
+      "ts_ms": 1781950356138,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 3,
+      "value_long_usd": 0.0,
+      "value_short_usd": 62952.17,
+      "net_value_usd": -62952.17,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.000135,
+      "live_state": true
+    },
+    {
+      "coin": "MEGA",
+      "ts_ms": 1781950370665,
+      "signal": -0.992622,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 3,
+      "value_long_usd": 227.34,
+      "value_short_usd": 61402.48,
+      "net_value_usd": -61175.13,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.000131,
+      "live_state": true
+    },
+    {
+      "coin": "GRIFFAIN",
+      "ts_ms": 1781950356138,
+      "signal": -0.999354,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 2,
+      "value_long_usd": 19.17,
+      "value_short_usd": 59336.0,
+      "net_value_usd": -59316.82,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.000127,
+      "live_state": true
+    },
+    {
+      "coin": "SYRUP",
+      "ts_ms": 1781950356138,
+      "signal": -0.621325,
+      "confidence": "Medium",
+      "wallets_long": 1,
+      "wallets_short": 3,
+      "value_long_usd": 10760.48,
+      "value_short_usd": 46071.79,
+      "net_value_usd": -35311.31,
+      "value_long_pct_total": 2.3e-05,
+      "value_short_pct_total": 9.9e-05,
+      "live_state": true
+    },
+    {
+      "coin": "RUNE",
+      "ts_ms": 1781950356138,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 3,
+      "value_long_usd": 0.0,
+      "value_short_usd": 56384.62,
+      "net_value_usd": -56384.62,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.000121,
+      "live_state": true
+    },
+    {
+      "coin": "W",
+      "ts_ms": 1781950370665,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 2,
+      "value_long_usd": 0.0,
+      "value_short_usd": 54342.02,
+      "net_value_usd": -54342.02,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.000116,
+      "live_state": true
+    },
+    {
+      "coin": "XAI",
+      "ts_ms": 1781950356138,
+      "signal": -0.999301,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 1,
+      "value_long_usd": 19.0,
+      "value_short_usd": 54312.01,
+      "net_value_usd": -54293.01,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.000116,
+      "live_state": true
+    },
+    {
+      "coin": "HBAR",
+      "ts_ms": 1781950370665,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 4,
+      "value_long_usd": 0.0,
+      "value_short_usd": 46066.09,
+      "net_value_usd": -46066.09,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 9.9e-05,
+      "live_state": true
+    },
+    {
+      "coin": "LDO",
+      "ts_ms": 1781950356138,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 4,
+      "value_long_usd": 0.0,
+      "value_short_usd": 41144.66,
+      "net_value_usd": -41144.66,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 8.8e-05,
+      "live_state": true
+    },
+    {
+      "coin": "2Z",
+      "ts_ms": 1781950172678,
+      "signal": 1.0,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 0,
+      "value_long_usd": 40300.65,
+      "value_short_usd": 0.0,
+      "net_value_usd": 40300.65,
+      "value_long_pct_total": 8.6e-05,
+      "value_short_pct_total": 0.0,
+      "live_state": true
+    },
+    {
+      "coin": "MANTA",
+      "ts_ms": 1781950356138,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 2,
+      "value_long_usd": 0.0,
+      "value_short_usd": 36018.41,
+      "net_value_usd": -36018.41,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 7.7e-05,
+      "live_state": true
+    },
+    {
+      "coin": "BIO",
+      "ts_ms": 1781950356138,
+      "signal": -0.988649,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 3,
+      "value_long_usd": 192.01,
+      "value_short_usd": 33639.58,
+      "net_value_usd": -33447.57,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 7.2e-05,
+      "live_state": true
+    },
+    {
+      "coin": "NOT",
+      "ts_ms": 1781950356138,
+      "signal": 1.0,
+      "confidence": "High",
+      "wallets_long": 3,
+      "wallets_short": 0,
+      "value_long_usd": 30445.78,
+      "value_short_usd": 0.0,
+      "net_value_usd": 30445.78,
+      "value_long_pct_total": 6.5e-05,
+      "value_short_pct_total": 0.0,
+      "live_state": true
+    },
+    {
+      "coin": "AR",
+      "ts_ms": 1781950356138,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 3,
+      "value_long_usd": 0.0,
+      "value_short_usd": 26479.7,
+      "net_value_usd": -26479.7,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 5.7e-05,
+      "live_state": true
+    },
+    {
+      "coin": "COMP",
+      "ts_ms": 1781950356138,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 2,
+      "value_long_usd": 0.0,
+      "value_short_usd": 23443.66,
+      "net_value_usd": -23443.66,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 5e-05,
+      "live_state": true
+    },
+    {
+      "coin": "ALGO",
+      "ts_ms": 1781950356138,
+      "signal": -0.943173,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 2,
+      "value_long_usd": 584.35,
+      "value_short_usd": 19981.57,
+      "net_value_usd": -19397.22,
+      "value_long_pct_total": 1e-06,
+      "value_short_pct_total": 4.3e-05,
+      "live_state": true
+    },
+    {
+      "coin": "POL",
+      "ts_ms": 1781950377007,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 1,
+      "value_long_usd": 0.0,
+      "value_short_usd": 17664.26,
+      "net_value_usd": -17664.26,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 3.8e-05,
+      "live_state": true
+    },
+    {
+      "coin": "SKY",
+      "ts_ms": 1781950356138,
+      "signal": 0.745664,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 1,
+      "value_long_usd": 13106.85,
+      "value_short_usd": 1909.62,
+      "net_value_usd": 11197.24,
+      "value_long_pct_total": 2.8e-05,
+      "value_short_pct_total": 4e-06,
+      "live_state": true
+    },
+    {
+      "coin": "PURR",
+      "ts_ms": 1781950364182,
+      "signal": -0.198215,
+      "confidence": "Low",
+      "wallets_long": 1,
+      "wallets_short": 2,
+      "value_long_usd": 4462.75,
+      "value_short_usd": 6669.29,
+      "net_value_usd": -2206.54,
+      "value_long_pct_total": 1e-05,
+      "value_short_pct_total": 1.4e-05,
+      "live_state": true
+    },
+    {
+      "coin": "RESOLV",
+      "ts_ms": 1781950364182,
+      "signal": 1.0,
+      "confidence": "High",
+      "wallets_long": 2,
+      "wallets_short": 0,
+      "value_long_usd": 10607.32,
+      "value_short_usd": 0.0,
+      "net_value_usd": 10607.32,
+      "value_long_pct_total": 2.3e-05,
+      "value_short_pct_total": 0.0,
+      "live_state": true
+    },
+    {
+      "coin": "IO",
+      "ts_ms": 1781950172678,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 1,
+      "value_long_usd": 0.0,
+      "value_short_usd": 9363.57,
+      "net_value_usd": -9363.57,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 2e-05,
+      "live_state": true
+    },
+    {
+      "coin": "ETC",
+      "ts_ms": 1781950377007,
+      "signal": -0.772791,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 2,
+      "value_long_usd": 965.55,
+      "value_short_usd": 7533.65,
+      "net_value_usd": -6568.11,
+      "value_long_pct_total": 2e-06,
+      "value_short_pct_total": 1.6e-05,
+      "live_state": true
+    },
+    {
+      "coin": "FOGO",
+      "ts_ms": 1781950356138,
+      "signal": -0.946992,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 1,
+      "value_long_usd": 222.58,
+      "value_short_usd": 8175.32,
+      "net_value_usd": -7952.74,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 1.8e-05,
+      "live_state": true
+    },
+    {
+      "coin": "ZK",
+      "ts_ms": 1781950370665,
+      "signal": 0.761841,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 2,
+      "value_long_usd": 6308.15,
+      "value_short_usd": 852.71,
+      "net_value_usd": 5455.44,
+      "value_long_pct_total": 1.4e-05,
+      "value_short_pct_total": 2e-06,
+      "live_state": true
+    },
+    {
+      "coin": "MOVE",
+      "ts_ms": 1781950356138,
+      "signal": 1.0,
+      "confidence": "High",
+      "wallets_long": 2,
+      "wallets_short": 0,
+      "value_long_usd": 5869.19,
+      "value_short_usd": 0.0,
+      "net_value_usd": 5869.19,
+      "value_long_pct_total": 1.3e-05,
+      "value_short_pct_total": 0.0,
+      "live_state": true
+    },
+    {
+      "coin": "IMX",
+      "ts_ms": 1781950356138,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 2,
+      "value_long_usd": 0.0,
+      "value_short_usd": 5511.67,
+      "net_value_usd": -5511.67,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 1.2e-05,
+      "live_state": true
+    },
+    {
+      "coin": "SNX",
+      "ts_ms": 1781950356138,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 2,
+      "value_long_usd": 0.0,
+      "value_short_usd": 5330.75,
+      "net_value_usd": -5330.75,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 1.1e-05,
+      "live_state": true
+    },
+    {
+      "coin": "GOAT",
+      "ts_ms": 1781950356138,
+      "signal": -0.803538,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 1,
+      "value_long_usd": 477.22,
+      "value_short_usd": 4380.95,
+      "net_value_usd": -3903.72,
+      "value_long_pct_total": 1e-06,
+      "value_short_pct_total": 9e-06,
+      "live_state": true
+    },
+    {
+      "coin": "SUSHI",
+      "ts_ms": 1781950172678,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 1,
+      "value_long_usd": 0.0,
+      "value_short_usd": 4426.31,
+      "net_value_usd": -4426.31,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 9e-06,
+      "live_state": true
+    },
+    {
+      "coin": "HMSTR",
+      "ts_ms": 1781950356138,
+      "signal": 1.0,
+      "confidence": "High",
+      "wallets_long": 2,
+      "wallets_short": 0,
+      "value_long_usd": 4348.23,
+      "value_short_usd": 0.0,
+      "net_value_usd": 4348.23,
+      "value_long_pct_total": 9e-06,
+      "value_short_pct_total": 0.0,
+      "live_state": true
+    },
+    {
+      "coin": "LINEA",
+      "ts_ms": 1781950356138,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 2,
+      "value_long_usd": 0.0,
+      "value_short_usd": 3344.4,
+      "net_value_usd": -3344.4,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 7e-06,
+      "live_state": true
+    },
+    {
+      "coin": "MELANIA",
+      "ts_ms": 1781950370665,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 2,
+      "value_long_usd": 0.0,
+      "value_short_usd": 3279.41,
+      "net_value_usd": -3279.41,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 7e-06,
+      "live_state": true
+    },
+    {
+      "coin": "ENS",
+      "ts_ms": 1781950356138,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 1,
+      "value_long_usd": 0.0,
+      "value_short_usd": 3191.45,
+      "net_value_usd": -3191.45,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 7e-06,
+      "live_state": true
+    },
+    {
+      "coin": "HEMI",
+      "ts_ms": 1781950356138,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 1,
+      "value_long_usd": 0.0,
+      "value_short_usd": 2806.99,
+      "net_value_usd": -2806.99,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 6e-06,
+      "live_state": true
+    },
+    {
+      "coin": "APE",
+      "ts_ms": 1781950356138,
+      "signal": 0.413305,
+      "confidence": "Medium",
+      "wallets_long": 1,
+      "wallets_short": 1,
+      "value_long_usd": 1865.06,
+      "value_short_usd": 774.23,
+      "net_value_usd": 1090.83,
+      "value_long_pct_total": 4e-06,
+      "value_short_pct_total": 2e-06,
+      "live_state": true
+    },
+    {
+      "coin": "NEO",
+      "ts_ms": 1781950356138,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 1,
+      "value_long_usd": 0.0,
+      "value_short_usd": 2191.81,
+      "net_value_usd": -2191.81,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 5e-06,
+      "live_state": true
+    },
+    {
+      "coin": "KAITO",
+      "ts_ms": 1781950370665,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 2,
+      "value_long_usd": 0.0,
+      "value_short_usd": 1370.97,
+      "net_value_usd": -1370.97,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 3e-06,
+      "live_state": true
+    },
+    {
+      "coin": "KFLOKI",
+      "ts_ms": 1781950356138,
+      "signal": 1.0,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 0,
+      "value_long_usd": 1319.32,
+      "value_short_usd": 0.0,
+      "net_value_usd": 1319.32,
+      "value_long_pct_total": 3e-06,
+      "value_short_pct_total": 0.0,
+      "live_state": true
+    },
+    {
+      "coin": "ARK",
+      "ts_ms": 1781950356138,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 1,
+      "value_long_usd": 0.0,
+      "value_short_usd": 1292.08,
+      "net_value_usd": -1292.08,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 3e-06,
+      "live_state": true
+    },
+    {
+      "coin": "NXPC",
+      "ts_ms": 1781950356138,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 1,
+      "value_long_usd": 0.0,
+      "value_short_usd": 1271.22,
+      "net_value_usd": -1271.22,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 3e-06,
+      "live_state": true
+    },
+    {
+      "coin": "AZTEC",
+      "ts_ms": 1781950356138,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 3,
+      "value_long_usd": 0.0,
+      "value_short_usd": 1197.33,
+      "net_value_usd": -1197.33,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 3e-06,
+      "live_state": true
+    },
+    {
+      "coin": "TURBO",
+      "ts_ms": 1781950356138,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 1,
+      "value_long_usd": 0.0,
+      "value_short_usd": 944.98,
+      "net_value_usd": -944.98,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 2e-06,
+      "live_state": true
+    },
+    {
+      "coin": "TRB",
+      "ts_ms": 1781950356138,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 1,
+      "value_long_usd": 0.0,
+      "value_short_usd": 915.12,
+      "net_value_usd": -915.12,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 2e-06,
+      "live_state": true
+    },
+    {
+      "coin": "CAKE",
+      "ts_ms": 1781950377007,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 2,
+      "value_long_usd": 0.0,
+      "value_short_usd": 737.72,
+      "net_value_usd": -737.72,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 2e-06,
+      "live_state": true
+    },
+    {
+      "coin": "0G",
+      "ts_ms": 1781950356138,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 1,
+      "value_long_usd": 0.0,
+      "value_short_usd": 696.3,
+      "net_value_usd": -696.3,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 1e-06,
+      "live_state": true
+    },
+    {
+      "coin": "CELO",
+      "ts_ms": 1781950356138,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 1,
+      "value_long_usd": 0.0,
+      "value_short_usd": 650.11,
+      "net_value_usd": -650.11,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 1e-06,
+      "live_state": true
+    },
+    {
+      "coin": "YGG",
+      "ts_ms": 1781950356138,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 1,
+      "value_long_usd": 0.0,
+      "value_short_usd": 633.81,
+      "net_value_usd": -633.81,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 1e-06,
+      "live_state": true
+    },
+    {
+      "coin": "RENDER",
+      "ts_ms": 1781950356138,
+      "signal": 1.0,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 0,
+      "value_long_usd": 556.55,
+      "value_short_usd": 0.0,
+      "net_value_usd": 556.55,
+      "value_long_pct_total": 1e-06,
+      "value_short_pct_total": 0.0,
+      "live_state": true
+    },
+    {
+      "coin": "GALA",
+      "ts_ms": 1781950356138,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 1,
+      "value_long_usd": 0.0,
+      "value_short_usd": 521.28,
+      "net_value_usd": -521.28,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 1e-06,
+      "live_state": true
+    },
+    {
+      "coin": "DOOD",
+      "ts_ms": 1781950356138,
+      "signal": 1.0,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 0,
+      "value_long_usd": 496.43,
+      "value_short_usd": 0.0,
+      "net_value_usd": 496.43,
+      "value_long_pct_total": 1e-06,
+      "value_short_pct_total": 0.0,
+      "live_state": true
+    },
+    {
+      "coin": "BANANA",
+      "ts_ms": 1781950356138,
+      "signal": 1.0,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 0,
+      "value_long_usd": 494.72,
+      "value_short_usd": 0.0,
+      "net_value_usd": 494.72,
+      "value_long_pct_total": 1e-06,
+      "value_short_pct_total": 0.0,
+      "live_state": true
+    },
+    {
+      "coin": "KLUNC",
+      "ts_ms": 1781950356138,
+      "signal": 1.0,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 0,
+      "value_long_usd": 482.04,
+      "value_short_usd": 0.0,
+      "net_value_usd": 482.04,
+      "value_long_pct_total": 1e-06,
+      "value_short_pct_total": 0.0,
+      "live_state": true
+    },
+    {
+      "coin": "TNSR",
+      "ts_ms": 1781950356138,
+      "signal": 1.0,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 0,
+      "value_long_usd": 479.78,
+      "value_short_usd": 0.0,
+      "net_value_usd": 479.78,
+      "value_long_pct_total": 1e-06,
+      "value_short_pct_total": 0.0,
+      "live_state": true
+    },
+    {
+      "coin": "BIGTIME",
+      "ts_ms": 1781950356138,
+      "signal": 1.0,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 0,
+      "value_long_usd": 477.04,
+      "value_short_usd": 0.0,
+      "net_value_usd": 477.04,
+      "value_long_pct_total": 1e-06,
+      "value_short_pct_total": 0.0,
+      "live_state": true
+    },
+    {
+      "coin": "RSR",
+      "ts_ms": 1781950356138,
+      "signal": 1.0,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 0,
+      "value_long_usd": 450.6,
+      "value_short_usd": 0.0,
+      "net_value_usd": 450.6,
+      "value_long_pct_total": 1e-06,
+      "value_short_pct_total": 0.0,
+      "live_state": true
+    },
+    {
+      "coin": "ANIME",
+      "ts_ms": 1781950356138,
+      "signal": 1.0,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 0,
+      "value_long_usd": 426.18,
+      "value_short_usd": 0.0,
+      "net_value_usd": 426.18,
+      "value_long_pct_total": 1e-06,
+      "value_short_pct_total": 0.0,
+      "live_state": true
+    },
+    {
+      "coin": "SAND",
+      "ts_ms": 1781950356138,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 1,
+      "value_long_usd": 0.0,
+      "value_short_usd": 424.29,
+      "net_value_usd": -424.29,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 1e-06,
+      "live_state": true
+    },
+    {
+      "coin": "GMT",
+      "ts_ms": 1781950356138,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 1,
+      "value_long_usd": 0.0,
+      "value_short_usd": 422.07,
+      "net_value_usd": -422.07,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 1e-06,
+      "live_state": true
+    },
+    {
+      "coin": "DYM",
+      "ts_ms": 1781950370665,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 2,
+      "value_long_usd": 0.0,
+      "value_short_usd": 403.95,
+      "net_value_usd": -403.95,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 1e-06,
+      "live_state": true
+    },
+    {
+      "coin": "ME",
+      "ts_ms": 1781950356138,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 1,
+      "value_long_usd": 0.0,
+      "value_short_usd": 360.2,
+      "net_value_usd": -360.2,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 1e-06,
+      "live_state": true
+    },
+    {
+      "coin": "SKR",
+      "ts_ms": 1781950356138,
+      "signal": 0.693972,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 1,
+      "value_long_usd": 281.28,
+      "value_short_usd": 50.81,
+      "net_value_usd": 230.46,
+      "value_long_pct_total": 1e-06,
+      "value_short_pct_total": 0.0,
+      "live_state": true
+    },
+    {
+      "coin": "USUAL",
+      "ts_ms": 1781950356138,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 1,
+      "value_long_usd": 0.0,
+      "value_short_usd": 331.71,
+      "net_value_usd": -331.71,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 1e-06,
+      "live_state": true
+    },
+    {
+      "coin": "POLYX",
+      "ts_ms": 1781950356138,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 1,
+      "value_long_usd": 0.0,
+      "value_short_usd": 307.54,
+      "net_value_usd": -307.54,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 1e-06,
+      "live_state": true
+    },
+    {
+      "coin": "BOME",
+      "ts_ms": 1781950356138,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 1,
+      "value_long_usd": 0.0,
+      "value_short_usd": 288.52,
+      "net_value_usd": -288.52,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 1e-06,
+      "live_state": true
+    },
+    {
+      "coin": "ALT",
+      "ts_ms": 1781950370665,
+      "signal": -0.302621,
+      "confidence": "Low",
+      "wallets_long": 1,
+      "wallets_short": 1,
+      "value_long_usd": 92.27,
+      "value_short_usd": 172.35,
+      "net_value_usd": -80.08,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.0,
+      "live_state": true
+    },
+    {
+      "coin": "VINE",
+      "ts_ms": 1781950172678,
+      "signal": 1.0,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 0,
+      "value_long_usd": 257.18,
+      "value_short_usd": 0.0,
+      "net_value_usd": 257.18,
+      "value_long_pct_total": 1e-06,
+      "value_short_pct_total": 0.0,
+      "live_state": true
+    },
+    {
+      "coin": "HYPER",
+      "ts_ms": 1781950356138,
+      "signal": 1.0,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 0,
+      "value_long_usd": 191.66,
+      "value_short_usd": 0.0,
+      "net_value_usd": 191.66,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.0,
+      "live_state": true
+    },
+    {
+      "coin": "PEOPLE",
+      "ts_ms": 1781950356138,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 1,
+      "value_long_usd": 0.0,
+      "value_short_usd": 191.22,
+      "net_value_usd": -191.22,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.0,
+      "live_state": true
+    },
+    {
+      "coin": "ORDI",
+      "ts_ms": 1781950356138,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 2,
+      "value_long_usd": 0.0,
+      "value_short_usd": 172.75,
+      "net_value_usd": -172.75,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.0,
+      "live_state": true
+    },
+    {
+      "coin": "BRETT",
+      "ts_ms": 1781950356138,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 1,
+      "value_long_usd": 0.0,
+      "value_short_usd": 172.34,
+      "net_value_usd": -172.34,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.0,
+      "live_state": true
+    },
+    {
+      "coin": "SOPH",
+      "ts_ms": 1781950356138,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 1,
+      "value_long_usd": 0.0,
+      "value_short_usd": 151.82,
+      "net_value_usd": -151.82,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.0,
+      "live_state": true
+    },
+    {
+      "coin": "IOTA",
+      "ts_ms": 1781950356138,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 1,
+      "value_long_usd": 0.0,
+      "value_short_usd": 132.76,
+      "net_value_usd": -132.76,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.0,
+      "live_state": true
+    },
+    {
+      "coin": "SAGA",
+      "ts_ms": 1781950356138,
+      "signal": 0.316793,
+      "confidence": "Low",
+      "wallets_long": 1,
+      "wallets_short": 1,
+      "value_long_usd": 82.85,
+      "value_short_usd": 42.98,
+      "net_value_usd": 39.86,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.0,
+      "live_state": true
+    },
+    {
+      "coin": "REZ",
+      "ts_ms": 1781950356138,
+      "signal": 1.0,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 0,
+      "value_long_usd": 73.99,
+      "value_short_usd": 0.0,
+      "net_value_usd": 73.99,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.0,
+      "live_state": true
+    },
+    {
+      "coin": "GAS",
+      "ts_ms": 1781950356138,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 1,
+      "value_long_usd": 0.0,
+      "value_short_usd": 58.16,
+      "net_value_usd": -58.16,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.0,
+      "live_state": true
+    },
+    {
+      "coin": "MOODENG",
+      "ts_ms": 1781950356138,
+      "signal": 1.0,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 0,
+      "value_long_usd": 57.67,
+      "value_short_usd": 0.0,
+      "net_value_usd": 57.67,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.0,
+      "live_state": true
+    },
+    {
+      "coin": "ZEN",
+      "ts_ms": 1781950356138,
+      "signal": 1.0,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 0,
+      "value_long_usd": 51.59,
+      "value_short_usd": 0.0,
+      "net_value_usd": 51.59,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.0,
+      "live_state": true
+    },
+    {
+      "coin": "GMX",
+      "ts_ms": 1781950356138,
+      "signal": 1.0,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 0,
+      "value_long_usd": 33.39,
+      "value_short_usd": 0.0,
+      "net_value_usd": 33.39,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.0,
+      "live_state": true
+    },
+    {
+      "coin": "BSV",
+      "ts_ms": 1781950356138,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 1,
+      "value_long_usd": 0.0,
+      "value_short_usd": 8.25,
+      "net_value_usd": -8.25,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.0,
+      "live_state": true
+    },
+    {
+      "coin": "PROVE",
+      "ts_ms": 1781950356138,
+      "signal": 1.0,
+      "confidence": "High",
+      "wallets_long": 1,
+      "wallets_short": 0,
+      "value_long_usd": 2.34,
+      "value_short_usd": 0.0,
+      "net_value_usd": 2.34,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.0,
+      "live_state": true
+    },
+    {
+      "coin": "KNEIRO",
+      "ts_ms": 1781950356138,
+      "signal": -1.0,
+      "confidence": "High",
+      "wallets_long": 0,
+      "wallets_short": 1,
+      "value_long_usd": 0.0,
+      "value_short_usd": 0.01,
+      "net_value_usd": -0.01,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.0,
+      "live_state": true
+    },
+    {
+      "coin": "XYZMU",
+      "ts_ms": 1781950378602,
+      "signal": 0.0,
+      "confidence": "Low",
+      "wallets_long": 0,
+      "wallets_short": 0,
+      "value_long_usd": 0.0,
+      "value_short_usd": 0.0,
+      "net_value_usd": 0.0,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.0,
+      "live_state": true
+    },
+    {
+      "coin": "XYZINTC",
+      "ts_ms": 1781950378602,
+      "signal": 0.0,
+      "confidence": "Low",
+      "wallets_long": 0,
+      "wallets_short": 0,
+      "value_long_usd": 0.0,
+      "value_short_usd": 0.0,
+      "net_value_usd": 0.0,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.0,
+      "live_state": true
+    },
+    {
+      "coin": "XYZWDC",
+      "ts_ms": 1781950378602,
+      "signal": 0.0,
+      "confidence": "Low",
+      "wallets_long": 0,
+      "wallets_short": 0,
+      "value_long_usd": 0.0,
+      "value_short_usd": 0.0,
+      "net_value_usd": 0.0,
+      "value_long_pct_total": 0.0,
+      "value_short_pct_total": 0.0,
+      "live_state": true
+    }
+  ],
+  "targets": [
+    {
+      "ts_ms": 1781950378602,
+      "coin": "ETH",
+      "target_weight": 0.354301,
+      "index_weight": -0.354301,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "HYPE",
+      "target_weight": 0.273088,
+      "index_weight": 0.273088,
+      "direction": "long"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "BTC",
+      "target_weight": 0.159103,
+      "index_weight": -0.159103,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "XMR",
+      "target_weight": 0.025407,
+      "index_weight": -0.025407,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "ZEC",
+      "target_weight": 0.023513,
+      "index_weight": 0.023513,
+      "direction": "long"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "SOL",
+      "target_weight": 0.021461,
+      "index_weight": -0.021461,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "XRP",
+      "target_weight": 0.014117,
+      "index_weight": -0.014117,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "AVAX",
+      "target_weight": 0.013733,
+      "index_weight": -0.013733,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "DOGE",
+      "target_weight": 0.009849,
+      "index_weight": -0.009849,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "MON",
+      "target_weight": 0.00614,
+      "index_weight": -0.00614,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "ZRO",
+      "target_weight": 0.005961,
+      "index_weight": -0.005961,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "ADA",
+      "target_weight": 0.005935,
+      "index_weight": -0.005935,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "EIGEN",
+      "target_weight": 0.004764,
+      "index_weight": -0.004764,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "GRASS",
+      "target_weight": 0.004203,
+      "index_weight": 0.004203,
+      "direction": "long"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "LIT",
+      "target_weight": 0.003649,
+      "index_weight": -0.003649,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "TAO",
+      "target_weight": 0.003537,
+      "index_weight": -0.003537,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "WLFI",
+      "target_weight": 0.003441,
+      "index_weight": -0.003441,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "AERO",
+      "target_weight": 0.003343,
+      "index_weight": 0.003343,
+      "direction": "long"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "UNI",
+      "target_weight": 0.003293,
+      "index_weight": -0.003293,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "LINK",
+      "target_weight": 0.003165,
+      "index_weight": -0.003165,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "FARTCOIN",
+      "target_weight": 0.003135,
+      "index_weight": -0.003135,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "TRUMP",
+      "target_weight": 0.003122,
+      "index_weight": -0.003122,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "SUI",
+      "target_weight": 0.002929,
+      "index_weight": -0.002929,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "PAXG",
+      "target_weight": 0.002777,
+      "index_weight": 0.002777,
+      "direction": "long"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "WLD",
+      "target_weight": 0.002736,
+      "index_weight": -0.002736,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "LTC",
+      "target_weight": 0.002403,
+      "index_weight": -0.002403,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "DOT",
+      "target_weight": 0.002397,
+      "index_weight": -0.002397,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "APT",
+      "target_weight": 0.002297,
+      "index_weight": -0.002297,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "ENA",
+      "target_weight": 0.002044,
+      "index_weight": 0.002044,
+      "direction": "long"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "XPL",
+      "target_weight": 0.001825,
+      "index_weight": -0.001825,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "STRK",
+      "target_weight": 0.001795,
+      "index_weight": -0.001795,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "BNB",
+      "target_weight": 0.001517,
+      "index_weight": -0.001517,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "KPEPE",
+      "target_weight": 0.001483,
+      "index_weight": -0.001483,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "NEAR",
+      "target_weight": 0.001364,
+      "index_weight": -0.001364,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "OP",
+      "target_weight": 0.00135,
+      "index_weight": -0.00135,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "CRV",
+      "target_weight": 0.001297,
+      "index_weight": -0.001297,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "TRX",
+      "target_weight": 0.001286,
+      "index_weight": 0.001286,
+      "direction": "long"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "BCH",
+      "target_weight": 0.001222,
+      "index_weight": -0.001222,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "XLM",
+      "target_weight": 0.001142,
+      "index_weight": -0.001142,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "FET",
+      "target_weight": 0.001136,
+      "index_weight": -0.001136,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "ASTER",
+      "target_weight": 0.000827,
+      "index_weight": -0.000827,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "KSHIB",
+      "target_weight": 0.000814,
+      "index_weight": -0.000814,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "AAVE",
+      "target_weight": 0.000813,
+      "index_weight": 0.000813,
+      "direction": "long"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "JTO",
+      "target_weight": 0.000771,
+      "index_weight": -0.000771,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "INJ",
+      "target_weight": 0.000708,
+      "index_weight": -0.000708,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "ONDO",
+      "target_weight": 0.0007,
+      "index_weight": -0.0007,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "MNT",
+      "target_weight": 0.000698,
+      "index_weight": -0.000698,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "ARB",
+      "target_weight": 0.000612,
+      "index_weight": -0.000612,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "WIF",
+      "target_weight": 0.000608,
+      "index_weight": -0.000608,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "PUMP",
+      "target_weight": 0.000547,
+      "index_weight": 0.000547,
+      "direction": "long"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "KBONK",
+      "target_weight": 0.000535,
+      "index_weight": -0.000535,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "STBL",
+      "target_weight": 0.000503,
+      "index_weight": -0.000503,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "TIA",
+      "target_weight": 0.000415,
+      "index_weight": -0.000415,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "ATOM",
+      "target_weight": 0.000399,
+      "index_weight": -0.000399,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "DASH",
+      "target_weight": 0.000394,
+      "index_weight": -0.000394,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "MORPHO",
+      "target_weight": 0.000389,
+      "index_weight": -0.000389,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "ICP",
+      "target_weight": 0.000383,
+      "index_weight": -0.000383,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "CC",
+      "target_weight": 0.000336,
+      "index_weight": -0.000336,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "SEI",
+      "target_weight": 0.000334,
+      "index_weight": -0.000334,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "PYTH",
+      "target_weight": 0.000319,
+      "index_weight": -0.000319,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "CHIP",
+      "target_weight": 0.000318,
+      "index_weight": -0.000318,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "NIL",
+      "target_weight": 0.000318,
+      "index_weight": -0.000318,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "POPCAT",
+      "target_weight": 0.000314,
+      "index_weight": -0.000314,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "STABLE",
+      "target_weight": 0.000302,
+      "index_weight": -0.000302,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "IP",
+      "target_weight": 0.0003,
+      "index_weight": -0.0003,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "LAYER",
+      "target_weight": 0.000267,
+      "index_weight": -0.000267,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "AVNT",
+      "target_weight": 0.000247,
+      "index_weight": -0.000247,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "BLUR",
+      "target_weight": 0.000245,
+      "index_weight": -0.000245,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "MINA",
+      "target_weight": 0.000235,
+      "index_weight": -0.000235,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "MERL",
+      "target_weight": 0.000234,
+      "index_weight": -0.000234,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "SPX",
+      "target_weight": 0.000229,
+      "index_weight": -0.000229,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "MET",
+      "target_weight": 0.000221,
+      "index_weight": -0.000221,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "ZETA",
+      "target_weight": 0.000216,
+      "index_weight": -0.000216,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "FIL",
+      "target_weight": 0.000207,
+      "index_weight": -0.000207,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "KAS",
+      "target_weight": 0.000207,
+      "index_weight": -0.000207,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "ETHFI",
+      "target_weight": 0.000203,
+      "index_weight": -0.000203,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "CFX",
+      "target_weight": 0.000202,
+      "index_weight": -0.000202,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "S",
+      "target_weight": 0.000186,
+      "index_weight": -0.000186,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "DYDX",
+      "target_weight": 0.000185,
+      "index_weight": -0.000185,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "BERA",
+      "target_weight": 0.000183,
+      "index_weight": -0.000183,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "MEGA",
+      "target_weight": 0.00018,
+      "index_weight": -0.00018,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "GRIFFAIN",
+      "target_weight": 0.000175,
+      "index_weight": -0.000175,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "RUNE",
+      "target_weight": 0.000166,
+      "index_weight": -0.000166,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "W",
+      "target_weight": 0.00016,
+      "index_weight": -0.00016,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "XAI",
+      "target_weight": 0.00016,
+      "index_weight": -0.00016,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "JUP",
+      "target_weight": 0.000152,
+      "index_weight": -0.000152,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "PENDLE",
+      "target_weight": 0.000145,
+      "index_weight": -0.000145,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "HBAR",
+      "target_weight": 0.000136,
+      "index_weight": -0.000136,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "LDO",
+      "target_weight": 0.000121,
+      "index_weight": -0.000121,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "2Z",
+      "target_weight": 0.000119,
+      "index_weight": 0.000119,
+      "direction": "long"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "ZORA",
+      "target_weight": 0.000118,
+      "index_weight": -0.000118,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "MANTA",
+      "target_weight": 0.000106,
+      "index_weight": -0.000106,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "SYRUP",
+      "target_weight": 0.000104,
+      "index_weight": -0.000104,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "BIO",
+      "target_weight": 9.8e-05,
+      "index_weight": -9.8e-05,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "VVV",
+      "target_weight": 9.1e-05,
+      "index_weight": 9.1e-05,
+      "direction": "long"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "NOT",
+      "target_weight": 9e-05,
+      "index_weight": 9e-05,
+      "direction": "long"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "AR",
+      "target_weight": 7.8e-05,
+      "index_weight": -7.8e-05,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "COMP",
+      "target_weight": 6.9e-05,
+      "index_weight": -6.9e-05,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "ALGO",
+      "target_weight": 5.7e-05,
+      "index_weight": -5.7e-05,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "POL",
+      "target_weight": 5.2e-05,
+      "index_weight": -5.2e-05,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "PENGU",
+      "target_weight": 5e-05,
+      "index_weight": 5e-05,
+      "direction": "long"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "VIRTUAL",
+      "target_weight": 4e-05,
+      "index_weight": 4e-05,
+      "direction": "long"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "SKY",
+      "target_weight": 3.3e-05,
+      "index_weight": 3.3e-05,
+      "direction": "long"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "RESOLV",
+      "target_weight": 3.1e-05,
+      "index_weight": 3.1e-05,
+      "direction": "long"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "IO",
+      "target_weight": 2.8e-05,
+      "index_weight": -2.8e-05,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "FOGO",
+      "target_weight": 2.3e-05,
+      "index_weight": -2.3e-05,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "ETC",
+      "target_weight": 1.9e-05,
+      "index_weight": -1.9e-05,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "MOVE",
+      "target_weight": 1.7e-05,
+      "index_weight": 1.7e-05,
+      "direction": "long"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "IMX",
+      "target_weight": 1.6e-05,
+      "index_weight": -1.6e-05,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "ZK",
+      "target_weight": 1.6e-05,
+      "index_weight": 1.6e-05,
+      "direction": "long"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "SNX",
+      "target_weight": 1.6e-05,
+      "index_weight": -1.6e-05,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "SUSHI",
+      "target_weight": 1.3e-05,
+      "index_weight": -1.3e-05,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "HMSTR",
+      "target_weight": 1.3e-05,
+      "index_weight": 1.3e-05,
+      "direction": "long"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "GOAT",
+      "target_weight": 1.1e-05,
+      "index_weight": -1.1e-05,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "LINEA",
+      "target_weight": 1e-05,
+      "index_weight": -1e-05,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "MELANIA",
+      "target_weight": 1e-05,
+      "index_weight": -1e-05,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "ENS",
+      "target_weight": 9e-06,
+      "index_weight": -9e-06,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "HEMI",
+      "target_weight": 8e-06,
+      "index_weight": -8e-06,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "PURR",
+      "target_weight": 6e-06,
+      "index_weight": -6e-06,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "NEO",
+      "target_weight": 6e-06,
+      "index_weight": -6e-06,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "KAITO",
+      "target_weight": 4e-06,
+      "index_weight": -4e-06,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "KFLOKI",
+      "target_weight": 4e-06,
+      "index_weight": 4e-06,
+      "direction": "long"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "ARK",
+      "target_weight": 4e-06,
+      "index_weight": -4e-06,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "NXPC",
+      "target_weight": 4e-06,
+      "index_weight": -4e-06,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "AZTEC",
+      "target_weight": 4e-06,
+      "index_weight": -4e-06,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "APE",
+      "target_weight": 3e-06,
+      "index_weight": 3e-06,
+      "direction": "long"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "TURBO",
+      "target_weight": 3e-06,
+      "index_weight": -3e-06,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "TRB",
+      "target_weight": 3e-06,
+      "index_weight": -3e-06,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "CAKE",
+      "target_weight": 2e-06,
+      "index_weight": -2e-06,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "0G",
+      "target_weight": 2e-06,
+      "index_weight": -2e-06,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "CELO",
+      "target_weight": 2e-06,
+      "index_weight": -2e-06,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "YGG",
+      "target_weight": 2e-06,
+      "index_weight": -2e-06,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "RENDER",
+      "target_weight": 2e-06,
+      "index_weight": 2e-06,
+      "direction": "long"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "GALA",
+      "target_weight": 2e-06,
+      "index_weight": -2e-06,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "DOOD",
+      "target_weight": 1e-06,
+      "index_weight": 1e-06,
+      "direction": "long"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "BANANA",
+      "target_weight": 1e-06,
+      "index_weight": 1e-06,
+      "direction": "long"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "KLUNC",
+      "target_weight": 1e-06,
+      "index_weight": 1e-06,
+      "direction": "long"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "TNSR",
+      "target_weight": 1e-06,
+      "index_weight": 1e-06,
+      "direction": "long"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "BIGTIME",
+      "target_weight": 1e-06,
+      "index_weight": 1e-06,
+      "direction": "long"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "RSR",
+      "target_weight": 1e-06,
+      "index_weight": 1e-06,
+      "direction": "long"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "ANIME",
+      "target_weight": 1e-06,
+      "index_weight": 1e-06,
+      "direction": "long"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "SAND",
+      "target_weight": 1e-06,
+      "index_weight": -1e-06,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "GMT",
+      "target_weight": 1e-06,
+      "index_weight": -1e-06,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "DYM",
+      "target_weight": 1e-06,
+      "index_weight": -1e-06,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "ME",
+      "target_weight": 1e-06,
+      "index_weight": -1e-06,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "USUAL",
+      "target_weight": 1e-06,
+      "index_weight": -1e-06,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "POLYX",
+      "target_weight": 1e-06,
+      "index_weight": -1e-06,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "BOME",
+      "target_weight": 1e-06,
+      "index_weight": -1e-06,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "VINE",
+      "target_weight": 1e-06,
+      "index_weight": 1e-06,
+      "direction": "long"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "SKR",
+      "target_weight": 1e-06,
+      "index_weight": 1e-06,
+      "direction": "long"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "HYPER",
+      "target_weight": 1e-06,
+      "index_weight": 1e-06,
+      "direction": "long"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "PEOPLE",
+      "target_weight": 1e-06,
+      "index_weight": -1e-06,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "ORDI",
+      "target_weight": 1e-06,
+      "index_weight": -1e-06,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "BRETT",
+      "target_weight": 1e-06,
+      "index_weight": -1e-06,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "SOPH",
+      "target_weight": 0.0,
+      "index_weight": -0.0,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "IOTA",
+      "target_weight": 0.0,
+      "index_weight": -0.0,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "ALT",
+      "target_weight": 0.0,
+      "index_weight": -0.0,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "REZ",
+      "target_weight": 0.0,
+      "index_weight": 0.0,
+      "direction": "long"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "GAS",
+      "target_weight": 0.0,
+      "index_weight": -0.0,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "MOODENG",
+      "target_weight": 0.0,
+      "index_weight": 0.0,
+      "direction": "long"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "ZEN",
+      "target_weight": 0.0,
+      "index_weight": 0.0,
+      "direction": "long"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "SAGA",
+      "target_weight": 0.0,
+      "index_weight": 0.0,
+      "direction": "long"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "GMX",
+      "target_weight": 0.0,
+      "index_weight": 0.0,
+      "direction": "long"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "BSV",
+      "target_weight": 0.0,
+      "index_weight": -0.0,
+      "direction": "short"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "PROVE",
+      "target_weight": 0.0,
+      "index_weight": 0.0,
+      "direction": "long"
+    },
+    {
+      "ts_ms": 1781950378602,
+      "coin": "KNEIRO",
+      "target_weight": 0.0,
+      "index_weight": -0.0,
+      "direction": "short"
+    }
+  ],
+  "flow": [
+    {
+      "coin": "XYZMU",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 27421.2,
+      "bearish_flow_usd": 80425.8,
+      "net_value_flow_usd": -53004.61
+    },
+    {
+      "coin": "ZEC",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 1329.13,
+      "bearish_flow_usd": 24791.08,
+      "net_value_flow_usd": -23461.94
+    },
+    {
+      "coin": "SOL",
+      "net_buyer_count": -2,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 23343.25,
+      "net_value_flow_usd": -23343.25
+    },
+    {
+      "coin": "HYPE",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 923.43,
+      "bearish_flow_usd": 20074.27,
+      "net_value_flow_usd": -19150.84
+    },
+    {
+      "coin": "XYZINTC",
+      "net_buyer_count": -1,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 12499.64,
+      "net_value_flow_usd": -12499.64
+    },
+    {
+      "coin": "XYZWDC",
+      "net_buyer_count": -1,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 3489.28,
+      "net_value_flow_usd": -3489.28
+    },
+    {
+      "coin": "NEAR",
+      "net_buyer_count": -1,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 1655.22,
+      "net_value_flow_usd": -1655.22
+    },
+    {
+      "coin": "EIGEN",
+      "net_buyer_count": -1,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 813.65,
+      "net_value_flow_usd": -813.65
+    },
+    {
+      "coin": "TRX",
+      "net_buyer_count": -2,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 743.66,
+      "net_value_flow_usd": -743.66
+    },
+    {
+      "coin": "XMR",
+      "net_buyer_count": 1,
+      "bullish_flow_usd": 666.64,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 666.64
+    },
+    {
+      "coin": "LIT",
+      "net_buyer_count": -1,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 564.02,
+      "net_value_flow_usd": -564.02
+    },
+    {
+      "coin": "JTO",
+      "net_buyer_count": 1,
+      "bullish_flow_usd": 274.7,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 274.7
+    },
+    {
+      "coin": "SUI",
+      "net_buyer_count": 1,
+      "bullish_flow_usd": 162.21,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 162.21
+    },
+    {
+      "coin": "AVAX",
+      "net_buyer_count": -1,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 80.51,
+      "net_value_flow_usd": -80.51
+    },
+    {
+      "coin": "JUP",
+      "net_buyer_count": -1,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 48.5,
+      "net_value_flow_usd": -48.5
+    },
+    {
+      "coin": "PENDLE",
+      "net_buyer_count": -1,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 30.41,
+      "net_value_flow_usd": -30.41
+    },
+    {
+      "coin": "ETH",
+      "net_buyer_count": 1,
+      "bullish_flow_usd": 27.83,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 27.83
+    },
+    {
+      "coin": "WIF",
+      "net_buyer_count": 1,
+      "bullish_flow_usd": 18.23,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 18.23
+    },
+    {
+      "coin": "BCH",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 26.1,
+      "bearish_flow_usd": 28.1,
+      "net_value_flow_usd": -2.0
+    },
+    {
+      "coin": "BTC",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "XRP",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "WLD",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "DOGE",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "AERO",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "ZRO",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "BNB",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "MON",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "GRASS",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "AAVE",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "ADA",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "XPL",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "ASTER",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "WLFI",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "PUMP",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "TAO",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "UNI",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "ENA",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "VVV",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "TRUMP",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "LINK",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "FARTCOIN",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "PAXG",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "KPEPE",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "APT",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "LTC",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "DOT",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "STRK",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "OP",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "CRV",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "CHIP",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "XLM",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "ONDO",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "FET",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "KSHIB",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "INJ",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "MNT",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "MORPHO",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "ARB",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "SPX",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "KBONK",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "STBL",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "NIL",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "FIL",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "ATOM",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "VIRTUAL",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "STABLE",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "TIA",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "CC",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "PENGU",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "DASH",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "ICP",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "POPCAT",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "SEI",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "PYTH",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "IP",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "AVNT",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "ETHFI",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "LAYER",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "BLUR",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "ZORA",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "MINA",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "MERL",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "MET",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "ZETA",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "KAS",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "CFX",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "BERA",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "S",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "DYDX",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "MEGA",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "GRIFFAIN",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "SYRUP",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "RUNE",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "W",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "XAI",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "HBAR",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "LDO",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "2Z",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "MANTA",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "BIO",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "NOT",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "AR",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "COMP",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "ALGO",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "POL",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "SKY",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "PURR",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "RESOLV",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "IO",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "ETC",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "FOGO",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "ZK",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "MOVE",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "IMX",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "SNX",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "GOAT",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "SUSHI",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "HMSTR",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "LINEA",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "MELANIA",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "ENS",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "HEMI",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "APE",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "NEO",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "KAITO",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "KFLOKI",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "ARK",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "NXPC",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "AZTEC",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "TURBO",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "TRB",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "CAKE",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "0G",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "CELO",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "YGG",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "RENDER",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "GALA",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "DOOD",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "BANANA",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "KLUNC",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "TNSR",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "BIGTIME",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "RSR",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "ANIME",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "SAND",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "GMT",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "DYM",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "ME",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "SKR",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "USUAL",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "POLYX",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "BOME",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "ALT",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "VINE",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "HYPER",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "PEOPLE",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "ORDI",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "BRETT",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "SOPH",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "IOTA",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "SAGA",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "REZ",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "GAS",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "MOODENG",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "ZEN",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "GMX",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "BSV",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "PROVE",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    },
+    {
+      "coin": "KNEIRO",
+      "net_buyer_count": 0,
+      "bullish_flow_usd": 0.0,
+      "bearish_flow_usd": 0.0,
+      "net_value_flow_usd": 0.0
+    }
+  ],
+  "orders": [
+    {
+      "ts_ms": 1781949899163,
+      "wallet": "0x17c3c8fdbcb7d1b240ce08965e09b1fc91cba868",
+      "wallet_label": "0x17c3\u2026a868",
+      "coin": "HYPE",
+      "side": "Open Long",
+      "delta_value_usd": 894.31,
+      "position_value_usd": 894.31,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781949899033,
+      "wallet": "0x17c3c8fdbcb7d1b240ce08965e09b1fc91cba868",
+      "wallet_label": "0x17c3\u2026a868",
+      "coin": "HYPE",
+      "side": "Open Long",
+      "delta_value_usd": 29.12,
+      "position_value_usd": 29.12,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781949633308,
+      "wallet": "0x5ad96a3986b9d2cfab1d39c68002edd17263f5ef",
+      "wallet_label": "0x5ad9\u2026f5ef",
+      "coin": "XMR",
+      "side": "Close Short",
+      "delta_value_usd": 666.64,
+      "position_value_usd": 666.64,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781948596209,
+      "wallet": "0x5ad96a3986b9d2cfab1d39c68002edd17263f5ef",
+      "wallet_label": "0x5ad9\u2026f5ef",
+      "coin": "ETH",
+      "side": "Close Short",
+      "delta_value_usd": 27.83,
+      "position_value_usd": 27.83,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781948578010,
+      "wallet": "0x5ad96a3986b9d2cfab1d39c68002edd17263f5ef",
+      "wallet_label": "0x5ad9\u2026f5ef",
+      "coin": "BCH",
+      "side": "Open Short",
+      "delta_value_usd": 28.1,
+      "position_value_usd": 28.1,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781948403188,
+      "wallet": "0x5ad96a3986b9d2cfab1d39c68002edd17263f5ef",
+      "wallet_label": "0x5ad9\u2026f5ef",
+      "coin": "BCH",
+      "side": "Close Short",
+      "delta_value_usd": 26.1,
+      "position_value_usd": 26.1,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947937974,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:INTC",
+      "side": "Close Long",
+      "delta_value_usd": 12499.64,
+      "position_value_usd": 12499.64,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947447172,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Close Short",
+      "delta_value_usd": 1000.42,
+      "position_value_usd": 1000.42,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947447105,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Close Short",
+      "delta_value_usd": 1000.42,
+      "position_value_usd": 1000.42,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947447105,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Close Short",
+      "delta_value_usd": 1894.32,
+      "position_value_usd": 1894.32,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947447037,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Close Short",
+      "delta_value_usd": 2999.81,
+      "position_value_usd": 2999.81,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947446971,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Close Short",
+      "delta_value_usd": 1530.74,
+      "position_value_usd": 1530.74,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947446570,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Close Short",
+      "delta_value_usd": 2000.36,
+      "position_value_usd": 2000.36,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947446570,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Close Short",
+      "delta_value_usd": 1000.27,
+      "position_value_usd": 1000.27,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947446271,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Close Short",
+      "delta_value_usd": 708.07,
+      "position_value_usd": 708.07,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947446271,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Close Short",
+      "delta_value_usd": 2000.36,
+      "position_value_usd": 2000.36,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947446271,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Close Short",
+      "delta_value_usd": 1000.36,
+      "position_value_usd": 1000.36,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947446205,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Close Short",
+      "delta_value_usd": 2292.21,
+      "position_value_usd": 2292.21,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947446205,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Close Short",
+      "delta_value_usd": 2000.36,
+      "position_value_usd": 2000.36,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947446205,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Close Short",
+      "delta_value_usd": 1508.73,
+      "position_value_usd": 1508.73,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947446205,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Close Short",
+      "delta_value_usd": 1000.36,
+      "position_value_usd": 1000.36,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947446071,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Close Short",
+      "delta_value_usd": 491.63,
+      "position_value_usd": 491.63,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947446071,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Close Short",
+      "delta_value_usd": 1000.36,
+      "position_value_usd": 1000.36,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947446071,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Close Short",
+      "delta_value_usd": 1999.59,
+      "position_value_usd": 1999.59,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947446071,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Close Short",
+      "delta_value_usd": 999.23,
+      "position_value_usd": 999.23,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947445802,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 172.6,
+      "position_value_usd": 172.6,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947445115,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 713.09,
+      "position_value_usd": 713.09,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947445115,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 2000.48,
+      "position_value_usd": 2000.48,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947445115,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 980.49,
+      "position_value_usd": 980.49,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947445047,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 171.46,
+      "position_value_usd": 171.46,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947444915,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 829.08,
+      "position_value_usd": 829.08,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947444915,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 949.78,
+      "position_value_usd": 949.78,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947444647,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 841.64,
+      "position_value_usd": 841.64,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947444515,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 157.95,
+      "position_value_usd": 157.95,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947444515,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 1000.62,
+      "position_value_usd": 1000.62,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947444444,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 31.6,
+      "position_value_usd": 31.6,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947444444,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 352.06,
+      "position_value_usd": 352.06,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947444374,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 2101.08,
+      "position_value_usd": 2101.08,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947444374,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 999.61,
+      "position_value_usd": 999.61,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947444232,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 547.27,
+      "position_value_usd": 547.27,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947444232,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 999.59,
+      "position_value_usd": 999.59,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947444232,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 1720.35,
+      "position_value_usd": 1720.35,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947444161,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 279.77,
+      "position_value_usd": 279.77,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947444161,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 2898.09,
+      "position_value_usd": 2898.09,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947444161,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 1000.36,
+      "position_value_usd": 1000.36,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947444022,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 436.42,
+      "position_value_usd": 436.42,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947443957,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 1000.14,
+      "position_value_usd": 1000.14,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947443822,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 714.28,
+      "position_value_usd": 714.28,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947443822,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 1000.27,
+      "position_value_usd": 1000.27,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947443752,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 399.21,
+      "position_value_usd": 399.21,
+      "source": "live_ws"
+    }
+  ],
+  "insights": [
+    {
+      "type": "top_signal",
+      "label": "Top conviction asset",
+      "coin": "AVAX",
+      "detail": "Signal -1.0000 \u00b7 High",
+      "row": {
+        "coin": "AVAX",
+        "ts_ms": 1781950377007,
+        "signal": -1.0,
+        "confidence": "High",
+        "wallets_long": 0,
+        "wallets_short": 13,
+        "wallets_flat": 0,
+        "value_long_usd": 0.0,
+        "value_short_usd": 4663659.764540001,
+        "net_value_usd": -4663659.764540001,
+        "value_long_pct_total": 0.0,
+        "value_short_pct_total": 0.00998615025153412,
+        "net_buyer_count": -1,
+        "bullish_value_flow_usd": 0.0,
+        "bearish_value_flow_usd": 80.509,
+        "bullish_flow_usd": 0.0,
+        "bearish_flow_usd": 80.509,
+        "net_value_flow_usd": -80.509,
+        "total_tracked_value_usd": 113773931.516407,
+        "live_state": true
+      }
+    },
+    {
+      "type": "accumulation",
+      "label": "Biggest accumulation",
+      "coin": "XMR",
+      "detail": "Net flow $667",
+      "row": {
+        "coin": "XMR",
+        "ts_ms": 1781950377007,
+        "signal": -0.9576143580514388,
+        "confidence": "High",
+        "wallets_long": 1,
+        "wallets_short": 7,
+        "wallets_flat": 0,
+        "value_long_usd": 190941.0,
+        "value_short_usd": 8818760.92839,
+        "net_value_usd": -8627819.92839,
+        "value_long_pct_total": 0.00040885605113739464,
+        "value_short_pct_total": 0.01888333971806097,
+        "net_buyer_count": 1,
+        "bullish_value_flow_usd": 666.642840000104,
+        "bearish_value_flow_usd": 0.0,
+        "bullish_flow_usd": 666.642840000104,
+        "bearish_flow_usd": 0.0,
+        "net_value_flow_usd": 666.642840000104,
+        "total_tracked_value_usd": 113773931.516407,
+        "live_state": true
+      }
+    },
+    {
+      "type": "distribution",
+      "label": "Biggest distribution",
+      "coin": "XYZMU",
+      "detail": "Net flow $-53,005",
+      "row": {
+        "coin": "XYZMU",
+        "ts_ms": 1781950378602,
+        "signal": 0.0,
+        "confidence": "Low",
+        "wallets_long": 0,
+        "wallets_short": 0,
+        "wallets_flat": 0,
+        "value_long_usd": 0.0,
+        "value_short_usd": 0.0,
+        "net_value_usd": 0.0,
+        "value_long_pct_total": 0.0,
+        "value_short_pct_total": 0.0,
+        "net_buyer_count": 0,
+        "bullish_value_flow_usd": 27421.196200000006,
+        "bearish_value_flow_usd": 80425.80380000014,
+        "bullish_flow_usd": 27421.196200000006,
+        "bearish_flow_usd": 80425.80380000014,
+        "net_value_flow_usd": -53004.607600000134,
+        "total_tracked_value_usd": 113773931.516407,
+        "live_state": true
+      }
+    },
+    {
+      "type": "most_traded",
+      "label": "Most traded asset",
+      "coin": "XYZMU",
+      "detail": "Gross flow $107,847",
+      "row": {
+        "coin": "XYZMU",
+        "ts_ms": 1781950378602,
+        "signal": 0.0,
+        "confidence": "Low",
+        "wallets_long": 0,
+        "wallets_short": 0,
+        "wallets_flat": 0,
+        "value_long_usd": 0.0,
+        "value_short_usd": 0.0,
+        "net_value_usd": 0.0,
+        "value_long_pct_total": 0.0,
+        "value_short_pct_total": 0.0,
+        "net_buyer_count": 0,
+        "bullish_value_flow_usd": 27421.196200000006,
+        "bearish_value_flow_usd": 80425.80380000014,
+        "bullish_flow_usd": 27421.196200000006,
+        "bearish_flow_usd": 80425.80380000014,
+        "net_value_flow_usd": -53004.607600000134,
+        "total_tracked_value_usd": 113773931.516407,
+        "live_state": true
+      }
+    },
+    {
+      "type": "disagreement",
+      "label": "Wallet count vs value disagreement",
+      "coin": "GRASS",
+      "detail": "1 long / 5 short \u00b7 net $1,427,240",
+      "row": {
+        "coin": "GRASS",
+        "ts_ms": 1781950362718,
+        "signal": 0.6893860591821191,
+        "confidence": "High",
+        "wallets_long": 1,
+        "wallets_short": 5,
+        "wallets_flat": 0,
+        "value_long_usd": 1748773.0,
+        "value_short_usd": 321532.94397900003,
+        "net_value_usd": 1427240.056021,
+        "value_long_pct_total": 0.003744593477124845,
+        "value_short_pct_total": 0.0006884885372226765,
+        "net_buyer_count": 0,
+        "bullish_value_flow_usd": 0.0,
+        "bearish_value_flow_usd": 0.0,
+        "bullish_flow_usd": 0.0,
+        "bearish_flow_usd": 0.0,
+        "net_value_flow_usd": 0.0,
+        "total_tracked_value_usd": 113773931.516407,
+        "live_state": true
+      }
+    }
+  ],
+  "server_time_ms": 1781950422238,
+  "cache_ttl_ms": 8000,
+  "public_readonly": true,
+  "snapshot_generated_at_ms": 1782060218583,
+  "snapshot_notice": "Static Cloudflare snapshot. Live updates resume when a publisher is running."
+}

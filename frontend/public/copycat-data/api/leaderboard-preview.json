@@ -1,0 +1,8 @@
+{
+  "product": "Copycat snapshot API",
+  "mode": "snapshot",
+  "as_of_ms": 1782060218583,
+  "scope_label": "Copycat-ranked wallet intelligence snapshot",
+  "rows": [],
+  "note": "Wallet-level leaderboard is served from the live publisher once configured. This seed keeps the customer site online without Supabase egress."
+}

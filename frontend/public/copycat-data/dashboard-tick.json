@@ -1,0 +1,528 @@
+{
+  "summary": {
+    "latest_signal_ts_ms": 1781950172678,
+    "latest_position_ts_ms": 1781950378602,
+    "latest_live_state_ts_ms": 1781950378602,
+    "live_state_active": true,
+    "live_coverage_mode": "live_hybrid",
+    "live_wallets": 15,
+    "snapshot_wallets": 35,
+    "qualified_wallets": 50,
+    "tracked_account_value_usd": 113777540.35,
+    "largest_account_value_usd": 27207077.07,
+    "tracked_open_position_value_usd": 467012777.4,
+    "open_positions": 827,
+    "assets_with_signals": 166,
+    "markets_monitored": 230,
+    "data_quality_status": "healthy",
+    "data_quality_age_seconds": 97.328,
+    "data_quality_message": "Live/hybrid Hyperliquid state active"
+  },
+  "orders": [
+    {
+      "ts_ms": 1781949899163,
+      "wallet": "0x17c3c8fdbcb7d1b240ce08965e09b1fc91cba868",
+      "wallet_label": "0x17c3\u2026a868",
+      "coin": "HYPE",
+      "side": "Open Long",
+      "delta_value_usd": 894.31,
+      "position_value_usd": 894.31,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781949899033,
+      "wallet": "0x17c3c8fdbcb7d1b240ce08965e09b1fc91cba868",
+      "wallet_label": "0x17c3\u2026a868",
+      "coin": "HYPE",
+      "side": "Open Long",
+      "delta_value_usd": 29.12,
+      "position_value_usd": 29.12,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781949633308,
+      "wallet": "0x5ad96a3986b9d2cfab1d39c68002edd17263f5ef",
+      "wallet_label": "0x5ad9\u2026f5ef",
+      "coin": "XMR",
+      "side": "Close Short",
+      "delta_value_usd": 666.64,
+      "position_value_usd": 666.64,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781948596209,
+      "wallet": "0x5ad96a3986b9d2cfab1d39c68002edd17263f5ef",
+      "wallet_label": "0x5ad9\u2026f5ef",
+      "coin": "ETH",
+      "side": "Close Short",
+      "delta_value_usd": 27.83,
+      "position_value_usd": 27.83,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781948578010,
+      "wallet": "0x5ad96a3986b9d2cfab1d39c68002edd17263f5ef",
+      "wallet_label": "0x5ad9\u2026f5ef",
+      "coin": "BCH",
+      "side": "Open Short",
+      "delta_value_usd": 28.1,
+      "position_value_usd": 28.1,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781948403188,
+      "wallet": "0x5ad96a3986b9d2cfab1d39c68002edd17263f5ef",
+      "wallet_label": "0x5ad9\u2026f5ef",
+      "coin": "BCH",
+      "side": "Close Short",
+      "delta_value_usd": 26.1,
+      "position_value_usd": 26.1,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947937974,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:INTC",
+      "side": "Close Long",
+      "delta_value_usd": 12499.64,
+      "position_value_usd": 12499.64,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947447172,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Close Short",
+      "delta_value_usd": 1000.42,
+      "position_value_usd": 1000.42,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947447105,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Close Short",
+      "delta_value_usd": 1000.42,
+      "position_value_usd": 1000.42,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947447105,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Close Short",
+      "delta_value_usd": 1894.32,
+      "position_value_usd": 1894.32,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947447037,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Close Short",
+      "delta_value_usd": 2999.81,
+      "position_value_usd": 2999.81,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947446971,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Close Short",
+      "delta_value_usd": 1530.74,
+      "position_value_usd": 1530.74,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947446570,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Close Short",
+      "delta_value_usd": 2000.36,
+      "position_value_usd": 2000.36,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947446570,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Close Short",
+      "delta_value_usd": 1000.27,
+      "position_value_usd": 1000.27,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947446271,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Close Short",
+      "delta_value_usd": 708.07,
+      "position_value_usd": 708.07,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947446271,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Close Short",
+      "delta_value_usd": 2000.36,
+      "position_value_usd": 2000.36,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947446271,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Close Short",
+      "delta_value_usd": 1000.36,
+      "position_value_usd": 1000.36,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947446205,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Close Short",
+      "delta_value_usd": 2292.21,
+      "position_value_usd": 2292.21,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947446205,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Close Short",
+      "delta_value_usd": 2000.36,
+      "position_value_usd": 2000.36,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947446205,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Close Short",
+      "delta_value_usd": 1508.73,
+      "position_value_usd": 1508.73,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947446205,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Close Short",
+      "delta_value_usd": 1000.36,
+      "position_value_usd": 1000.36,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947446071,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Close Short",
+      "delta_value_usd": 491.63,
+      "position_value_usd": 491.63,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947446071,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Close Short",
+      "delta_value_usd": 1000.36,
+      "position_value_usd": 1000.36,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947446071,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Close Short",
+      "delta_value_usd": 1999.59,
+      "position_value_usd": 1999.59,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947446071,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Close Short",
+      "delta_value_usd": 999.23,
+      "position_value_usd": 999.23,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947445802,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 172.6,
+      "position_value_usd": 172.6,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947445115,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 713.09,
+      "position_value_usd": 713.09,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947445115,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 2000.48,
+      "position_value_usd": 2000.48,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947445115,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 980.49,
+      "position_value_usd": 980.49,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947445047,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 171.46,
+      "position_value_usd": 171.46,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947444915,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 829.08,
+      "position_value_usd": 829.08,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947444915,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 949.78,
+      "position_value_usd": 949.78,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947444647,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 841.64,
+      "position_value_usd": 841.64,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947444515,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 157.95,
+      "position_value_usd": 157.95,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947444515,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 1000.62,
+      "position_value_usd": 1000.62,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947444444,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 31.6,
+      "position_value_usd": 31.6,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947444444,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 352.06,
+      "position_value_usd": 352.06,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947444374,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 2101.08,
+      "position_value_usd": 2101.08,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947444374,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 999.61,
+      "position_value_usd": 999.61,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947444232,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 547.27,
+      "position_value_usd": 547.27,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947444232,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 999.59,
+      "position_value_usd": 999.59,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947444232,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 1720.35,
+      "position_value_usd": 1720.35,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947444161,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 279.77,
+      "position_value_usd": 279.77,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947444161,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 2898.09,
+      "position_value_usd": 2898.09,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947444161,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 1000.36,
+      "position_value_usd": 1000.36,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947444022,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 436.42,
+      "position_value_usd": 436.42,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947443957,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 1000.14,
+      "position_value_usd": 1000.14,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947443822,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 714.28,
+      "position_value_usd": 714.28,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947443822,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 1000.27,
+      "position_value_usd": 1000.27,
+      "source": "live_ws"
+    },
+    {
+      "ts_ms": 1781947443752,
+      "wallet": "0x2025137a136bea7446deba681cbfc7cf1970840e",
+      "wallet_label": "0x2025\u2026840e",
+      "coin": "xyz:MU",
+      "side": "Open Short",
+      "delta_value_usd": 399.21,
+      "position_value_usd": 399.21,
+      "source": "live_ws"
+    }
+  ],
+  "server_time_ms": 1781950401225,
+  "cache_ttl_ms": 750,
+  "public_readonly": true,
+  "snapshot_mode": true,
+  "snapshot_generated_at_ms": 1782060218583
+}
