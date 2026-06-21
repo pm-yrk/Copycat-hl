@@ -1,0 +1,5 @@
+# One Hyperliquid wallet address per line.
+# This file is seeded from the current public snapshot. Add more Copycat-ranked wallets here later.
+0x17c3c8fdbcb7d1b240ce08965e09b1fc91cba868
+0x2025137a136bea7446deba681cbfc7cf1970840e
+0x5ad96a3986b9d2cfab1d39c68002edd17263f5ef
