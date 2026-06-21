@@ -120,13 +120,36 @@ def env_int(name: str, default: int) -> int:
         return default
 
 
+def clean_r2_account_id(value: str) -> str:
+    """Accept either a bare Cloudflare account id or a copied R2 endpoint URL."""
+    value = (value or "").strip().strip('"').strip("'")
+    value = value.replace('https://', '').replace('http://', '')
+    value = value.split('/')[0]
+    value = value.replace('.r2.cloudflarestorage.com', '')
+    value = value.strip().strip('.')
+    return value
+
+
+def clean_r2_endpoint_url(value: str, account_id: str) -> str | None:
+    value = (value or "").strip().strip('"').strip("'")
+    if value:
+        value = value.replace('https://https://', 'https://').replace('http://http://', 'http://')
+        value = value.replace('https:/', 'https://').replace('http:/', 'http://')
+        value = value.rstrip('/')
+        if '.r2.cloudflarestorage.com' in value:
+            value = value.split('.r2.cloudflarestorage.com', 1)[0] + '.r2.cloudflarestorage.com'
+        return value
+    account_id = clean_r2_account_id(account_id)
+    if account_id:
+        return f"https://{account_id}.r2.cloudflarestorage.com"
+    return None
+
+
 def load_config() -> Config:
     env_file = Path(os.getenv("COPYCAT_PUBLISHER_ENV", str(DEFAULT_ENV_FILE)))
     load_env_file(env_file)
-    account_id = os.getenv("R2_ACCOUNT_ID", "").strip()
-    endpoint = os.getenv("R2_ENDPOINT_URL", "").strip() or None
-    if not endpoint and account_id:
-        endpoint = f"https://{account_id}.r2.cloudflarestorage.com"
+    account_id = clean_r2_account_id(os.getenv("R2_ACCOUNT_ID", ""))
+    endpoint = clean_r2_endpoint_url(os.getenv("R2_ENDPOINT_URL", ""), account_id)
     out_dir = Path(os.getenv("SNAPSHOT_OUT_DIR", str(DEFAULT_OUT_DIR))).expanduser()
     wallet_file = Path(os.getenv("COPYCAT_WALLET_FILE", str(DEFAULT_WALLET_FILE))).expanduser()
     return Config(
@@ -627,6 +650,7 @@ def upload_r2(config: Config, snapshots: Dict[str, Tuple[str, Dict[str, Any]]]) 
         raise RuntimeError("boto3 is not installed. Run install_snapshot_publisher.cmd first.")
     if not (config.r2_access_key_id and config.r2_secret_access_key and config.r2_endpoint_url and config.r2_bucket):
         raise RuntimeError("Missing R2 credentials. Fill scripts/local_snapshot_publisher/publisher.env first.")
+    log(f"Uploading snapshots to R2 endpoint: {config.r2_endpoint_url}")
     s3 = boto3.client(
         "s3",
         endpoint_url=config.r2_endpoint_url,
