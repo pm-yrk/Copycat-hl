@@ -15,7 +15,6 @@ import os
 import sys
 import time
 import traceback
-from copy import deepcopy
 import urllib.request
 import urllib.error
 from dataclasses import dataclass
@@ -80,8 +79,6 @@ class Config:
     max_wallets: int = 50
     fill_lookback_minutes: int = 60
     request_timeout_seconds: int = 20
-    request_pause_seconds: float = 0.45
-    state_cache_max_age_seconds: int = 6 * 60 * 60
     local_only: bool = False
     upload: bool = True
     out_dir: Path = DEFAULT_OUT_DIR
@@ -119,16 +116,6 @@ def env_int(name: str, default: int) -> int:
         return default
     try:
         return int(value)
-    except Exception:
-        return default
-
-
-def env_float(name: str, default: float) -> float:
-    value = os.getenv(name)
-    if not value:
-        return default
-    try:
-        return float(value)
     except Exception:
         return default
 
@@ -176,8 +163,6 @@ def load_config() -> Config:
         max_wallets=max(1, env_int("COPYCAT_MAX_WALLETS", 50)),
         fill_lookback_minutes=max(5, env_int("FILL_LOOKBACK_MINUTES", 60)),
         request_timeout_seconds=max(5, env_int("REQUEST_TIMEOUT_SECONDS", 20)),
-        request_pause_seconds=max(0.15, env_float("REQUEST_PAUSE_SECONDS", 0.45)),
-        state_cache_max_age_seconds=max(300, env_int("STATE_CACHE_MAX_AGE_SECONDS", 6 * 60 * 60)),
         local_only=env_bool("LOCAL_ONLY", False),
         upload=not env_bool("NO_UPLOAD", False),
         out_dir=out_dir,
@@ -269,97 +254,25 @@ def get_meta(timeout: int) -> Dict[str, Any]:
     return {}
 
 
-def get_state(wallet: str, timeout: int, retries: int = 2) -> Optional[Dict[str, Any]]:
-    for attempt in range(retries + 1):
-        try:
-            raw = hl_post({"type": "clearinghouseState", "user": wallet}, timeout)
-            return raw if isinstance(raw, dict) else None
-        except urllib.error.HTTPError as exc:
-            if exc.code == 429 and attempt < retries:
-                wait = 1.5 * (attempt + 1)
-                log(f"Wallet {short_wallet(wallet)} state HTTP 429; retrying in {wait:.1f}s")
-                time.sleep(wait)
-                continue
-            log(f"Wallet {short_wallet(wallet)} state HTTP error: {exc.code}")
-        except Exception as exc:
-            log(f"Wallet {short_wallet(wallet)} state error: {exc}")
-            break
+def get_state(wallet: str, timeout: int) -> Optional[Dict[str, Any]]:
+    try:
+        raw = hl_post({"type": "clearinghouseState", "user": wallet}, timeout)
+        return raw if isinstance(raw, dict) else None
+    except urllib.error.HTTPError as exc:
+        log(f"Wallet {short_wallet(wallet)} state HTTP error: {exc.code}")
+    except Exception as exc:
+        log(f"Wallet {short_wallet(wallet)} state error: {exc}")
     return None
 
 
-def get_fills(wallet: str, start_ms: int, timeout: int, retries: int = 1) -> List[Dict[str, Any]]:
-    for attempt in range(retries + 1):
-        try:
-            raw = hl_post({"type": "userFillsByTime", "user": wallet, "startTime": start_ms}, timeout)
-            if isinstance(raw, list):
-                return [x for x in raw if isinstance(x, dict)]
-            return []
-        except urllib.error.HTTPError as exc:
-            if exc.code == 429 and attempt < retries:
-                wait = 1.5 * (attempt + 1)
-                log(f"Wallet {short_wallet(wallet)} fills HTTP 429; retrying in {wait:.1f}s")
-                time.sleep(wait)
-                continue
-            log(f"Wallet {short_wallet(wallet)} fills warning: HTTP Error {exc.code}: {exc.reason}")
-        except Exception as exc:
-            log(f"Wallet {short_wallet(wallet)} fills warning: {exc}")
-            break
-    return []
-
-
-def wallet_cache_path() -> Path:
-    return SCRIPT_DIR / "scanner_state" / "wallet_state_cache.json"
-
-
-def load_wallet_state_cache() -> Dict[str, Any]:
-    path = wallet_cache_path()
-    if not path.exists():
-        return {"states": {}}
+def get_fills(wallet: str, start_ms: int, timeout: int) -> List[Dict[str, Any]]:
     try:
-        raw = json.loads(path.read_text(encoding="utf-8"))
-        if isinstance(raw, dict):
-            raw.setdefault("states", {})
-            return raw
-    except Exception:
-        pass
-    return {"states": {}}
-
-
-def save_wallet_state_cache(cache: Dict[str, Any]) -> None:
-    try:
-        path = wallet_cache_path()
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(cache, separators=(",", ":"), ensure_ascii=False), encoding="utf-8")
+        raw = hl_post({"type": "userFillsByTime", "user": wallet, "startTime": start_ms}, timeout)
+        if isinstance(raw, list):
+            return [x for x in raw if isinstance(x, dict)]
     except Exception as exc:
-        log(f"Warning: could not save wallet cache: {exc}")
-
-
-def cached_state_for_wallet(cache: Dict[str, Any], wallet: str, now_ms: int, max_age_seconds: int) -> Optional[Dict[str, Any]]:
-    states = cache.get("states") if isinstance(cache.get("states"), dict) else {}
-    item = states.get(wallet.lower()) if isinstance(states, dict) else None
-    if not isinstance(item, dict):
-        return None
-    updated_at_ms = safe_int(item.get("updated_at_ms"))
-    state = item.get("state")
-    if not isinstance(state, dict) or updated_at_ms <= 0:
-        return None
-    age_seconds = max(0, int((now_ms - updated_at_ms) / 1000))
-    if age_seconds > max_age_seconds:
-        return None
-    cached = deepcopy(state)
-    cached["_copycat_cache_age_seconds"] = age_seconds
-    return cached
-
-
-def remember_wallet_state(cache: Dict[str, Any], wallet: str, state: Dict[str, Any], now_ms: int) -> None:
-    states = cache.setdefault("states", {})
-    if not isinstance(states, dict):
-        states = {}
-        cache["states"] = states
-    clean_state = deepcopy(state)
-    for key in ["_wallet", "_copycat_state_status", "_copycat_cache_age_seconds"]:
-        clean_state.pop(key, None)
-    states[wallet.lower()] = {"updated_at_ms": now_ms, "state": clean_state}
+        log(f"Wallet {short_wallet(wallet)} fills warning: {exc}")
+    return []
 
 
 def position_side(szi: float) -> str:
@@ -551,33 +464,13 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
     states: List[Dict[str, Any]] = []
     orders: List[Dict[str, Any]] = []
     start_ms = now_ms - config.fill_lookback_minutes * 60 * 1000
-    wallet_cache = load_wallet_state_cache()
-    live_state_count = 0
-    stale_state_count = 0
-    missing_state_wallets: List[str] = []
 
     log(f"Fetching Hyperliquid state for {len(wallets)} wallet(s)")
     for idx, wallet in enumerate(wallets, 1):
         state = get_state(wallet, config.request_timeout_seconds)
-        state_status = "live"
-        if state:
-            remember_wallet_state(wallet_cache, wallet, state, now_ms)
-            live_state_count += 1
-        else:
-            cached = cached_state_for_wallet(wallet_cache, wallet, now_ms, config.state_cache_max_age_seconds)
-            if cached:
-                state = cached
-                state_status = "stale"
-                stale_state_count += 1
-                log(f"Wallet {short_wallet(wallet)} using stale cached state ({state.get('_copycat_cache_age_seconds', 0)}s old)")
-            else:
-                state_status = "missing"
-                missing_state_wallets.append(wallet)
         if state:
             state["_wallet"] = wallet
-            state["_copycat_state_status"] = state_status
             states.append(state)
-        time.sleep(max(0.05, config.request_pause_seconds / 2))
         fills = get_fills(wallet, start_ms, config.request_timeout_seconds)
         for fill in fills:
             coin = clean_coin(fill.get("coin"))
@@ -598,10 +491,9 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
                     "source": "local_hyperliquid",
                 }
             )
-        time.sleep(config.request_pause_seconds)
+        time.sleep(0.15)
         if idx % 10 == 0:
             log(f"Fetched {idx}/{len(wallets)} wallet(s)")
-    save_wallet_state_cache(wallet_cache)
 
     by_coin: Dict[str, Dict[str, Any]] = {}
     wallet_rows: List[Dict[str, Any]] = []
@@ -655,7 +547,6 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
             open_value_total += value
             wallet_position_count += 1
             open_positions += 1
-        state_status = str(state.get("_copycat_state_status") or "live")
         wallet_rows.append(
             {
                 "wallet": wallet,
@@ -663,29 +554,9 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
                 "account_value_usd": round(account_value, 2),
                 "open_position_value_usd": round(wallet_open, 2),
                 "open_positions": wallet_position_count,
-                "data_status": state_status,
-                "stale": state_status != "live",
-                "cache_age_seconds": safe_int(state.get("_copycat_cache_age_seconds")),
                 "source": "local_hyperliquid",
             }
         )
-
-    wallet_rows_by_address = {str(row.get("wallet", "")).lower(): row for row in wallet_rows}
-    for wallet in wallets:
-        if wallet.lower() not in wallet_rows_by_address:
-            wallet_rows.append(
-                {
-                    "wallet": wallet,
-                    "wallet_label": short_wallet(wallet),
-                    "account_value_usd": 0.0,
-                    "open_position_value_usd": 0.0,
-                    "open_positions": 0,
-                    "data_status": "missing",
-                    "stale": True,
-                    "cache_age_seconds": None,
-                    "source": "local_hyperliquid",
-                }
-            )
 
     signals: List[Dict[str, Any]] = []
     for coin, row in by_coin.items():
@@ -765,34 +636,18 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
     orders.sort(key=lambda r: safe_int(r.get("ts_ms")), reverse=True)
     orders = orders[:50]
 
-    missing_state_count = len(missing_state_wallets)
-    usable_state_count = len(states)
-    if live_state_count == len(wallets):
-        data_status = "healthy"
-        data_msg = "Local Hyperliquid snapshot publisher active with all 50 wallet states live"
-    elif usable_state_count == len(wallets):
-        data_status = "syncing"
-        data_msg = f"Rate limited by Hyperliquid; using {live_state_count} live and {stale_state_count} cached wallet states"
-    elif usable_state_count:
-        data_status = "degraded"
-        data_msg = f"Rate limited by Hyperliquid; {live_state_count} live, {stale_state_count} cached, {missing_state_count} missing wallet states"
-    else:
-        data_status = "degraded"
-        data_msg = "No wallet states fetched; check wallets.txt and network"
+    data_status = "healthy" if states else "degraded"
+    data_msg = "Local Hyperliquid snapshot publisher active" if states else "No wallet states fetched; check wallets.txt and network"
     summary = {
         "latest_signal_ts_ms": now_ms,
         "latest_position_ts_ms": now_ms,
         "latest_live_state_ts_ms": now_ms,
-        "live_state_active": live_state_count > 0,
+        "live_state_active": bool(states),
         "live_coverage_mode": "local_snapshot",
-        "live_wallets": live_state_count,
-        "snapshot_wallets": usable_state_count,
-        "configured_wallets": len(wallets),
-        "wallets_with_live_state": live_state_count,
-        "wallets_with_stale_state": stale_state_count,
-        "wallets_missing_state": missing_state_count,
-        "qualified_wallets": len(wallets),
-        "tracked_active_wallets": len(wallets),
+        "live_wallets": len(states),
+        "snapshot_wallets": 0,
+        "qualified_wallets": len(states) or len(wallets),
+        "tracked_active_wallets": len(states),
         "selected_wallet_count": scanner_selected or len(wallets),
         "scanner_candidate_wallets_scored": scanner_scored,
         "wallets_discovered_from_recent_trades": scanner_discovered,
@@ -811,7 +666,7 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
         "snapshot_source": "local_hyperliquid_to_r2",
         "top_claim_ready": False,
         "top_claim_min_indexed_wallets": 10000,
-        "claim_label": f"Top {len(wallets)} Copycat-ranked wallets from {scanner_scored or len(wallets):,} locally indexed Hyperliquid candidates",
+        "claim_label": f"Top Copycat-ranked wallets from {scanner_scored or len(wallets):,} locally indexed Hyperliquid candidates",
     }
 
     insights: List[Dict[str, Any]] = []
@@ -859,9 +714,6 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
         "source": "local_hyperliquid_snapshot",
         "updated_at_ms": now_ms,
         "wallet_count": len(wallet_rows),
-        "wallets_live": live_state_count,
-        "wallets_stale": stale_state_count,
-        "wallets_missing": missing_state_count,
         "scanner_candidate_wallets_scored": scanner_scored,
         "wallets_discovered_from_recent_trades": scanner_discovered,
         "selected_wallet_count": scanner_selected or len(wallet_rows),
@@ -895,10 +747,7 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
         "source": "local_hyperliquid_snapshot",
         "updated_at_ms": now_ms,
         "wallets_configured": len(wallets),
-        "wallets_fetched": live_state_count,
-        "wallets_usable": usable_state_count,
-        "wallets_stale": stale_state_count,
-        "wallets_missing": missing_state_count,
+        "wallets_fetched": len(states),
         "assets_with_signals": len(signals),
         "recent_orders": len(orders),
         "storage_mode": "r2_snapshot_overwrite",
@@ -909,7 +758,7 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
         "wallets_discovered_from_recent_trades": scanner_discovered,
         "selected_wallet_count": scanner_selected or len(wallets),
         "top_claim_ready": False,
-        "claim_label": f"Top {len(wallets)} Copycat-ranked wallets from {scanner_scored or len(wallets):,} locally indexed Hyperliquid candidates",
+        "claim_label": f"Top Copycat-ranked wallets from {scanner_scored or len(wallets):,} locally indexed Hyperliquid candidates",
     }
     platform_health = {
         "status": "ok" if states else "degraded",
@@ -918,10 +767,7 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
         "frontend": "cloudflare_pages",
         "data_delivery": "cloudflare_r2_snapshots",
         "database_required_for_dashboard": False,
-        "wallets": len(wallets),
-        "wallets_live": live_state_count,
-        "wallets_stale": stale_state_count,
-        "wallets_missing": missing_state_count,
+        "wallets": len(states),
         "scanner_candidate_wallets_scored": scanner_scored,
         "wallets_discovered_from_recent_trades": scanner_discovered,
         "selected_wallet_count": scanner_selected or len(wallets),
@@ -934,10 +780,7 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
         "version": "snapshot-v1",
         "source": "local_hyperliquid_snapshot",
         "updated_at_ms": now_ms,
-        "tracked_active_wallets": len(wallets),
-        "wallets_live": live_state_count,
-        "wallets_stale": stale_state_count,
-        "wallets_missing": missing_state_count,
+        "tracked_active_wallets": len(states),
         "selected_wallet_count": scanner_selected or len(wallets),
         "scanner_candidate_wallets_scored": scanner_scored,
         "wallets_discovered_from_recent_trades": scanner_discovered,
@@ -973,7 +816,6 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
         'latest_signal_ts_ms': now_ms,
         'checks': [
             {'name': 'R2 snapshot publisher', 'status': 'pass' if states else 'fail', 'severity': 'critical', 'detail': data_msg},
-            {'name': 'Configured wallet coverage', 'status': 'pass' if len(wallet_rows) == len(wallets) else 'warn', 'severity': 'critical', 'detail': f'{len(wallet_rows)}/{len(wallets)} ranked wallet slots included; live={live_state_count}, stale={stale_state_count}, missing={missing_state_count}'},
             {'name': 'Supabase dependency', 'status': 'pass', 'severity': 'info', 'detail': 'Public dashboard does not require Supabase in free mode.'},
             {'name': 'Render dependency', 'status': 'pass', 'severity': 'info', 'detail': 'Public read-only pages are served by Cloudflare/R2 snapshots.'},
             {'name': 'Ranking claim guard', 'status': 'pass', 'severity': 'info', 'detail': 'Broad all-Hyperliquid top-50 claim is disabled until a larger audited universe exists.'},
@@ -992,10 +834,7 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
         'render_required': False,
         'supabase_required': False,
         'public_readonly': True,
-        'tracked_wallets': len(wallets),
-        'wallets_live': live_state_count,
-        'wallets_stale': stale_state_count,
-        'wallets_missing': missing_state_count,
+        'tracked_wallets': len(states),
         'scanner_candidate_wallets_scored': scanner_scored,
         'wallets_discovered_from_recent_trades': scanner_discovered,
         'disabled_until_paid_backend': ['login_auth', 'private_api_keys', 'dynamic_database_queries', 'full_historical_backtests'],
@@ -1079,7 +918,7 @@ def main() -> int:
     config = load_config()
     log("Copycat local snapshot publisher starting")
     log(f"Wallet file: {config.wallet_file}")
-    log(f"Interval: {config.interval_seconds}s | max wallets: {config.max_wallets} | request pause: {config.request_pause_seconds:.2f}s | local only: {config.local_only}")
+    log(f"Interval: {config.interval_seconds}s | max wallets: {config.max_wallets} | local only: {config.local_only}")
     run_once = "--once" in sys.argv
     while True:
         try:
