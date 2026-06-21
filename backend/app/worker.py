@@ -10,6 +10,7 @@ from sqlalchemy import text
 
 from .db import engine
 from .settings import get_settings
+from .database_diet import maybe_run_database_diet_after_collect, strip_raw_json_rows
 
 log = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
@@ -515,6 +516,8 @@ def collect_once() -> dict[str, Any]:
         with engine.begin() as conn:
             insert_run(conn, 'collect_once', 'error', f'incomplete batch wallets_ok={ok}/{len(wallets)}; errors={len(errors)}; elapsed={elapsed:.1f}s')
         return {'wallets_ok': ok, 'errors': errors[:5], 'positions': len(position_rows), 'signals': 0, 'elapsed_seconds': round(elapsed, 1)}
+
+    strip_raw_json_rows(snapshot_rows, position_rows)
 
     with engine.begin() as conn:
         for row in snapshot_rows:
