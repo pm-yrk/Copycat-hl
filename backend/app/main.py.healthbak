@@ -110,25 +110,8 @@ async def copycat_cache_headers(request: Request, call_next):
 
 @app.get('/health')
 def health():
-    """Render liveness check.
-
-    This endpoint must not depend on Supabase/Postgres. When Supabase is
-    recovering, over egress, or temporarily refusing connections, Render still
-    needs a 200 response so the API container can finish deploying. Use
-    /db-health when we specifically want to test the database connection.
-    """
-    return {'status': 'ok', 'service': 'hwt-api', 'database': 'not_checked'}
-
-
-@app.get('/db-health')
-def db_health():
-    """Database readiness check for internal troubleshooting."""
-    try:
-        row = fetch_one('SELECT now() AS now')
-        return {'status': 'ok', 'database': bool(row)}
-    except Exception as exc:
-        return {'status': 'degraded', 'database': False, 'message': 'database connection unavailable'}
-
+    row = fetch_one('SELECT now() AS now')
+    return {'status': 'ok', 'database': bool(row)}
 
 
 @app.get('/api/me')
