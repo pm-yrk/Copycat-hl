@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { apiGet } from '../lib/api'
+const COPYCAT_PERFORMANCE_POLL_MS = Number(process.env.NEXT_PUBLIC_PERFORMANCE_POLL_MS || 300000)
+
 
 type Point = {
   ts_ms: number

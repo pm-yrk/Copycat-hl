@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import io
 import json
+import os
 import threading
 import time
 import urllib.parse
@@ -59,11 +60,12 @@ settings = get_settings()
 stripe.api_key = settings.stripe_secret_key or None
 
 app = FastAPI(title='Hyper Wallet Tracker SaaS API')
+app.add_middleware(GZipMiddleware, minimum_size=1024)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[settings.public_site_url, 'http://localhost:3000'],
-    allow_origin_regex=r'https://.*(onrender\.com|copycat\.hl)$',
+    allow_origin_regex=r'https://.*(onrender\.com|pages\.dev|copycat\.hl|copycat\.trade|copycat\.app)$',
     allow_credentials=True,
     allow_methods=['*'],
     allow_headers=['*'],
@@ -71,14 +73,40 @@ app.add_middleware(
 
 
 @app.middleware('http')
-async def no_cache_api_responses(request: Request, call_next):
+async def copycat_cache_headers(request: Request, call_next):
     response = await call_next(request)
-    if request.url.path.startswith('/api/'):
+    if not request.url.path.startswith('/api/'):
+        return response
+
+    free_mode = os.getenv('COPYCAT_FREE_MODE', 'true').strip().lower() in {'1', 'true', 'yes', 'on'}
+    path = request.url.path
+
+    # Customer/public responses can be briefly cached to cut Supabase/Render egress.
+    # Authenticated/private endpoints stay no-store.
+    if free_mode and request.method == 'GET' and (
+        path in {'/api/dashboard-feed', '/api/dashboard-tick', '/api/performance-index'}
+        or path.startswith('/api/data/v1/public/')
+        or path.startswith('/api/public/')
+        or path.startswith('/api/token-icons')
+    ):
+        if path == '/api/dashboard-tick':
+            ttl = int(os.getenv('COPYCAT_DASHBOARD_TICK_CACHE_SECONDS', '12'))
+        elif path == '/api/dashboard-feed':
+            ttl = int(os.getenv('COPYCAT_DASHBOARD_FEED_CACHE_SECONDS', '45'))
+        elif path == '/api/performance-index':
+            ttl = int(os.getenv('COPYCAT_PERFORMANCE_CACHE_SECONDS', '300'))
+        elif path.startswith('/api/token-icons'):
+            ttl = int(os.getenv('COPYCAT_TOKEN_ICON_CACHE_SECONDS', '86400'))
+        else:
+            ttl = int(os.getenv('COPYCAT_PUBLIC_API_CACHE_SECONDS', '300'))
+        response.headers['Cache-Control'] = f'public, max-age={ttl}, stale-while-revalidate={ttl * 2}'
+    else:
         response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
         response.headers['Pragma'] = 'no-cache'
         response.headers['Expires'] = '0'
-    return response
 
+    response.headers['X-Copycat-Free-Mode'] = '1' if free_mode else '0'
+    return response
 
 @app.get('/health')
 def health():
@@ -230,7 +258,7 @@ def copycat_data_api_backfill_coverage(api_key: dict = Depends(require_copycat_a
 
 _DASHBOARD_FEED_CACHE: dict[str, Any] = {'ts': 0.0, 'data': None}
 _DASHBOARD_FEED_LOCK = threading.Lock()
-_DASHBOARD_FEED_TTL_SECONDS = 8.0
+_DASHBOARD_FEED_TTL_SECONDS = float(os.getenv('COPYCAT_DASHBOARD_FEED_CACHE_SECONDS', '45'))
 _LIVE_SIGNAL_ROWS_CACHE: dict[str, Any] = {'ts': 0.0, 'rows': []}
 _LIVE_SIGNAL_ROWS_CACHE_TTL_SECONDS = 8.0
 _DASHBOARD_TICK_CACHE: dict[str, Any] = {'ts': 0.0, 'data': None}

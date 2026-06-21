@@ -1,0 +1,12 @@
+# Reference settings for Cloudflare Pages. Configure these in the Cloudflare UI.
+# Root directory: frontend
+# Build command: npm ci && npm run build:cloudflare
+# Output directory: out
+
+[vars]
+CLOUDFLARE_PAGES = "1"
+NEXT_PUBLIC_STATIC_EXPORT = "true"
+NEXT_PUBLIC_API_BASE_URL = "https://hwt-api.onrender.com"
+NEXT_PUBLIC_DASHBOARD_FEED_POLL_MS = "60000"
+NEXT_PUBLIC_DASHBOARD_TICK_POLL_MS = "15000"
+NEXT_PUBLIC_PERFORMANCE_POLL_MS = "300000"

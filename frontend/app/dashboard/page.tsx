@@ -7,6 +7,10 @@ import LineBackdrop from '../../components/LineBackdrop'
 import { apiGet } from '../../lib/api'
 import PerformanceIndex from '../../components/PerformanceIndex'
 
+const COPYCAT_FEED_POLL_MS = Number(process.env.NEXT_PUBLIC_DASHBOARD_FEED_POLL_MS || 60000)
+const COPYCAT_TICK_POLL_MS = Number(process.env.NEXT_PUBLIC_DASHBOARD_TICK_POLL_MS || 15000)
+
+
 function money(n: any) {
   return '$' + Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })
 }
@@ -506,7 +510,7 @@ export default function Dashboard() {
     // feed, token icons, or the performance chart.
     loadTick()
     const bootTimer = window.setTimeout(loadFull, 80)
-    const tickId = setInterval(loadTick, 1000)
+    const tickId = setInterval(loadTick, COPYCAT_TICK_POLL_MS)
     const fullId = setInterval(loadFull, 10000)
     return () => { clearTimeout(bootTimer); clearInterval(tickId); clearInterval(fullId) }
   }, [])
