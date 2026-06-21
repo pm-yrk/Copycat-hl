@@ -2637,30 +2637,3 @@ html[data-theme='light'] .cc-footer-main small { color: #6b4b12 !important; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
-
-/* --- Copycat small visual fixes: At a Glance duplicate + allocation percent visibility. --- */
-.cc-donut-legend div {
-  grid-template-columns: 28px minmax(38px, 1fr) auto !important;
-  gap: 6px !important;
-  align-items: center !important;
-}
-.cc-donut-legend .cc-asset-hover,
-.cc-donut-legend .cc-asset-hover b {
-  min-width: 0 !important;
-  white-space: nowrap !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-}
-.cc-donut-legend div > b {
-  min-width: max-content !important;
-  white-space: nowrap !important;
-  overflow: visible !important;
-  text-overflow: clip !important;
-  text-align: right !important;
-  font-size: 11px !important;
-  line-height: 1 !important;
-}
-.cc-donut-legend div > span {
-  display: none !important;
-}
