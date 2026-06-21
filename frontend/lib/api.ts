@@ -5,19 +5,14 @@ import { getApiBaseUrl, getSupabase } from './supabase'
 type ApiOptions = { signal?: AbortSignal; timeoutMs?: number }
 
 
-function copycatSnapshotBaseUrl() {
-  const configured = process.env.NEXT_PUBLIC_SNAPSHOT_BASE_URL || ''
-  const fallback = process.env.NEXT_PUBLIC_STATIC_EXPORT === 'true' ? '/copycat-data' : ''
-  return (configured || fallback).replace(/\/+$/, '')
+
+function copycatIsCloudflarePagesRuntime() {
+  if (typeof window === 'undefined') return false
+  const host = window.location.hostname || ''
+  return host.endsWith('.pages.dev') || host.includes('copycat')
 }
 
-function copycatPrefersSnapshot() {
-  return process.env.NEXT_PUBLIC_SNAPSHOT_FIRST === 'true' || process.env.NEXT_PUBLIC_STATIC_EXPORT === 'true'
-}
-
-function copycatSnapshotUrlForPath(path: string) {
-  const base = copycatSnapshotBaseUrl()
-  if (!base) return ''
+function copycatSnapshotFileForPath(path: string) {
   const clean = path.split('?')[0].replace(/\/+$/, '')
   const map: Record<string, string> = {
     '/api/dashboard-feed': 'dashboard-feed.json',
@@ -30,9 +25,26 @@ function copycatSnapshotUrlForPath(path: string) {
     '/api/data/v1/public/platform-health': 'api/platform-health.json',
     '/api/token-icons': 'token-icons.json',
   }
-  const file = map[clean]
-  if (!file) return ''
-  return `${base}/${file}`
+  return map[clean] || ''
+}
+
+function copycatSnapshotUrlsForPath(path: string) {
+  const file = copycatSnapshotFileForPath(path)
+  if (!file) return [] as string[]
+  const configured = (process.env.NEXT_PUBLIC_SNAPSHOT_BASE_URL || '').replace(/\/+$/, '')
+  const urls: string[] = []
+  if (configured) urls.push(`${configured}/${file}`)
+  // Always keep the same-origin Cloudflare Pages bundled snapshot as a fallback.
+  // This avoids blank/zero dashboards when R2 CORS, R2 upload paths, or env vars are wrong.
+  urls.push(`/copycat-data/${file}`)
+  return Array.from(new Set(urls))
+}
+
+function copycatPrefersSnapshot(path: string) {
+  if (!copycatSnapshotFileForPath(path)) return false
+  return process.env.NEXT_PUBLIC_SNAPSHOT_FIRST === 'true'
+    || process.env.NEXT_PUBLIC_STATIC_EXPORT === 'true'
+    || copycatIsCloudflarePagesRuntime()
 }
 
 async function copycatFetchJson(url: string, options: ApiOptions = {}, cache: RequestCache = 'default') {
@@ -49,21 +61,6 @@ async function copycatFetchJson(url: string, options: ApiOptions = {}, cache: Re
 }
 
 
-const PUBLIC_GET_PREFIXES = [
-  '/api/dashboard-feed',
-  '/api/dashboard-tick',
-  '/api/performance-index',
-  '/api/performance-backtest',
-  '/api/backtest-index',
-  '/api/token-icons',
-  '/api/data/v1/status',
-  '/api/data/v1/public/',
-]
-
-function isPublicGet(path: string) {
-  return PUBLIC_GET_PREFIXES.some(prefix => path === prefix || path.startsWith(prefix + '?'))
-}
-
 async function authToken() {
   try {
     const supabase = await getSupabase()
@@ -75,16 +72,25 @@ async function authToken() {
 }
 
 export async function apiGet(path: string, options: ApiOptions = {}) {
-  const publicRead = isPublicGet(path)
-  const token = publicRead ? null : await authToken()
+  const snapshotUrls = copycatSnapshotUrlsForPath(path)
+  if (snapshotUrls.length && copycatPrefersSnapshot(path)) {
+    for (const url of snapshotUrls) {
+      try {
+        return await copycatFetchJson(url, options, 'default')
+      } catch {
+        // Try next snapshot source, then fall back to the live API.
+      }
+    }
+  }
+
+  const token = await authToken()
   const apiBase = await getApiBaseUrl()
   const controller = options.signal ? null : new AbortController()
   const signal = options.signal || controller?.signal
   const timeout = controller ? window.setTimeout(() => controller.abort(), options.timeoutMs || 12000) : null
-  const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
   try {
     const res = await fetch(`${apiBase}${path}`, {
-      headers,
+      headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
       signal,
     })
