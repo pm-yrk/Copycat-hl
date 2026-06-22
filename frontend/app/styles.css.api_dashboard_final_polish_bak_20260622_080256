@@ -2753,7 +2753,7 @@ html[data-theme='light'] .cc-api-endpoint-mini small { background: rgba(35,233,1
 @media(max-width: 1050px) { .cc-api-endpoint-grid { grid-template-columns: 1fr 1fr; } }
 @media(max-width: 680px) { .cc-api-endpoint-grid { grid-template-columns: 1fr; } .cc-api-priority-preview th:nth-child(3), .cc-api-priority-preview td:nth-child(3) { display: none; } }
 
-/* --- Copycat API intelligence page: focused data pipeline + refined tables. --- */
+/* --- Copycat API intelligence page: directional data map + refined tables. --- */
 .cc-api-intel-page {
   max-width: 1484px;
   padding-top: 64px;
@@ -2763,9 +2763,12 @@ html[data-theme='light'] .cc-api-endpoint-mini small { background: rgba(35,233,1
   z-index: 1;
 }
 .cc-api-intel-hero {
-  display: block;
-  padding: 38px 34px;
-  margin-bottom: 18px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 28px;
+  align-items: end;
+  padding: 34px;
+  margin-bottom: 16px;
   overflow: hidden;
 }
 .cc-api-intel-hero::before {
@@ -2781,10 +2784,6 @@ html[data-theme='light'] .cc-api-endpoint-mini small { background: rgba(35,233,1
   position: relative;
   z-index: 1;
 }
-
-.cc-api-status-tile,
-.cc-api-purpose-row { display: none !important; }
-
 .cc-api-intel-hero h1 {
   max-width: 900px;
   margin: 0;
@@ -2961,7 +2960,7 @@ html[data-theme='light'] .cc-api-endpoint-mini small { background: rgba(35,233,1
 }
 .cc-api-data-card {
   padding: 22px;
-  overflow: hidden;
+  overflow: visible;
 }
 .cc-api-data-card header {
   display: flex;
@@ -3004,14 +3003,11 @@ html[data-theme='light'] .cc-api-endpoint-mini small { background: rgba(35,233,1
   background: rgba(35,233,157,.08);
 }
 .cc-api-table-wrap {
-  overflow: hidden;
+  overflow: visible;
   max-height: none;
-  width: 100%;
-  max-width: 100%;
 }
 .cc-api-table-wrap table {
   width: 100%;
-  max-width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
 }
@@ -3020,8 +3016,7 @@ html[data-theme='light'] .cc-api-endpoint-mini small { background: rgba(35,233,1
   border-bottom: 1px solid var(--line);
   padding: 11px 10px;
   text-align: left;
-  font-size: 12px;
-  box-sizing: border-box;
+  font-size: 13px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3037,23 +3032,23 @@ html[data-theme='light'] .cc-api-endpoint-mini small { background: rgba(35,233,1
 .cc-api-leaderboard-card th:nth-child(1),
 .cc-api-leaderboard-card td:nth-child(1) { width: 42px; }
 .cc-api-leaderboard-card th:nth-child(2),
-.cc-api-leaderboard-card td:nth-child(2) { width: 31%; }
+.cc-api-leaderboard-card td:nth-child(2) { width: 28%; }
 .cc-api-leaderboard-card th:nth-child(3),
-.cc-api-leaderboard-card td:nth-child(3) { width: 20%; }
+.cc-api-leaderboard-card td:nth-child(3) { width: 22%; }
 .cc-api-leaderboard-card th:nth-child(4),
-.cc-api-leaderboard-card td:nth-child(4) { width: 29%; }
+.cc-api-leaderboard-card td:nth-child(4) { width: 30%; }
 .cc-api-leaderboard-card th:nth-child(5),
 .cc-api-leaderboard-card td:nth-child(5) { width: 74px; }
 .cc-api-market-card th:nth-child(1),
-.cc-api-market-card td:nth-child(1) { width: 25%; }
+.cc-api-market-card td:nth-child(1) { width: 92px; }
 .cc-api-market-card th:nth-child(2),
-.cc-api-market-card td:nth-child(2) { width: 20%; }
+.cc-api-market-card td:nth-child(2) { width: 23%; }
 .cc-api-market-card th:nth-child(3),
-.cc-api-market-card td:nth-child(3) { width: 18%; }
+.cc-api-market-card td:nth-child(3) { width: 86px; }
 .cc-api-market-card th:nth-child(4),
-.cc-api-market-card td:nth-child(4) { width: 18%; }
+.cc-api-market-card td:nth-child(4) { width: 22%; }
 .cc-api-market-card th:nth-child(5),
-.cc-api-market-card td:nth-child(5) { width: 19%; }
+.cc-api-market-card td:nth-child(5) { width: 22%; }
 .cc-api-activity-card th:nth-child(1),
 .cc-api-activity-card td:nth-child(1) { width: 25%; }
 .cc-api-activity-card th:nth-child(2),
@@ -3085,17 +3080,10 @@ html[data-theme='light'] .cc-api-endpoint-mini small { background: rgba(35,233,1
   max-width: 100%;
   vertical-align: middle;
 }
-.cc-api-asset-cell .cc-asset-hover,
-.cc-api-asset-cell .cc-asset-hover > b {
-  min-width: 0;
-  max-width: 100%;
+.cc-api-asset-cell b {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: inherit;
-}
-.cc-api-asset-cell .cc-asset-hover {
-  display: inline-flex;
 }
 .cc-api-activity-card {
   margin: 18px 0;
@@ -3166,8 +3154,8 @@ html[data-theme='light'] .cc-api-endpoint-grid code {
   background: rgba(255,251,244,.62);
 }
 html[data-theme='light'] .cc-api-table-wrap th {
-  background: rgba(255, 251, 244, .48);
-  color: rgba(35, 31, 25, .62);
+  background: rgba(34, 121, 92, .075);
+  color: rgba(35, 31, 25, .66);
 }
 html[data-theme='light'] .cc-api-table-wrap td {
   color: rgba(35, 31, 25, .92);
@@ -3239,63 +3227,3 @@ html[data-theme='light'] .cc-api-endpoints-pro {
   }
 }
 /* --- End Copycat API intelligence page patch. --- */
-
-
-/* API page final trim: keep the page focused and prevent table bleed. */
-.cc-api-nansen-grid,
-.cc-api-activity-card,
-.cc-api-endpoints-pro {
-  scroll-margin-top: 90px;
-}
-.cc-api-table-wrap tr:last-child td {
-  border-bottom: 0;
-}
-html[data-theme='light'] .cc-api-data-card .cc-token-logo {
-  box-shadow: 0 8px 22px rgba(18, 66, 47, .12);
-}
-html[data-theme='light'] .cc-api-data-card {
-  box-shadow: inset 0 0 0 1px rgba(120, 104, 78, .14), 0 18px 60px rgba(55, 35, 13, .07);
-}
-html[data-theme='light'] .cc-api-table-wrap td,
-html[data-theme='light'] .cc-api-table-wrap th {
-  border-color: rgba(120, 104, 78, .20);
-}
-@media(min-width: 721px) {
-  .cc-api-table-wrap { overflow-x: hidden !important; }
-}
-
-
-/* --- Copycat dashboard/API handoff and allocation legend final polish. --- */
-/* Make the dashboard recent-orders CTA behave like a text link, now that it routes to the full activity tape. */
-.cc-small-action[href] {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  text-decoration: none;
-}
-
-/* Undo older direct-child span hiding that accidentally hid token logos/names in the allocation legend. */
-.cc-donut-legend .cc-allocation-legend-row > .cc-token-logo {
-  display: inline-flex !important;
-  opacity: 1 !important;
-  visibility: visible !important;
-}
-.cc-donut-legend .cc-allocation-legend-row > .cc-asset-hover {
-  display: inline-flex !important;
-  opacity: 1 !important;
-  visibility: visible !important;
-}
-.cc-donut-legend .cc-allocation-legend-row > .cc-asset-hover > b {
-  display: inline !important;
-}
-html[data-theme='light'] .cc-donut-legend .cc-allocation-legend-row .cc-asset-hover,
-html[data-theme='light'] .cc-donut-legend .cc-allocation-legend-row .cc-asset-hover > b {
-  color: rgba(35, 31, 25, .92) !important;
-}
-html[data-theme='light'] .cc-donut-legend .cc-allocation-legend-meta.positive {
-  color: #007f5f !important;
-}
-html[data-theme='light'] .cc-donut-legend .cc-allocation-legend-meta.negative {
-  color: #bf2f54 !important;
-}
-/* --- End Copycat dashboard/API handoff final polish. --- */

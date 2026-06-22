@@ -682,7 +682,7 @@ export default function Dashboard() {
           <div className="cc-order-list">
             {visibleOrders.map((o: any) => <div className="cc-order-line" key={orderKey(o)}><TokenLogo coin={o.coin} icons={icons} /><AssetName coin={o.coin} details={mergedAssetDetails} row={o} compact /><span className={orderActionClass(o.side)}>{o.side}</span><em>{o.wallet_label || maskWallet(o.wallet)}</em><small>{ago(o.ts_ms)}</small></div>)}
           </div>
-          <a className="cc-small-action" href="/api-access#recent-activity">View all orders →</a>
+          <button className="cc-small-action" onClick={() => setShowAllOrders(v => !v)}>{showAllOrders ? 'Show latest 3 ↑' : 'View all orders →'}</button>
         </div>
         <div className="cc-insights-card">
           <h3>At a glance</h3>
