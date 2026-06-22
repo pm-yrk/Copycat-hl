@@ -135,13 +135,6 @@ function flowInsightLabel(x: any) {
   if (/biggest distribution/i.test(label)) return 'Recent distribution'
   return label
 }
-
-function shouldShowInsight(x: any) {
-  const label = flowInsightLabel(x)
-  const type = String(x?.type || '')
-  return !/largest current exposure|gross leverage/i.test(label) && !/gross[_ -]?leverage|leverage/i.test(type)
-}
-
 function flowWindowText(summary: any) {
   const minutes = Number(summary?.signal_lookback_minutes || summary?.flow_lookback_minutes || 60)
   if (!Number.isFinite(minutes) || minutes <= 0) return 'recent order flow'
@@ -332,11 +325,7 @@ function AllocationDonut({ targets, signals, trackedValue, icons, assetDetails }
     return `M ${s1.x} ${s1.y} A ${r1} ${r1} 0 ${large} 1 ${e1.x} ${e1.y} L ${s2.x} ${s2.y} A ${r2} ${r2} 0 ${large} 0 ${e2.x} ${e2.y} Z`
   }
   if (!parts.length) return <div className="cc-empty-state">Targets will appear after refresh.</div>
-  return <div className="cc-donut-layout"><div className="cc-donut-stage"><svg viewBox="0 0 220 220" className="cc-donut-svg" aria-label="Copycat Index allocation">{parts.map((p: any) => { const start = angle; angle += p.weight * 360; return <path key={`${p.coin}-${p.direction}`} d={path(110, 110, 92, 50, start, angle - 1)} fill={p.color} onMouseEnter={() => setHovered(p)} onMouseLeave={() => setHovered(null)} onFocus={() => setHovered(p)} onBlur={() => setHovered(null)} tabIndex={0}><title>{p.direction === 'short' ? 'Short ' : p.direction === 'long' ? 'Long ' : ''}{displayToken(p.coin)}: {Math.round(p.originalWeight * 100)}%</title></path> })}<circle className="cc-donut-hole" cx="110" cy="110" r="50" /></svg><div className="cc-donut-tooltip">{hovered ? `${hovered.direction === 'short' ? 'Short ' : hovered.direction === 'long' ? 'Long ' : ''}${displayToken(hovered.coin)} ${Math.round(hovered.originalWeight * 100)}% index allocation` : 'USDC margin is excluded from this allocation.'}</div></div><div className="cc-donut-legend cc-scroll-y">{parts.map((p: any) => {
-    const allocationPct = Math.round(p.originalWeight * 100)
-    const allocationDirection = p.direction === 'short' ? 'short' : p.direction === 'long' ? 'long' : 'mixed'
-    return <div className="cc-allocation-legend-row" key={`${p.coin}-${p.direction}`}><TokenLogo coin={p.coin} icons={icons} /><AssetName coin={p.coin} details={assetDetails} row={{ gross_exposure_usd: p.originalWeight * trackedValue, tilt: p.direction }} compact /><b className={`cc-allocation-legend-meta ${p.direction === 'short' ? 'negative' : p.direction === 'long' ? 'positive' : ''}`}>{allocationDirection} {allocationPct}%</b></div>
-  })}</div></div>
+  return <div className="cc-donut-layout"><div className="cc-donut-stage"><svg viewBox="0 0 220 220" className="cc-donut-svg" aria-label="Copycat Index allocation">{parts.map((p: any) => { const start = angle; angle += p.weight * 360; return <path key={`${p.coin}-${p.direction}`} d={path(110, 110, 92, 50, start, angle - 1)} fill={p.color} onMouseEnter={() => setHovered(p)} onMouseLeave={() => setHovered(null)} onFocus={() => setHovered(p)} onBlur={() => setHovered(null)} tabIndex={0}><title>{p.direction === 'short' ? 'Short ' : p.direction === 'long' ? 'Long ' : ''}{displayToken(p.coin)}: {Math.round(p.originalWeight * 100)}%</title></path> })}<circle className="cc-donut-hole" cx="110" cy="110" r="50" /></svg><div className="cc-donut-tooltip">{hovered ? `${hovered.direction === 'short' ? 'Short ' : hovered.direction === 'long' ? 'Long ' : ''}${displayToken(hovered.coin)} ${Math.round(hovered.originalWeight * 100)}% index allocation` : 'USDC margin is excluded from this allocation.'}</div></div><div className="cc-donut-legend cc-scroll-y">{parts.map((p: any) => <div key={`${p.coin}-${p.direction}`}><TokenLogo coin={p.coin} icons={icons} /><AssetName coin={p.coin} details={assetDetails} row={{ gross_exposure_usd: p.originalWeight * trackedValue, tilt: p.direction }} compact /><b className={p.direction === 'short' ? 'negative' : p.direction === 'long' ? 'positive' : ''}>{p.direction === 'short' ? 'short ' : p.direction === 'long' ? 'long ' : ''}{Math.round(p.originalWeight * 100)}%</b></div>)}</div></div>
 }
 function ExposureBars({ signals, icons, assetDetails }: { signals: any[], icons: Record<string, string>, assetDetails: Record<string, AssetDetail> }) {
   const rows = useMemo(() => ([...(signals || [])]
@@ -689,7 +678,7 @@ export default function Dashboard() {
           {topCurrentExposure ? <div className="cc-insight-line" key="largest-current-exposure">
             <span>Largest current exposure</span><b>{displayToken(topCurrentExposure.coin)} {topCurrentExposure.direction}</b><em>{compactMoney(topCurrentExposure.value)} current exposure</em>
           </div> : null}
-          {(insights || []).filter(shouldShowInsight).slice(0, topCurrentExposure ? 4 : 5).map((x: any) => <div className="cc-insight-line" key={`${x.type}-${x.coin}`}>
+          {(insights || []).filter((x: any) => !/largest current exposure/i.test(flowInsightLabel(x))).slice(0, topCurrentExposure ? 4 : 5).map((x: any) => <div className="cc-insight-line" key={`${x.type}-${x.coin}`}>
             <span>{flowInsightLabel(x)}</span><b>{x.coin || '—'}</b><em>{formatInsightDetail(x)}</em>
           </div>)}
         </div>
