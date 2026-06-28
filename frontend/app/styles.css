@@ -3518,3 +3518,90 @@ html[data-theme='light'] .cc-donut-legend .cc-allocation-legend-meta.negative {
   }
 }
 /* --- End Copycat mobile/table polish. --- */
+
+
+/* Copycat visual layout v1 - visual only, no data/API changes */
+.copycat-local-clock {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 12px;
+  color: rgba(210, 235, 230, 0.82);
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.copycat-visual-row { width: 100%; box-sizing: border-box; }
+.copycat-visual-middle-row {
+  display: grid !important;
+  grid-template-columns: minmax(270px, 0.72fr) minmax(360px, 1.05fr) minmax(500px, 1.43fr) !important;
+  gap: 14px !important;
+  align-items: stretch !important;
+  margin-top: 14px !important;
+}
+.copycat-visual-bottom-row {
+  display: grid !important;
+  grid-template-columns: minmax(620px, 1.1fr) minmax(440px, 0.9fr) !important;
+  gap: 14px !important;
+  align-items: stretch !important;
+  margin-top: 14px !important;
+}
+.copycat-card-portfolio, .copycat-card-exposure, .copycat-card-signal {
+  min-width: 0 !important;
+  height: 360px !important;
+  min-height: 360px !important;
+  max-height: 360px !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+.copycat-card-index, .copycat-card-pressure {
+  min-width: 0 !important;
+  height: 390px !important;
+  min-height: 390px !important;
+  max-height: 390px !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+.middle-grid, .main-grid {
+  grid-template-columns: minmax(270px, 0.72fr) minmax(360px, 1.05fr) minmax(500px, 1.43fr) !important;
+  gap: 14px !important;
+  align-items: stretch !important;
+}
+.bottom-grid {
+  grid-template-columns: minmax(620px, 1.1fr) minmax(440px, 0.9fr) !important;
+  gap: 14px !important;
+  align-items: stretch !important;
+}
+.portfolio-card, .exposure-card, .signal-board-card { min-width: 0 !important; }
+.exposure-row {
+  grid-template-columns: minmax(72px, 86px) 42px minmax(110px, 1fr) minmax(50px, 58px) minmax(50px, 58px) !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+}
+.exposure-bar, .exposure-bar-track, .long-short-bar, [class*="exposure-bar"] {
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+.exposure-card table, .signal-board-card table, .pressure-card table,
+.copycat-card-exposure table, .copycat-card-signal table, .copycat-card-pressure table {
+  width: 100% !important;
+  table-layout: fixed !important;
+}
+.signal-board-table-wrap, .pressure-table-wrap,
+.copycat-card-signal [class*="table-wrap"], .copycat-card-pressure [class*="table-wrap"] {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  max-height: calc(100% - 46px) !important;
+}
+.index-chart, .copycat-card-index [class*="chart"] { min-height: 112px !important; }
+@media (max-width: 1180px) {
+  .copycat-visual-middle-row, .copycat-visual-bottom-row, .middle-grid, .main-grid, .bottom-grid { grid-template-columns: 1fr !important; }
+  .copycat-card-portfolio, .copycat-card-exposure, .copycat-card-signal, .copycat-card-index, .copycat-card-pressure {
+    height: auto !important; max-height: none !important; min-height: 280px !important;
+  }
+  .copycat-local-clock { font-size: 10px; letter-spacing: 0.04em; margin-right: 8px; }
+}
+
