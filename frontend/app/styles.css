@@ -3828,3 +3828,80 @@ html[data-theme='light'] .cc-donut-legend .cc-allocation-legend-meta.negative {
 .cc-signal-board-card .cc-scroll-y {
   padding-bottom: 3px !important;
 }
+
+/* Copycat final fit tiny v1
+   Very small follow-up for visual-clean-v2.
+   Only does three tiny things:
+   1) gives Portfolio Allocation a little more usable room
+   2) nudges Long vs Short names off the icons
+   3) tightens Asset Signal Board a touch so row 5 clears cleanly
+   Nothing else is changed. */
+
+/* Slightly rebalance the first analysis row so Portfolio Allocation gets a bit more room
+   while Asset Signal Board gives back a small amount of width. */
+.cc-dashboard-analysis-row {
+  grid-template-columns: minmax(286px, 0.80fr) minmax(318px, 0.88fr) minmax(505px, 1.44fr) !important;
+}
+
+/* Portfolio Allocation: tiny shrink so the token list fits inside the same bubble */
+.cc-allocation-card .cc-donut-layout {
+  grid-template-columns: 154px minmax(0, 1fr) !important;
+  gap: 10px !important;
+}
+
+.cc-allocation-card .cc-donut-svg {
+  width: 150px !important;
+  height: 150px !important;
+  margin-top: 2px !important;
+}
+
+.cc-allocation-card .cc-donut-legend {
+  gap: 5px !important;
+}
+
+.cc-allocation-card .cc-donut-legend div {
+  padding: 5px 6px !important;
+  gap: 7px !important;
+}
+
+.cc-allocation-card .cc-donut-legend b,
+.cc-allocation-card .cc-asset-cell b {
+  font-size: 10.5px !important;
+}
+
+.cc-allocation-card .cc-donut-legend span {
+  font-size: 9.75px !important;
+}
+
+/* Long vs Short Exposure: move token name off the icon without changing the overall layout */
+.cc-exposure-card .cc-ex-name {
+  grid-template-columns: 24px minmax(0, 1fr) 34px !important;
+  column-gap: 9px !important;
+}
+
+.cc-exposure-card .cc-ex-name b {
+  padding-left: 1px !important;
+}
+
+/* Asset Signal Board: just a little tighter so the 5th row finishes cleanly */
+.cc-signal-board-card .cc-scroll-table {
+  height: calc(100% - 38px) !important;
+}
+
+.cc-signal-board-card th,
+.cc-signal-board-card td {
+  padding: 6px 7px !important;
+  font-size: 0.70rem !important;
+  line-height: 1.16 !important;
+}
+
+.cc-signal-board-card th:nth-child(1),
+.cc-signal-board-card td:nth-child(1) { width: 5%; }
+.cc-signal-board-card th:nth-child(2),
+.cc-signal-board-card td:nth-child(2) { width: 28%; }
+.cc-signal-board-card th:nth-child(3),
+.cc-signal-board-card td:nth-child(3) { width: 18%; }
+.cc-signal-board-card th:nth-child(4),
+.cc-signal-board-card td:nth-child(4) { width: 16%; }
+.cc-signal-board-card th:nth-child(5),
+.cc-signal-board-card td:nth-child(5) { width: 24%; }
