@@ -26,3 +26,7 @@ frontend/node_modules/
 *.ataglance_*_bak_*
 *.visual_*_bak_*
 *.free_mode_site_parity_bak
+# Copycat Daily Scout v2 local outputs
+copycat_daily_scout_out_v2/
+# Copycat local lightweight wallet registry
+copycat_wallet_registry/

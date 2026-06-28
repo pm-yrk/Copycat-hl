@@ -1,0 +1,4 @@
+# Optional extra wallet candidates for Daily Scout v2.
+# Put one Hyperliquid wallet address per line.
+# The scanner also discovers addresses from the repo, the live publisher wallet list,
+# and public Hyperliquid vault summaries when available.
