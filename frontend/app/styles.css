@@ -3538,3 +3538,47 @@ html[data-theme='light'] .cc-donut-legend .cc-allocation-legend-meta.negative {
   padding: 0 !important;
 }
 
+
+/* Copycat real dashboard rows v1.
+   Source-level layout only:
+   Row 1: Portfolio Allocation | Long vs Short Exposure | Asset Signal Board
+   Row 2: Copycat Index | Recent Buyer / Seller Pressure
+   Date/time is untouched. */
+
+.cc-dashboard-analysis-row {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.72fr) minmax(320px, 0.9fr) minmax(540px, 1.55fr);
+  gap: 16px;
+  align-items: stretch;
+  margin-top: 16px;
+  margin-bottom: 16px;
+}
+
+.cc-dashboard-performance-row {
+  display: grid;
+  grid-template-columns: minmax(560px, 1fr) minmax(520px, 0.92fr);
+  gap: 16px;
+  align-items: stretch;
+  margin-top: 16px;
+  margin-bottom: 18px;
+}
+
+.cc-dashboard-analysis-row > *,
+.cc-dashboard-performance-row > * {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.cc-dashboard-analysis-row .cc-table-card,
+.cc-dashboard-performance-row .cc-table-card {
+  min-width: 0;
+}
+
+@media (max-width: 1180px) {
+  .cc-dashboard-analysis-row,
+  .cc-dashboard-performance-row {
+    grid-template-columns: 1fr;
+  }
+}
+
