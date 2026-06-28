@@ -3605,3 +3605,242 @@ html[data-theme='light'] .cc-donut-legend .cc-allocation-legend-meta.negative {
   .copycat-local-clock { font-size: 10px; letter-spacing: 0.04em; margin-right: 8px; }
 }
 
+
+/* Copycat visual layout v2 - fixes card clipping and compressed data display. Visual only. */
+.copycat-visual-v2,
+.copycat-visual-v2 body {
+  overflow-x: hidden !important;
+}
+
+.copycat-visual-v2 .copycat-visual-row,
+.copycat-visual-v2 .copycat-v2-row {
+  width: calc(100% - 40px) !important;
+  max-width: calc(100vw - 40px) !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  box-sizing: border-box !important;
+  overflow: visible !important;
+}
+
+.copycat-visual-v2 #copycat-visual-middle-row,
+.copycat-visual-v2 .copycat-visual-middle-row {
+  grid-template-columns: minmax(250px, 0.62fr) minmax(350px, 0.92fr) minmax(520px, 1.46fr) !important;
+  gap: 12px !important;
+}
+
+.copycat-visual-v2 #copycat-visual-bottom-row,
+.copycat-visual-v2 .copycat-visual-bottom-row {
+  grid-template-columns: minmax(560px, 1fr) minmax(500px, 0.9fr) !important;
+  gap: 12px !important;
+  align-items: stretch !important;
+}
+
+.copycat-visual-v2 .copycat-card-portfolio,
+.copycat-visual-v2 .copycat-card-exposure,
+.copycat-visual-v2 .copycat-card-signal,
+.copycat-visual-v2 .copycat-card-index,
+.copycat-visual-v2 .copycat-card-pressure,
+.copycat-visual-v2 .copycat-v2-portfolio,
+.copycat-visual-v2 .copycat-v2-exposure,
+.copycat-visual-v2 .copycat-v2-signal,
+.copycat-visual-v2 .copycat-v2-index,
+.copycat-visual-v2 .copycat-v2-pressure {
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+  clip-path: none !important;
+  opacity: 1 !important;
+  filter: none !important;
+  background-clip: padding-box !important;
+}
+
+.copycat-visual-v2 .copycat-card-portfolio,
+.copycat-visual-v2 .copycat-card-exposure,
+.copycat-visual-v2 .copycat-card-signal,
+.copycat-visual-v2 .copycat-v2-portfolio,
+.copycat-visual-v2 .copycat-v2-exposure,
+.copycat-visual-v2 .copycat-v2-signal {
+  height: 342px !important;
+  min-height: 342px !important;
+  max-height: 342px !important;
+  overflow: hidden !important;
+  padding: 14px !important;
+}
+
+.copycat-visual-v2 .copycat-card-index,
+.copycat-visual-v2 .copycat-v2-index {
+  height: 360px !important;
+  min-height: 360px !important;
+  max-height: 360px !important;
+  overflow: hidden !important;
+  padding: 18px !important;
+}
+
+.copycat-visual-v2 .copycat-card-pressure,
+.copycat-visual-v2 .copycat-v2-pressure {
+  height: 360px !important;
+  min-height: 360px !important;
+  max-height: 360px !important;
+  overflow: hidden !important;
+  padding: 16px !important;
+}
+
+/* Make the long/short card fit without crushing the asset names. */
+.copycat-visual-v2 .copycat-card-exposure *,
+.copycat-visual-v2 .copycat-v2-exposure * {
+  min-width: 0 !important;
+}
+
+.copycat-visual-v2 .copycat-card-exposure table,
+.copycat-visual-v2 .copycat-v2-exposure table {
+  font-size: 11px !important;
+}
+
+.copycat-visual-v2 .copycat-card-exposure [class*="bar"],
+.copycat-visual-v2 .copycat-v2-exposure [class*="bar"] {
+  max-width: 170px !important;
+}
+
+/* Tables: smaller spacing, no fade, no pointless ellipsis on key values. */
+.copycat-visual-v2 .copycat-card-signal table,
+.copycat-visual-v2 .copycat-card-pressure table,
+.copycat-visual-v2 .copycat-v2-signal table,
+.copycat-visual-v2 .copycat-v2-pressure table,
+.copycat-visual-v2 table.copycat-v2-compact-table {
+  width: 100% !important;
+  table-layout: auto !important;
+  font-size: 10.5px !important;
+  line-height: 1.16 !important;
+}
+
+.copycat-visual-v2 .copycat-card-signal th,
+.copycat-visual-v2 .copycat-card-signal td,
+.copycat-visual-v2 .copycat-card-pressure th,
+.copycat-visual-v2 .copycat-card-pressure td,
+.copycat-visual-v2 .copycat-v2-signal th,
+.copycat-visual-v2 .copycat-v2-signal td,
+.copycat-visual-v2 .copycat-v2-pressure th,
+.copycat-visual-v2 .copycat-v2-pressure td {
+  padding: 7px 6px !important;
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  vertical-align: middle !important;
+}
+
+.copycat-visual-v2 .copycat-card-signal td:nth-child(1),
+.copycat-visual-v2 .copycat-card-signal th:nth-child(1),
+.copycat-visual-v2 .copycat-v2-signal td:nth-child(1),
+.copycat-visual-v2 .copycat-v2-signal th:nth-child(1) {
+  width: 24px !important;
+  white-space: nowrap !important;
+}
+
+.copycat-visual-v2 .copycat-card-signal td:nth-child(2),
+.copycat-visual-v2 .copycat-card-signal th:nth-child(2),
+.copycat-visual-v2 .copycat-v2-signal td:nth-child(2),
+.copycat-visual-v2 .copycat-v2-signal th:nth-child(2) {
+  width: 76px !important;
+  white-space: nowrap !important;
+}
+
+.copycat-visual-v2 .copycat-card-signal td:nth-child(3),
+.copycat-visual-v2 .copycat-card-signal th:nth-child(3),
+.copycat-visual-v2 .copycat-v2-signal td:nth-child(3),
+.copycat-visual-v2 .copycat-v2-signal th:nth-child(3) {
+  width: 56px !important;
+  white-space: nowrap !important;
+}
+
+.copycat-visual-v2 .copycat-card-signal td:nth-child(4),
+.copycat-visual-v2 .copycat-card-signal th:nth-child(4),
+.copycat-visual-v2 .copycat-v2-signal td:nth-child(4),
+.copycat-visual-v2 .copycat-v2-signal th:nth-child(4) {
+  width: 70px !important;
+  white-space: nowrap !important;
+}
+
+.copycat-visual-v2 .copycat-card-pressure td:nth-child(1),
+.copycat-visual-v2 .copycat-card-pressure th:nth-child(1),
+.copycat-visual-v2 .copycat-v2-pressure td:nth-child(1),
+.copycat-visual-v2 .copycat-v2-pressure th:nth-child(1) {
+  width: 86px !important;
+  white-space: nowrap !important;
+}
+
+.copycat-visual-v2 .copycat-card-signal [class*="table"],
+.copycat-visual-v2 .copycat-card-pressure [class*="table"],
+.copycat-visual-v2 .copycat-v2-signal [class*="table"],
+.copycat-visual-v2 .copycat-v2-pressure [class*="table"] {
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+}
+
+/* Fit the index contents inside the bubble instead of clipping the chart at the bottom. */
+.copycat-visual-v2 .copycat-card-index h1,
+.copycat-visual-v2 .copycat-card-index h2,
+.copycat-visual-v2 .copycat-v2-index h1,
+.copycat-visual-v2 .copycat-v2-index h2 {
+  font-size: clamp(30px, 2.6vw, 42px) !important;
+  line-height: 0.98 !important;
+  margin-bottom: 8px !important;
+}
+
+.copycat-visual-v2 .copycat-card-index [class*="percent"],
+.copycat-visual-v2 .copycat-card-index [class*="change"],
+.copycat-visual-v2 .copycat-v2-index [class*="percent"],
+.copycat-visual-v2 .copycat-v2-index [class*="change"] {
+  font-size: clamp(28px, 3.2vw, 48px) !important;
+  line-height: 1 !important;
+}
+
+.copycat-visual-v2 .copycat-card-index canvas,
+.copycat-visual-v2 .copycat-card-index svg,
+.copycat-visual-v2 .copycat-card-index [class*="recharts-wrapper"],
+.copycat-visual-v2 .copycat-card-index [class*="chart"],
+.copycat-visual-v2 .copycat-v2-index canvas,
+.copycat-visual-v2 .copycat-v2-index svg,
+.copycat-visual-v2 .copycat-v2-index [class*="recharts-wrapper"],
+.copycat-visual-v2 .copycat-v2-index [class*="chart"] {
+  max-height: 185px !important;
+}
+
+.copycat-visual-v2 .copycat-card-index [class*="metric"],
+.copycat-visual-v2 .copycat-card-index [class*="weight"],
+.copycat-visual-v2 .copycat-v2-index [class*="metric"],
+.copycat-visual-v2 .copycat-v2-index [class*="weight"] {
+  font-size: 10.5px !important;
+}
+
+/* Keep mobile/tablet usable by stacking cards again. */
+@media (max-width: 1180px) {
+  .copycat-visual-v2 .copycat-visual-row,
+  .copycat-visual-v2 .copycat-v2-row {
+    width: calc(100% - 24px) !important;
+    max-width: calc(100vw - 24px) !important;
+  }
+
+  .copycat-visual-v2 #copycat-visual-middle-row,
+  .copycat-visual-v2 .copycat-visual-middle-row,
+  .copycat-visual-v2 #copycat-visual-bottom-row,
+  .copycat-visual-v2 .copycat-visual-bottom-row {
+    grid-template-columns: 1fr !important;
+  }
+
+  .copycat-visual-v2 .copycat-card-portfolio,
+  .copycat-visual-v2 .copycat-card-exposure,
+  .copycat-visual-v2 .copycat-card-signal,
+  .copycat-visual-v2 .copycat-card-index,
+  .copycat-visual-v2 .copycat-card-pressure,
+  .copycat-visual-v2 .copycat-v2-portfolio,
+  .copycat-visual-v2 .copycat-v2-exposure,
+  .copycat-visual-v2 .copycat-v2-signal,
+  .copycat-visual-v2 .copycat-v2-index,
+  .copycat-visual-v2 .copycat-v2-pressure {
+    height: auto !important;
+    min-height: 260px !important;
+    max-height: none !important;
+  }
+}
+
