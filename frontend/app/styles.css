@@ -3538,3 +3538,51 @@ html[data-theme='light'] .cc-donut-legend .cc-allocation-legend-meta.negative {
   padding: 0 !important;
 }
 
+
+/* Copycat rows-only v1.
+   Only moves these cards into rows:
+   - Portfolio Allocation / Long vs Short Exposure / Asset Signal Board
+   - Copycat Index / Recent Buyer Seller Pressure
+   Does not style or move the top-right local time. */
+
+.copycat-rows-only-row {
+  width: calc(100% - 48px) !important;
+  max-width: calc(100vw - 48px) !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  display: grid !important;
+  gap: 16px !important;
+  align-items: stretch !important;
+  box-sizing: border-box !important;
+}
+
+.copycat-rows-only-middle {
+  grid-template-columns: minmax(260px, 0.72fr) minmax(330px, 0.9fr) minmax(520px, 1.55fr) !important;
+  margin-top: 16px !important;
+  margin-bottom: 16px !important;
+}
+
+.copycat-rows-only-bottom {
+  grid-template-columns: minmax(560px, 1fr) minmax(520px, 0.92fr) !important;
+  margin-top: 16px !important;
+  margin-bottom: 18px !important;
+}
+
+.copycat-rows-only-card {
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  grid-column: auto !important;
+  box-sizing: border-box !important;
+}
+
+@media (max-width: 1180px) {
+  .copycat-rows-only-row {
+    width: calc(100% - 28px) !important;
+    max-width: calc(100vw - 28px) !important;
+    grid-template-columns: 1fr !important;
+  }
+}
+
