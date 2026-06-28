@@ -3518,3 +3518,23 @@ html[data-theme='light'] .cc-donut-legend .cc-allocation-legend-meta.negative {
   }
 }
 /* --- End Copycat mobile/table polish. --- */
+
+
+/* Copycat local viewer time - visual only */
+.copycat-local-viewer-time {
+  display: inline-block !important;
+  margin-right: 12px !important;
+  color: rgba(230, 245, 255, 0.86) !important;
+  font-size: 12px !important;
+  line-height: 1 !important;
+  letter-spacing: 0.08em !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  white-space: nowrap !important;
+  font-family: inherit !important;
+  background: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
