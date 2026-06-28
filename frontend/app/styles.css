@@ -4677,3 +4677,39 @@ html[data-theme='light'] .cc-donut-legend .cc-allocation-legend-meta.negative {
   opacity: 0 !important;
 }
 
+
+/* Copycat visual layout v8 - ONLY bar accuracy/fit + tiny footer adjustment. */
+.copycat-visual-v8 .copycat-v7-footer,
+.copycat-visual-v8 .copycat-v8-footer {
+  transform: translateY(-205px) !important;
+  margin-bottom: -205px !important;
+}
+
+.copycat-visual-v8 .copycat-v8-exposure-row {
+  column-gap: 6px !important;
+  gap: 6px !important;
+}
+
+.copycat-visual-v8 .copycat-v8-exposure-row * {
+  font-size: 9.4px !important;
+}
+
+.copycat-visual-v8 .copycat-v8-exposure-track {
+  width: 104px !important;
+  min-width: 104px !important;
+  max-width: 104px !important;
+  height: 11px !important;
+  min-height: 11px !important;
+  border-radius: 999px !important;
+  overflow: hidden !important;
+  background-color: transparent !important;
+  background-size: 100% 100% !important;
+  background-repeat: no-repeat !important;
+  flex: 0 0 104px !important;
+}
+
+.copycat-visual-v8 .copycat-v8-exposure-track > * {
+  background: transparent !important;
+  opacity: 0 !important;
+}
+
