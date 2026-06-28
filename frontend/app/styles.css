@@ -4713,3 +4713,39 @@ html[data-theme='light'] .cc-donut-legend .cc-allocation-legend-meta.negative {
   opacity: 0 !important;
 }
 
+
+/* Copycat visual layout v9 - trim bottom gap + tighten exposure rows only */
+.copycat-visual-v9,
+.copycat-visual-v9 body {
+  padding-bottom: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.copycat-visual-v9 .copycat-v9-footer,
+.copycat-visual-v9 .copycat-v8-footer,
+.copycat-visual-v9 .copycat-v7-footer {
+  margin-bottom: 0 !important;
+}
+
+.copycat-visual-v9 .copycat-v9-exposure-row {
+  display: grid !important;
+  grid-template-columns: 24px 44px 30px 104px !important;
+  column-gap: 8px !important;
+  align-items: center !important;
+  justify-content: start !important;
+  width: auto !important;
+}
+
+.copycat-visual-v9 .copycat-v9-exposure-row > * {
+  min-width: 0 !important;
+}
+
+.copycat-visual-v9 .copycat-v9-exposure-pct {
+  text-align: right !important;
+  margin-right: 4px !important;
+}
+
+.copycat-visual-v9 .copycat-v9-exposure-track {
+  margin-left: 2px !important;
+}
+

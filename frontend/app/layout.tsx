@@ -16,6 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <script defer src="/copycat_visual_layout_v6.js"></script>
               <script defer src="/copycat_visual_layout_v7.js"></script>
               <script defer src="/copycat_visual_layout_v8.js"></script>
+              <script defer src="/copycat_visual_layout_v9.js"></script>
       </body>
     </html>
   )
