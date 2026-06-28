@@ -17,6 +17,25 @@ from urllib import request, error
 
 API_URL = "https://api.hyperliquid.xyz/info"
 ADDRESS_RE = re.compile(r"\b0x[a-fA-F0-9]{40}\b")
+BUILTIN_BLOCKED_ADDRESSES = {
+    "0x0000000000000000000000000000000000000000",
+    "0xffffffffffffffffffffffffffffffffffffffff",
+    "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "0x1111111111111111111111111111111111111111",
+    "0x2222222222222222222222222222222222222222",
+    "0x3333333333333333333333333333333333333333",
+    "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+}
+
+def looks_like_non_trader_address(address: str) -> bool:
+    address = (address or "").strip().lower()
+    if not ADDRESS_RE.fullmatch(address): return True
+    body = address[2:]
+    if address in BUILTIN_BLOCKED_ADDRESSES: return True
+    if len(set(body)) == 1: return True
+    if re.fullmatch(r"0x200000000000000000000000000000000000[0-9a-f]{4}", address): return True
+    return False
+
 
 TEXT_EXTENSIONS = {
     ".txt", ".csv", ".json", ".jsonl", ".md", ".py", ".ts", ".tsx",
@@ -93,7 +112,8 @@ def normalize_address(address: str) -> str | None:
 
 
 def extract_addresses_from_text(text: str) -> set[str]:
-    return {m.group(0).lower() for m in ADDRESS_RE.finditer(text)}
+    addresses = {m.group(0).lower() for m in ADDRESS_RE.finditer(text)}
+    return {a for a in addresses if not looks_like_non_trader_address(a)}
 
 
 def walk_json_for_addresses(obj: Any) -> set[str]:
@@ -193,7 +213,9 @@ def merge_source(existing: str, new_source: str) -> str:
 
 
 def add_wallet(conn: sqlite3.Connection, address: str, source: str, now: str) -> bool:
-    address = address.lower()
+    address = (address or "").strip().lower()
+    if looks_like_non_trader_address(address):
+        return False
     row = conn.execute("SELECT address, sources FROM wallets WHERE address = ?", (address,)).fetchone()
     if row:
         sources = merge_source(row["sources"], source)

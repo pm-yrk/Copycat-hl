@@ -34,3 +34,5 @@ copycat_wallet_registry/
 copycat_wallet_registry/web_cache/
 copycat_wallet_registry/imports/*
 !copycat_wallet_registry/imports/README_IMPORT_WALLETS_HERE.txt
+# Copycat registry hygiene reports
+copycat_wallet_registry/hygiene/

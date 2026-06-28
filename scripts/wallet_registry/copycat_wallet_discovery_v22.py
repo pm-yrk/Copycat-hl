@@ -6,6 +6,25 @@ from pathlib import Path
 from urllib import request
 
 ADDRESS_RE = re.compile(r"\b0x[a-fA-F0-9]{40}\b")
+BUILTIN_BLOCKED_ADDRESSES = {
+    "0x0000000000000000000000000000000000000000",
+    "0xffffffffffffffffffffffffffffffffffffffff",
+    "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "0x1111111111111111111111111111111111111111",
+    "0x2222222222222222222222222222222222222222",
+    "0x3333333333333333333333333333333333333333",
+    "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+}
+
+def looks_like_non_trader_address(address: str) -> bool:
+    address = (address or "").strip().lower()
+    if not ADDRESS_RE.fullmatch(address): return True
+    body = address[2:]
+    if address in BUILTIN_BLOCKED_ADDRESSES: return True
+    if len(set(body)) == 1: return True
+    if re.fullmatch(r"0x200000000000000000000000000000000000[0-9a-f]{4}", address): return True
+    return False
+
 TEXT_EXT = {".txt",".csv",".json",".jsonl",".md",".py",".ts",".tsx",".js",".jsx",".env",".example",".yaml",".yml",".log",".html",".htm"}
 DEFAULT_URLS = [
     "https://hypertracker.io/",
@@ -82,7 +101,9 @@ def merge_source(existing: str, source: str) -> str:
     return ";".join(parts[:30])
 
 def add_wallet(conn: sqlite3.Connection, address: str, source: str, now: str) -> bool:
-    address = address.lower()
+    address = (address or "").strip().lower()
+    if looks_like_non_trader_address(address):
+        return False
     row = conn.execute("SELECT sources FROM wallets WHERE address=?", (address,)).fetchone()
     if row:
         conn.execute("UPDATE wallets SET last_seen_utc=?, discovery_count=discovery_count+1, sources=?, updated_utc=? WHERE address=?",
