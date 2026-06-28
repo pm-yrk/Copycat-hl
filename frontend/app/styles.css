@@ -4652,3 +4652,28 @@ html[data-theme='light'] .cc-donut-legend .cc-allocation-legend-meta.negative {
   box-sizing: border-box !important;
 }
 
+
+/* Copycat visual layout v7 - ONLY footer gap + exposure bar fill. */
+.copycat-visual-v7 .copycat-v7-footer {
+  transform: translateY(-235px) !important;
+  margin-bottom: -235px !important;
+}
+
+.copycat-visual-v7 .copycat-v7-exposure-track {
+  width: 120px !important;
+  min-width: 120px !important;
+  max-width: 120px !important;
+  height: 12px !important;
+  min-height: 12px !important;
+  border-radius: 999px !important;
+  overflow: hidden !important;
+  background-color: transparent !important;
+  background-size: 100% 100% !important;
+  background-repeat: no-repeat !important;
+}
+
+.copycat-visual-v7 .copycat-v7-exposure-track > * {
+  background: transparent !important;
+  opacity: 0 !important;
+}
+
