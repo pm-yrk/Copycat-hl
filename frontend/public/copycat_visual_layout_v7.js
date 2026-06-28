@@ -1,1 +1,1 @@
-/* Disabled by visual layout v8: superseded by accurate bar/footer patch. */
+/* Disabled by visual recovery v10. */

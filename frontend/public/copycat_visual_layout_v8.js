@@ -1,1 +1,1 @@
-/* Disabled by visual layout v9: superseded by trim/exposure patch. */
+/* Disabled by visual recovery v10. */
