@@ -4350,3 +4350,266 @@ html[data-theme='light'] .cc-donut-legend .cc-allocation-legend-meta.negative {
   }
 }
 
+
+/* Copycat visual layout v5 - stable compact layout, no DOM moving, no overlap. Visual only. */
+.copycat-visual-v5,
+.copycat-visual-v5 body {
+  overflow-x: hidden !important;
+}
+
+/* Neutralise older visual experiment classes if they remain in cached markup. */
+.copycat-visual-v5 .copycat-v2-portfolio,
+.copycat-visual-v5 .copycat-v2-exposure,
+.copycat-visual-v5 .copycat-v2-signal,
+.copycat-visual-v5 .copycat-v2-index,
+.copycat-visual-v5 .copycat-v2-pressure,
+.copycat-visual-v5 .copycat-v3-portfolio,
+.copycat-visual-v5 .copycat-v3-exposure,
+.copycat-visual-v5 .copycat-v3-signal,
+.copycat-visual-v5 .copycat-v3-index,
+.copycat-visual-v5 .copycat-v3-pressure,
+.copycat-visual-v5 .copycat-v4-portfolio,
+.copycat-visual-v5 .copycat-v4-exposure,
+.copycat-visual-v5 .copycat-v4-signal,
+.copycat-visual-v5 .copycat-v4-index,
+.copycat-visual-v5 .copycat-v4-pressure {
+  max-height: none !important;
+  transform: none !important;
+  position: static !important;
+}
+
+/* Rows: same one-screen structure, but no overlap. */
+.copycat-visual-v5 #copycat-visual-middle-row,
+.copycat-visual-v5 .copycat-visual-middle-row {
+  width: calc(100% - 52px) !important;
+  max-width: calc(100vw - 52px) !important;
+  margin: 18px auto 18px auto !important;
+  display: grid !important;
+  grid-template-columns: minmax(310px, 0.76fr) minmax(360px, 0.88fr) minmax(560px, 1.36fr) !important;
+  gap: 18px !important;
+  align-items: start !important;
+  overflow: visible !important;
+  box-sizing: border-box !important;
+  isolation: isolate !important;
+}
+
+.copycat-visual-v5 #copycat-visual-bottom-row,
+.copycat-visual-v5 .copycat-visual-bottom-row {
+  width: calc(100% - 52px) !important;
+  max-width: calc(100vw - 52px) !important;
+  margin: 18px auto 24px auto !important;
+  display: grid !important;
+  grid-template-columns: minmax(560px, 1fr) minmax(520px, 0.92fr) !important;
+  gap: 18px !important;
+  align-items: start !important;
+  overflow: visible !important;
+  box-sizing: border-box !important;
+  isolation: isolate !important;
+}
+
+/* Cards: keep fixed compact height, but content scrolls INSIDE, never outside. */
+.copycat-visual-v5 .copycat-v5-card {
+  position: relative !important;
+  box-sizing: border-box !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  transform: none !important;
+  clip-path: none !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+  z-index: auto !important;
+}
+
+.copycat-visual-v5 .copycat-v5-portfolio,
+.copycat-visual-v5 .copycat-v5-exposure,
+.copycat-visual-v5 .copycat-v5-signal {
+  height: 330px !important;
+  min-height: 330px !important;
+  max-height: 330px !important;
+  padding: 14px !important;
+}
+
+.copycat-visual-v5 .copycat-v5-index,
+.copycat-visual-v5 .copycat-v5-pressure {
+  height: 360px !important;
+  min-height: 360px !important;
+  max-height: 360px !important;
+  padding: 16px !important;
+}
+
+/* Allow only natural internal scroll containers to scroll, no content leakage. */
+.copycat-visual-v5 .copycat-v5-card > * {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.copycat-visual-v5 .copycat-v5-card table {
+  max-width: 100% !important;
+}
+
+/* Portfolio: keep original structure, just shrink chart and text so it fits. */
+.copycat-visual-v5 .copycat-v5-portfolio svg,
+.copycat-visual-v5 .copycat-v5-portfolio canvas,
+.copycat-visual-v5 .copycat-v5-portfolio [class*="recharts-wrapper"],
+.copycat-visual-v5 .copycat-v5-portfolio [class*="chart"] {
+  max-width: 145px !important;
+  max-height: 145px !important;
+}
+
+.copycat-visual-v5 .copycat-v5-portfolio * {
+  font-size: 10px !important;
+  line-height: 1.12 !important;
+}
+
+.copycat-visual-v5 .copycat-v5-portfolio h1,
+.copycat-visual-v5 .copycat-v5-portfolio h2,
+.copycat-visual-v5 .copycat-v5-portfolio h3,
+.copycat-visual-v5 .copycat-v5-portfolio h4 {
+  font-size: 13px !important;
+  line-height: 1.05 !important;
+}
+
+.copycat-visual-v5 .copycat-v5-portfolio [class*="legend"],
+.copycat-visual-v5 .copycat-v5-portfolio [class*="allocation"],
+.copycat-visual-v5 .copycat-v5-portfolio ul,
+.copycat-visual-v5 .copycat-v5-portfolio ol {
+  max-height: 125px !important;
+  overflow: auto !important;
+}
+
+/* Long/short exposure: shorter bars and compact rows. */
+.copycat-visual-v5 .copycat-v5-exposure * {
+  min-width: 0 !important;
+}
+
+.copycat-visual-v5 .copycat-v5-exposure table {
+  width: 100% !important;
+  table-layout: fixed !important;
+  font-size: 10px !important;
+  line-height: 1.05 !important;
+}
+
+.copycat-visual-v5 .copycat-v5-exposure th,
+.copycat-visual-v5 .copycat-v5-exposure td {
+  padding: 4px 3px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: clip !important;
+}
+
+.copycat-visual-v5 .copycat-v5-exposure [class*="bar"],
+.copycat-visual-v5 .copycat-v5-exposure [style*="width"] {
+  max-width: 72px !important;
+}
+
+/* Tables: compact, visible, no outside overflow. */
+.copycat-visual-v5 .copycat-v5-signal,
+.copycat-visual-v5 .copycat-v5-pressure {
+  overflow: hidden !important;
+}
+
+.copycat-visual-v5 .copycat-v5-signal table,
+.copycat-visual-v5 .copycat-v5-pressure table {
+  width: 100% !important;
+  table-layout: fixed !important;
+  font-size: 9.4px !important;
+  line-height: 1.08 !important;
+}
+
+.copycat-visual-v5 .copycat-v5-signal th,
+.copycat-visual-v5 .copycat-v5-signal td,
+.copycat-visual-v5 .copycat-v5-pressure th,
+.copycat-visual-v5 .copycat-v5-pressure td {
+  padding: 5px 4px !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
+  vertical-align: middle !important;
+  overflow: hidden !important;
+}
+
+/* Signal column sizing. */
+.copycat-visual-v5 .copycat-v5-signal th:nth-child(1),
+.copycat-visual-v5 .copycat-v5-signal td:nth-child(1) { width: 28px !important; }
+.copycat-visual-v5 .copycat-v5-signal th:nth-child(2),
+.copycat-visual-v5 .copycat-v5-signal td:nth-child(2) { width: 78px !important; white-space: nowrap !important; }
+.copycat-visual-v5 .copycat-v5-signal th:nth-child(3),
+.copycat-visual-v5 .copycat-v5-signal td:nth-child(3) { width: 72px !important; }
+.copycat-visual-v5 .copycat-v5-signal th:nth-child(4),
+.copycat-visual-v5 .copycat-v5-signal td:nth-child(4) { width: 68px !important; }
+.copycat-visual-v5 .copycat-v5-signal th:nth-child(5),
+.copycat-visual-v5 .copycat-v5-signal td:nth-child(5) { width: 84px !important; }
+.copycat-visual-v5 .copycat-v5-signal th:nth-child(6),
+.copycat-visual-v5 .copycat-v5-signal td:nth-child(6) { width: 110px !important; }
+
+/* Buyer/seller pressure. */
+.copycat-visual-v5 .copycat-v5-pressure th:nth-child(1),
+.copycat-visual-v5 .copycat-v5-pressure td:nth-child(1) { width: 92px !important; white-space: nowrap !important; }
+.copycat-visual-v5 .copycat-v5-pressure th:nth-child(2),
+.copycat-visual-v5 .copycat-v5-pressure td:nth-child(2) { width: 74px !important; }
+.copycat-visual-v5 .copycat-v5-pressure th:nth-child(3),
+.copycat-visual-v5 .copycat-v5-pressure td:nth-child(3) { width: 92px !important; }
+.copycat-visual-v5 .copycat-v5-pressure th:nth-child(4),
+.copycat-visual-v5 .copycat-v5-pressure td:nth-child(4) { width: 92px !important; }
+
+/* Copycat Index: shrink all contents so the bubble can stay compact. */
+.copycat-visual-v5 .copycat-v5-index h1,
+.copycat-visual-v5 .copycat-v5-index h2 {
+  font-size: clamp(22px, 1.9vw, 32px) !important;
+  line-height: 0.98 !important;
+  margin-bottom: 5px !important;
+}
+
+.copycat-visual-v5 .copycat-v5-index p,
+.copycat-visual-v5 .copycat-v5-index span,
+.copycat-visual-v5 .copycat-v5-index div {
+  font-size: 10px !important;
+  line-height: 1.15 !important;
+}
+
+.copycat-visual-v5 .copycat-v5-index canvas,
+.copycat-visual-v5 .copycat-v5-index svg,
+.copycat-visual-v5 .copycat-v5-index [class*="recharts-wrapper"],
+.copycat-visual-v5 .copycat-v5-index [class*="chart"] {
+  max-height: 155px !important;
+}
+
+.copycat-visual-v5 .copycat-v5-index [class*="metric"],
+.copycat-visual-v5 .copycat-v5-index [class*="weight"],
+.copycat-visual-v5 .copycat-v5-index [class*="pill"] {
+  font-size: 9.5px !important;
+  line-height: 1.05 !important;
+}
+
+/* Scrollbars are allowed inside cards only. */
+.copycat-visual-v5 .copycat-v5-card ::-webkit-scrollbar {
+  width: 5px !important;
+  height: 5px !important;
+}
+
+.copycat-visual-v5 .copycat-v5-card ::-webkit-scrollbar-thumb {
+  border-radius: 999px !important;
+}
+
+/* Stack on narrower screens. */
+@media (max-width: 1240px) {
+  .copycat-visual-v5 #copycat-visual-middle-row,
+  .copycat-visual-v5 #copycat-visual-bottom-row,
+  .copycat-visual-v5 .copycat-visual-middle-row,
+  .copycat-visual-v5 .copycat-visual-bottom-row {
+    width: calc(100% - 28px) !important;
+    max-width: calc(100vw - 28px) !important;
+    grid-template-columns: 1fr !important;
+  }
+
+  .copycat-visual-v5 .copycat-v5-portfolio,
+  .copycat-visual-v5 .copycat-v5-exposure,
+  .copycat-visual-v5 .copycat-v5-signal,
+  .copycat-visual-v5 .copycat-v5-index,
+  .copycat-visual-v5 .copycat-v5-pressure {
+    height: auto !important;
+    max-height: none !important;
+    min-height: 280px !important;
+  }
+}
+
