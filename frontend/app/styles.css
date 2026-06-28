@@ -4613,3 +4613,42 @@ html[data-theme='light'] .cc-donut-legend .cc-allocation-legend-meta.negative {
   }
 }
 
+/* Copycat visual layout v6 - minimal tune only.
+   Goals:
+   1) bring footer up closer to the bottom row cards
+   2) shrink long/short exposure bars without changing the rest of the layout
+   3) keep green/red fills spanning the resized bar track */
+
+.copycat-visual-v6 #copycat-visual-bottom-row,
+.copycat-visual-v6 .copycat-visual-bottom-row {
+  margin-bottom: 8px !important;
+}
+
+.copycat-visual-v6 .copycat-v6-footer {
+  margin-top: 8px !important;
+  position: relative !important;
+  top: -110px !important;
+}
+
+.copycat-visual-v6 .copycat-v5-index,
+.copycat-visual-v6 .copycat-v5-pressure {
+  margin-bottom: 0 !important;
+}
+
+.copycat-visual-v6 .copycat-v6-exposure-track {
+  width: 118px !important;
+  min-width: 118px !important;
+  max-width: 118px !important;
+  inline-size: 118px !important;
+  box-sizing: border-box !important;
+}
+
+.copycat-visual-v6 .copycat-v6-exposure-track > * {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.copycat-visual-v6 .copycat-v6-exposure-track * {
+  box-sizing: border-box !important;
+}
+
