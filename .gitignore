@@ -30,3 +30,7 @@ frontend/node_modules/
 copycat_daily_scout_out_v2/
 # Copycat local lightweight wallet registry
 copycat_wallet_registry/
+# Copycat wallet discovery imports/cache
+copycat_wallet_registry/web_cache/
+copycat_wallet_registry/imports/*
+!copycat_wallet_registry/imports/README_IMPORT_WALLETS_HERE.txt

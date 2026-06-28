@@ -1,0 +1,4 @@
+# Addresses that should not be treated as trader wallets.
+0x0000000000000000000000000000000000000000
+# Ethereum USDC token contract - appears in files often but is not a Hyperliquid trader wallet.
+0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48
