@@ -3582,3 +3582,150 @@ html[data-theme='light'] .cc-donut-legend .cc-allocation-legend-meta.negative {
   }
 }
 
+/* Copycat gentle rows polish v1
+   Small layout polish only.
+   - Keeps the locked top-right date/time untouched.
+   - Keeps the existing two-row dashboard layout.
+   - Trims Asset Signal Board to the first 5 columns so the card stays compact.
+   - Keeps row-1 cards aligned and slightly shorter so row 2 sits higher.
+   - Tightens table sizing so content stays inside each bubble. */
+
+.cc-dashboard-analysis-row {
+  align-items: start;
+}
+
+.cc-dashboard-analysis-row > .cc-card {
+  min-height: 0;
+}
+
+.cc-allocation-card,
+.cc-exposure-card,
+.cc-signal-board-card {
+  height: 316px;
+}
+
+.cc-allocation-card,
+.cc-exposure-card,
+.cc-signal-board-card,
+.cc-pressure-card,
+.cc-performance-index {
+  overflow: hidden;
+}
+
+.cc-allocation-card .cc-card-title-row,
+.cc-exposure-card .cc-panel-title,
+.cc-signal-board-card .cc-panel-title,
+.cc-pressure-card .cc-panel-title {
+  margin-bottom: 8px;
+}
+
+.cc-allocation-card .cc-card-title-row h3,
+.cc-exposure-card .cc-panel-title h3,
+.cc-signal-board-card .cc-panel-title h3,
+.cc-pressure-card .cc-panel-title h3 {
+  font-size: 0.98rem;
+}
+
+.cc-allocation-card .cc-card-title-row span,
+.cc-exposure-card .cc-panel-title span,
+.cc-signal-board-card .cc-panel-title span,
+.cc-pressure-card .cc-panel-title span {
+  font-size: 0.72rem;
+}
+
+.cc-allocation-card .cc-donut-wrap,
+.cc-exposure-card .cc-bars-wrap,
+.cc-signal-board-card .cc-scroll-table,
+.cc-pressure-card .cc-scroll-table {
+  height: calc(100% - 44px);
+}
+
+.cc-signal-board-card table,
+.cc-pressure-card table {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.cc-signal-board-card th,
+.cc-signal-board-card td,
+.cc-pressure-card th,
+.cc-pressure-card td {
+  font-size: 0.72rem;
+  padding: 7px 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+
+.cc-signal-board-card td .cc-asset-cell,
+.cc-pressure-card td .cc-asset-cell {
+  min-width: 0;
+}
+
+/* Keep only the first 5 columns in Asset Signal Board:
+   # | Asset | Signal | Confidence | Wallets */
+.cc-signal-board-card th:nth-child(n+6),
+.cc-signal-board-card td:nth-child(n+6) {
+  display: none;
+}
+
+/* Re-balance the visible signal board columns */
+.cc-signal-board-card th:nth-child(1),
+.cc-signal-board-card td:nth-child(1) { width: 6%; }
+.cc-signal-board-card th:nth-child(2),
+.cc-signal-board-card td:nth-child(2) { width: 29%; }
+.cc-signal-board-card th:nth-child(3),
+.cc-signal-board-card td:nth-child(3) { width: 20%; }
+.cc-signal-board-card th:nth-child(4),
+.cc-signal-board-card td:nth-child(4) { width: 18%; }
+.cc-signal-board-card th:nth-child(5),
+.cc-signal-board-card td:nth-child(5) { width: 27%; }
+
+/* Pressure board: just tighten slightly so all columns stay inside */
+.cc-pressure-card th,
+.cc-pressure-card td {
+  font-size: 0.71rem;
+  padding: 7px 7px;
+}
+
+.cc-pressure-card th:nth-child(1),
+.cc-pressure-card td:nth-child(1) { width: 18%; }
+.cc-pressure-card th:nth-child(2),
+.cc-pressure-card td:nth-child(2) { width: 11%; }
+.cc-pressure-card th:nth-child(3),
+.cc-pressure-card td:nth-child(3) { width: 15%; }
+.cc-pressure-card th:nth-child(4),
+.cc-pressure-card td:nth-child(4) { width: 16%; }
+.cc-pressure-card th:nth-child(5),
+.cc-pressure-card td:nth-child(5) { width: 16%; }
+.cc-pressure-card th:nth-child(6),
+.cc-pressure-card td:nth-child(6) { width: 14%; }
+
+/* Keep scroll inside cards, not outside the bubble */
+.cc-signal-board-card .cc-scroll-y,
+.cc-pressure-card .cc-scroll-y {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Slightly shorten the index card so the second row feels tighter */
+.cc-dashboard-performance-row .cc-performance-index,
+.cc-dashboard-performance-row > .cc-card {
+  min-height: 0;
+}
+
+@media (max-width: 1180px) {
+  .cc-allocation-card,
+  .cc-exposure-card,
+  .cc-signal-board-card,
+  .cc-pressure-card {
+    height: auto;
+    min-height: 300px;
+  }
+
+  .cc-signal-board-card th:nth-child(n+6),
+  .cc-signal-board-card td:nth-child(n+6) {
+    display: none;
+  }
+}
