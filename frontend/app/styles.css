@@ -3729,3 +3729,102 @@ html[data-theme='light'] .cc-donut-legend .cc-allocation-legend-meta.negative {
     display: none;
   }
 }
+
+/* Copycat micro fit polish v1
+   Tiny sizing-only follow-up for visual-clean-v2.
+   Keeps the locked date/time and current layout.
+   Only nudges the three analysis cards so all content fits. */
+
+.cc-allocation-card,
+.cc-exposure-card,
+.cc-signal-board-card {
+  height: 324px !important;
+}
+
+/* Portfolio Allocation: slightly smaller donut so the token list stays inside */
+.cc-allocation-card .cc-donut-layout {
+  grid-template-columns: 168px minmax(0, 1fr) !important;
+  gap: 12px !important;
+  align-items: start !important;
+}
+
+.cc-allocation-card .cc-donut-svg {
+  width: 164px !important;
+  height: 164px !important;
+  display: block;
+  margin: 4px auto 0 !important;
+}
+
+.cc-allocation-card .cc-donut-tooltip {
+  font-size: 10.5px !important;
+  line-height: 1.32 !important;
+}
+
+.cc-allocation-card .cc-donut-legend {
+  gap: 6px !important;
+}
+
+.cc-allocation-card .cc-donut-legend div {
+  padding: 6px 7px !important;
+  gap: 8px !important;
+}
+
+.cc-allocation-card .cc-donut-legend b,
+.cc-allocation-card .cc-asset-cell b {
+  font-size: 11px !important;
+}
+
+.cc-allocation-card .cc-donut-legend span {
+  font-size: 10px !important;
+}
+
+/* Long vs Short Exposure: reduce bar width materially so all columns fit */
+.cc-exposure-card .cc-ex-row {
+  grid-template-columns: 112px 86px 46px 46px !important;
+  gap: 8px !important;
+}
+
+.cc-exposure-card .cc-ex-name {
+  grid-template-columns: 24px minmax(0, 1fr) 34px !important;
+  gap: 6px !important;
+}
+
+.cc-exposure-card .cc-ex-name b {
+  font-size: 11px !important;
+  max-width: none !important;
+}
+
+.cc-exposure-card .cc-ex-name span {
+  font-size: 11px !important;
+}
+
+.cc-exposure-card .cc-ex-track {
+  width: 86px !important;
+  max-width: 86px !important;
+  justify-self: start !important;
+  background: transparent !important;
+}
+
+.cc-exposure-card .cc-ex-track > div {
+  width: 100% !important;
+}
+
+.cc-exposure-card .cc-ex-row small {
+  font-size: 10px !important;
+}
+
+/* Asset Signal Board: tiny lift so the 5th visible row clears the bottom */
+.cc-signal-board-card .cc-scroll-table {
+  height: calc(100% - 40px) !important;
+}
+
+.cc-signal-board-card th,
+.cc-signal-board-card td {
+  padding: 6px 8px !important;
+  font-size: 0.71rem !important;
+  line-height: 1.18 !important;
+}
+
+.cc-signal-board-card .cc-scroll-y {
+  padding-bottom: 3px !important;
+}
