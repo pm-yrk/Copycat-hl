@@ -4099,3 +4099,254 @@ html[data-theme='light'] .cc-donut-legend .cc-allocation-legend-meta.negative {
   }
 }
 
+
+/* Copycat visual layout v4 - compact cards, no overflow, no oversized bubbles. Visual only. */
+.copycat-visual-v4,
+.copycat-visual-v4 body {
+  overflow-x: hidden !important;
+}
+
+/* Compact rows with normal margins */
+.copycat-visual-v4 #copycat-visual-middle-row,
+.copycat-visual-v4 .copycat-visual-middle-row {
+  width: calc(100% - 48px) !important;
+  max-width: calc(100vw - 48px) !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  display: grid !important;
+  grid-template-columns: minmax(280px, 0.72fr) minmax(330px, 0.86fr) minmax(560px, 1.42fr) !important;
+  gap: 14px !important;
+  align-items: stretch !important;
+  overflow: visible !important;
+  box-sizing: border-box !important;
+}
+
+.copycat-visual-v4 #copycat-visual-bottom-row,
+.copycat-visual-v4 .copycat-visual-bottom-row {
+  width: calc(100% - 48px) !important;
+  max-width: calc(100vw - 48px) !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  display: grid !important;
+  grid-template-columns: minmax(560px, 1fr) minmax(520px, 0.92fr) !important;
+  gap: 14px !important;
+  align-items: stretch !important;
+  overflow: visible !important;
+  box-sizing: border-box !important;
+}
+
+/* Kill old fake fades/masks, but keep card content clipped inside the card. */
+.copycat-visual-v4 #copycat-visual-middle-row *,
+.copycat-visual-v4 #copycat-visual-bottom-row * {
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+  clip-path: none !important;
+}
+
+/* Cards are compact again. Overflow stays inside the bubble, not outside. */
+.copycat-visual-v4 .copycat-v4-portfolio,
+.copycat-visual-v4 .copycat-v4-exposure,
+.copycat-visual-v4 .copycat-v4-signal {
+  height: 335px !important;
+  min-height: 335px !important;
+  max-height: 335px !important;
+  overflow: hidden !important;
+  padding: 14px !important;
+  box-sizing: border-box !important;
+  min-width: 0 !important;
+}
+
+.copycat-visual-v4 .copycat-v4-index,
+.copycat-visual-v4 .copycat-v4-pressure {
+  height: 390px !important;
+  min-height: 390px !important;
+  max-height: 390px !important;
+  overflow: hidden !important;
+  padding: 16px !important;
+  box-sizing: border-box !important;
+  min-width: 0 !important;
+}
+
+/* Portfolio: smaller donut and allocations moved into a compact bottom-style legend. */
+.copycat-visual-v4 .copycat-v4-portfolio {
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.copycat-visual-v4 .copycat-v4-portfolio .copycat-v4-card-title {
+  flex: 0 0 auto !important;
+}
+
+.copycat-visual-v4 .copycat-v4-portfolio svg,
+.copycat-visual-v4 .copycat-v4-portfolio canvas,
+.copycat-visual-v4 .copycat-v4-portfolio [class*="recharts-wrapper"],
+.copycat-visual-v4 .copycat-v4-portfolio [class*="chart"] {
+  max-width: 150px !important;
+  max-height: 150px !important;
+}
+
+.copycat-visual-v4 .copycat-v4-portfolio .copycat-v4-chart-box {
+  max-height: 165px !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  overflow: hidden !important;
+}
+
+.copycat-visual-v4 .copycat-v4-portfolio .copycat-v4-legend-box {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 5px 8px !important;
+  width: 100% !important;
+  max-height: 105px !important;
+  overflow: auto !important;
+  padding-right: 4px !important;
+  font-size: 10px !important;
+  line-height: 1.1 !important;
+}
+
+.copycat-visual-v4 .copycat-v4-portfolio .copycat-v4-legend-box * {
+  font-size: 10px !important;
+  line-height: 1.1 !important;
+  white-space: nowrap !important;
+}
+
+/* Long/short: bars much shorter; value columns stay visible. */
+.copycat-visual-v4 .copycat-v4-exposure {
+  overflow: hidden !important;
+}
+
+.copycat-visual-v4 .copycat-v4-exposure table {
+  width: 100% !important;
+  table-layout: fixed !important;
+  font-size: 10px !important;
+  line-height: 1.05 !important;
+}
+
+.copycat-visual-v4 .copycat-v4-exposure th,
+.copycat-visual-v4 .copycat-v4-exposure td {
+  padding: 4px 3px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: clip !important;
+}
+
+.copycat-visual-v4 .copycat-v4-exposure [class*="bar"],
+.copycat-visual-v4 .copycat-v4-exposure [style*="width"] {
+  max-width: 82px !important;
+}
+
+.copycat-visual-v4 .copycat-v4-exposure .copycat-v4-scroll-inner {
+  height: 285px !important;
+  max-height: 285px !important;
+  overflow: auto !important;
+  padding-right: 3px !important;
+}
+
+/* Asset signal and pressure tables: contained, compact, scroll inside card only. */
+.copycat-visual-v4 .copycat-v4-signal .copycat-v4-scroll-inner,
+.copycat-visual-v4 .copycat-v4-pressure .copycat-v4-scroll-inner {
+  max-height: calc(100% - 48px) !important;
+  overflow: auto !important;
+  padding-right: 4px !important;
+}
+
+.copycat-visual-v4 .copycat-v4-signal table,
+.copycat-visual-v4 .copycat-v4-pressure table {
+  width: 100% !important;
+  table-layout: fixed !important;
+  font-size: 9.6px !important;
+  line-height: 1.08 !important;
+}
+
+.copycat-visual-v4 .copycat-v4-signal th,
+.copycat-visual-v4 .copycat-v4-signal td,
+.copycat-visual-v4 .copycat-v4-pressure th,
+.copycat-visual-v4 .copycat-v4-pressure td {
+  padding: 5px 4px !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
+  vertical-align: middle !important;
+}
+
+/* Asset signal board column sizing */
+.copycat-visual-v4 .copycat-v4-signal th:nth-child(1),
+.copycat-visual-v4 .copycat-v4-signal td:nth-child(1) { width: 28px !important; }
+.copycat-visual-v4 .copycat-v4-signal th:nth-child(2),
+.copycat-visual-v4 .copycat-v4-signal td:nth-child(2) { width: 72px !important; white-space: nowrap !important; }
+.copycat-visual-v4 .copycat-v4-signal th:nth-child(3),
+.copycat-visual-v4 .copycat-v4-signal td:nth-child(3) { width: 68px !important; }
+.copycat-visual-v4 .copycat-v4-signal th:nth-child(4),
+.copycat-visual-v4 .copycat-v4-signal td:nth-child(4) { width: 66px !important; }
+.copycat-visual-v4 .copycat-v4-signal th:nth-child(5),
+.copycat-visual-v4 .copycat-v4-signal td:nth-child(5) { width: 80px !important; }
+.copycat-visual-v4 .copycat-v4-signal th:nth-child(6),
+.copycat-visual-v4 .copycat-v4-signal td:nth-child(6) { width: 105px !important; }
+
+/* Buyer/seller pressure columns */
+.copycat-visual-v4 .copycat-v4-pressure th:nth-child(1),
+.copycat-visual-v4 .copycat-v4-pressure td:nth-child(1) { width: 90px !important; white-space: nowrap !important; }
+.copycat-visual-v4 .copycat-v4-pressure th:nth-child(2),
+.copycat-visual-v4 .copycat-v4-pressure td:nth-child(2) { width: 74px !important; }
+.copycat-visual-v4 .copycat-v4-pressure th:nth-child(3),
+.copycat-visual-v4 .copycat-v4-pressure td:nth-child(3) { width: 92px !important; }
+.copycat-visual-v4 .copycat-v4-pressure th:nth-child(4),
+.copycat-visual-v4 .copycat-v4-pressure td:nth-child(4) { width: 92px !important; }
+
+/* Index compact but complete. */
+.copycat-visual-v4 .copycat-v4-index h1,
+.copycat-visual-v4 .copycat-v4-index h2 {
+  font-size: clamp(27px, 2.25vw, 38px) !important;
+  line-height: 0.98 !important;
+  margin-bottom: 6px !important;
+}
+
+.copycat-visual-v4 .copycat-v4-index canvas,
+.copycat-visual-v4 .copycat-v4-index svg,
+.copycat-visual-v4 .copycat-v4-index [class*="recharts-wrapper"],
+.copycat-visual-v4 .copycat-v4-index [class*="chart"] {
+  max-height: 190px !important;
+}
+
+.copycat-visual-v4 .copycat-v4-index .copycat-v4-scroll-inner {
+  height: 340px !important;
+  max-height: 340px !important;
+  overflow: hidden !important;
+}
+
+/* Make scrollbars small and intentional. */
+.copycat-visual-v4 .copycat-v4-scroll-inner::-webkit-scrollbar,
+.copycat-visual-v4 .copycat-v4-legend-box::-webkit-scrollbar {
+  width: 5px !important;
+  height: 5px !important;
+}
+
+.copycat-visual-v4 .copycat-v4-scroll-inner::-webkit-scrollbar-thumb,
+.copycat-visual-v4 .copycat-v4-legend-box::-webkit-scrollbar-thumb {
+  border-radius: 999px !important;
+}
+
+/* Responsive fallback */
+@media (max-width: 1240px) {
+  .copycat-visual-v4 #copycat-visual-middle-row,
+  .copycat-visual-v4 #copycat-visual-bottom-row,
+  .copycat-visual-v4 .copycat-visual-middle-row,
+  .copycat-visual-v4 .copycat-visual-bottom-row {
+    width: calc(100% - 28px) !important;
+    max-width: calc(100vw - 28px) !important;
+    grid-template-columns: 1fr !important;
+  }
+
+  .copycat-visual-v4 .copycat-v4-portfolio,
+  .copycat-visual-v4 .copycat-v4-exposure,
+  .copycat-visual-v4 .copycat-v4-signal,
+  .copycat-visual-v4 .copycat-v4-index,
+  .copycat-visual-v4 .copycat-v4-pressure {
+    height: auto !important;
+    min-height: 300px !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+}
+
