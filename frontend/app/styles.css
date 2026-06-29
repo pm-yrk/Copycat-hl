@@ -4052,3 +4052,37 @@ body[data-theme="light"] .copycat-local-viewer-time,
     color: rgba(9, 22, 34, 0.86) !important;
   }
 }
+
+/* Copycat top metrics tight + asset flush v1
+   Only:
+   - slightly reduce top 4 metric card number sizing/height
+   - keep Asset Signal Board to exactly 5 visible rows (no 6th-row poke)
+   Does NOT change Portfolio Allocation, Long vs Short Exposure, or their layout. */
+
+.copycat-top-metric-tight {
+  min-height: 104px !important;
+  padding-top: 14px !important;
+  padding-bottom: 12px !important;
+}
+
+.copycat-top-metric-tight .copycat-top-metric-value {
+  font-size: 2.05rem !important;
+  line-height: 1.02 !important;
+}
+
+.copycat-top-metric-tight .copycat-top-metric-support {
+  font-size: 0.78rem !important;
+  line-height: 1.2 !important;
+}
+
+/* Asset signal board: keep it visually flush at 5 rows */
+.copycat-asset-board-flush tbody tr:nth-child(n+6) {
+  display: none !important;
+}
+
+.copycat-asset-board-flush .cc-scroll-table,
+.copycat-asset-board-flush .cc-table-wrap,
+.copycat-asset-board-flush .table-scroll {
+  overflow: hidden !important;
+}
+
