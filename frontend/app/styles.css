@@ -5052,3 +5052,30 @@ body[data-theme="light"] .copycat-local-viewer-time,
   margin-top: 4px !important;
   margin-bottom: 0 !important;
 }
+
+/* Copycat index metric rows lift v1
+   Only affects the rows/data under the Copycat Index chart.
+   Card placement, card size, chart width, Recent Buyer/Seller card,
+   and all locked sections are untouched. */
+
+.cc-index-compact-wrapper .copycat-index-metric-row-lift,
+.cc-index-compact-wrapper .copycat-index-follow-row-lift {
+  position: relative !important;
+  top: -108px !important;
+  margin-bottom: -108px !important;
+  z-index: 3 !important;
+}
+
+/* Keep lifted metric boxes compact so they fit inside the existing card. */
+.cc-index-compact-wrapper .copycat-index-metric-row-lift .cc-card,
+.cc-index-compact-wrapper .copycat-index-metric-row-lift [class*="metric"],
+.cc-index-compact-wrapper .copycat-index-metric-row-lift [class*="stat"] {
+  padding-top: 5px !important;
+  padding-bottom: 5px !important;
+  min-height: 0 !important;
+}
+
+.cc-index-compact-wrapper .copycat-index-follow-row-lift {
+  font-size: 0.66rem !important;
+  line-height: 1.16 !important;
+}

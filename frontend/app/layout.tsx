@@ -10,6 +10,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" data-theme="dark">
       <body>{children}        <script defer src="/copycat_local_viewer_time.js"></script>
               <script src="/copycat_top_metrics_tight_asset_flush_v1.js" defer></script>
+              <script src="/copycat_index_metric_rows_lift_v1.js" defer></script>
       </body>
     </html>
   )
