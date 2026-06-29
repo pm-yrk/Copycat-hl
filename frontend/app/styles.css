@@ -5442,3 +5442,53 @@ body[data-theme="light"] .copycat-local-viewer-time,
   position: relative !important;
   z-index: 21 !important;
 }
+
+/* Copycat compact footer v1
+   Final visual-only footer cleanup.
+   Only affects the disclaimer/footer card containing "Market intelligence only."
+   Does not touch dashboard cards, layout rows, tables, charts, date/time, data,
+   publisher, or registry. */
+
+.copycat-disclaimer-footer-compact {
+  min-height: 72px !important;
+  padding: 12px 18px !important;
+  margin-top: 12px !important;
+  margin-bottom: 14px !important;
+  box-sizing: border-box !important;
+}
+
+.copycat-disclaimer-footer-compact,
+.copycat-disclaimer-footer-compact * {
+  line-height: 1.15 !important;
+}
+
+.copycat-disclaimer-footer-compact h1,
+.copycat-disclaimer-footer-compact h2,
+.copycat-disclaimer-footer-compact h3,
+.copycat-disclaimer-footer-compact strong,
+.copycat-disclaimer-footer-compact b {
+  font-size: 0.92rem !important;
+  margin-top: 0 !important;
+  margin-bottom: 3px !important;
+}
+
+.copycat-disclaimer-footer-compact p,
+.copycat-disclaimer-footer-compact span,
+.copycat-disclaimer-footer-compact small,
+.copycat-disclaimer-footer-compact div {
+  font-size: 0.76rem !important;
+}
+
+.copycat-disclaimer-footer-compact p,
+.copycat-disclaimer-footer-compact small {
+  margin-top: 0 !important;
+  margin-bottom: 2px !important;
+}
+
+/* Keep the data quality line compact and inside the smaller footer. */
+.copycat-disclaimer-footer-compact [class*="quality"],
+.copycat-disclaimer-footer-compact [class*="sync"],
+.copycat-disclaimer-footer-compact [class*="status"] {
+  margin-top: 2px !important;
+  margin-bottom: 0 !important;
+}
