@@ -5401,3 +5401,44 @@ body[data-theme="light"] .copycat-local-viewer-time,
   overflow-y: auto !important;
   overflow-x: hidden !important;
 }
+
+/* Copycat unify card layer v1
+   Tiny visual-only layer fix.
+   Goal: put all dashboard cards on the same visual layer as the Index card,
+   removing edge fading/lower-layer look without changing size, placement, scrolling,
+   data, or content. */
+
+/* Create one clean stacking context for dashboard cards. */
+.cc-dashboard,
+.cc-dashboard-grid,
+.cc-kpi-grid,
+.cc-dashboard-analysis-row,
+.cc-dashboard-performance-row {
+  isolation: isolate !important;
+}
+
+/* Put every visible dashboard bubble/card on the same front layer. */
+.cc-kpi-grid > article,
+.cc-dashboard-analysis-row > *,
+.cc-dashboard-performance-row > *,
+.cc-index-compact-wrapper > *,
+.cc-pressure-card,
+.cc-signal-board-card {
+  position: relative !important;
+  z-index: 20 !important;
+  opacity: 1 !important;
+  filter: none !important;
+  mix-blend-mode: normal !important;
+  transform: translateZ(0) !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+}
+
+/* Keep scrollbars/content above the card background but do not change their layout. */
+.cc-dashboard-analysis-row > * .cc-scroll-table,
+.cc-dashboard-performance-row > * .cc-scroll-table,
+.cc-signal-board-card .cc-scroll-table,
+.cc-pressure-card .cc-scroll-table {
+  position: relative !important;
+  z-index: 21 !important;
+}
