@@ -5370,3 +5370,34 @@ body[data-theme="light"] .copycat-local-viewer-time,
 .copycat-asset-board-flush tbody tr:nth-child(n+6) {
   display: table-row !important;
 }
+
+/* Copycat bottom cards expand tiny v1
+   Final tiny adjustment.
+   Only expands the bottom Index / Recent Buyer-Seller cards downward slightly.
+   It does NOT move them, and does NOT touch Asset Signal Board, Portfolio Allocation,
+   Long vs Short Exposure, top KPIs, date/time, data, publisher, or registry. */
+
+/* Keep the current top placement locked. Only add a little height downward. */
+.cc-index-compact-wrapper,
+.cc-pressure-card {
+  height: 392px !important;
+  min-height: 392px !important;
+  max-height: 392px !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+.cc-index-compact-wrapper > * {
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: 392px !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+/* Recent Buyer / Seller Pressure: use the expanded card space to reveal the last visible row. */
+.cc-pressure-card .cc-scroll-table {
+  height: calc(100% - 28px) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
