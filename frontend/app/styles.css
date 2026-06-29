@@ -5079,3 +5079,112 @@ body[data-theme="light"] .copycat-local-viewer-time,
   font-size: 0.66rem !important;
   line-height: 1.16 !important;
 }
+
+/* Copycat index source metrics fit v1
+   Source-level fix for the Copycat Index card.
+   Only affects the dashboard Index component internals:
+   - chart stays full width
+   - chart container stops taking too much vertical space
+   - metric rows / weights / note move up and fit inside the card
+   Does not change card placement, card height, Recent Buyer/Seller Pressure,
+   Portfolio Allocation, Long vs Short Exposure, Asset Signal Board, top KPIs,
+   top-right date/time, data, publisher, or registry. */
+
+.cc-index-dashboard-fit {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+  gap: 0 !important;
+}
+
+.cc-index-dashboard-fit .cc-index-head {
+  flex: 0 0 auto !important;
+  margin-bottom: 6px !important;
+}
+
+/* This is the important part: the chart container was consuming too much height.
+   Keep full width, but make the chart area compact so the data rows sit underneath it. */
+.cc-index-dashboard-fit .cc-index-chart {
+  flex: 0 0 118px !important;
+  height: 118px !important;
+  min-height: 118px !important;
+  max-height: 118px !important;
+  width: 100% !important;
+  margin: 4px 0 8px 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  overflow: visible !important;
+}
+
+.cc-index-dashboard-fit .cc-index-chart svg {
+  display: block !important;
+  width: 100% !important;
+  height: 118px !important;
+  max-height: 118px !important;
+  margin: 0 !important;
+}
+
+/* Metric row directly under chart */
+.cc-index-dashboard-fit .cc-index-metrics {
+  flex: 0 0 auto !important;
+  margin-top: 0 !important;
+  margin-bottom: 7px !important;
+  gap: 8px !important;
+  align-items: stretch !important;
+}
+
+.cc-index-dashboard-fit .cc-index-metrics > div {
+  min-height: 58px !important;
+  padding-top: 7px !important;
+  padding-bottom: 7px !important;
+}
+
+.cc-index-dashboard-fit .cc-index-metrics small {
+  font-size: 0.66rem !important;
+  line-height: 1.05 !important;
+}
+
+.cc-index-dashboard-fit .cc-index-metrics b {
+  font-size: 1.05rem !important;
+  line-height: 1.02 !important;
+}
+
+.cc-index-dashboard-fit .cc-index-metrics em {
+  font-size: 0.70rem !important;
+  line-height: 1.05 !important;
+}
+
+/* Weights row and note sit immediately below metrics */
+.cc-index-dashboard-fit .cc-index-weights {
+  flex: 0 0 auto !important;
+  margin-top: 0 !important;
+  margin-bottom: 6px !important;
+  gap: 6px !important;
+}
+
+.cc-index-dashboard-fit .cc-index-weights span {
+  font-size: 0.66rem !important;
+  line-height: 1.05 !important;
+}
+
+.cc-index-dashboard-fit .cc-index-weights i {
+  font-size: 0.66rem !important;
+  line-height: 1.05 !important;
+  padding-top: 3px !important;
+  padding-bottom: 3px !important;
+}
+
+.cc-index-dashboard-fit .cc-index-note {
+  flex: 0 0 auto !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  font-size: 0.66rem !important;
+  line-height: 1.18 !important;
+}
+
+.cc-index-dashboard-fit .cc-index-warning {
+  margin-top: 4px !important;
+}

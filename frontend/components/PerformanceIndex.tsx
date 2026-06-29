@@ -159,7 +159,7 @@ export default function PerformanceIndex({ variant = 'dashboard' }: { variant?: 
     ? `Backtested from ${shortDate(data.start_ts_ms)} · USDC margin excluded`
     : `Started ${shortDate(data.start_ts_ms)} · USDC margin excluded · no hindsight`
 
-  return <section className={`cc-index-card ${compact ? 'home' : 'deep'}`}>
+  return <section className={`cc-index-card ${compact ? 'home' : 'deep cc-index-dashboard-fit'}`}>
     <div className="cc-index-head">
       <div>
         <p className="eyebrow">{eyebrow}</p>
