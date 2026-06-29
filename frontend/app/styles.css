@@ -4205,3 +4205,172 @@ body[data-theme="light"] .copycat-local-viewer-time,
   font-weight: unset !important;
   letter-spacing: unset !important;
 }
+
+/* Copycat index + recent pressure compact match v1
+   Only adjusts the bottom two cards to match the cleaner compact reference.
+   Keeps Portfolio Allocation, Long vs Short Exposure, Asset Signal Board,
+   date/time, and the rest of the site untouched.
+
+   Changes:
+   - Asset Signal Board: ensure row 6 is hidden cleanly so the card ends flush after row 5
+   - Copycat Index: smaller header/text, shorter overall card, chart sits directly on card background
+   - Recent Buyer / Seller Pressure: smaller header/text, shorter overall card, table fills lower portion of the card
+*/
+
+/* Safety: preserve the locked top row exactly as-is */
+.cc-signal-board-card .cc-signal-table tbody tr:nth-child(n+6),
+.cc-signal-board-card .cc-scroll-table table tbody tr:nth-child(n+6) {
+  display: none !important;
+}
+
+.cc-signal-board-card .cc-scroll-table {
+  overflow: hidden !important;
+}
+
+/* Bottom row cards: shorter and more compact */
+.cc-performance-index,
+.cc-pressure-card {
+  min-height: 0 !important;
+}
+
+/* Copycat Index: reduce top text footprint */
+.cc-performance-index h1,
+.cc-performance-index h2 {
+  font-size: clamp(2.1rem, 2.35vw, 3rem) !important;
+  line-height: 0.96 !important;
+  letter-spacing: -0.035em !important;
+  margin: 0 0 8px 0 !important;
+}
+
+.cc-performance-index .cc-panel-title,
+.cc-performance-index h3,
+.cc-performance-index .eyebrow,
+.cc-performance-index small {
+  margin-bottom: 6px !important;
+}
+
+.cc-performance-index p,
+.cc-performance-index .cc-subtitle,
+.cc-performance-index .cc-description {
+  font-size: 0.82rem !important;
+  line-height: 1.25 !important;
+  margin-top: 0 !important;
+  margin-bottom: 8px !important;
+}
+
+/* Remove the "bubble within a bubble" feel around the chart */
+.cc-performance-index .cc-chart-shell,
+.cc-performance-index .cc-chart-card,
+.cc-performance-index .cc-chart-frame,
+.cc-performance-index .cc-index-chart,
+.cc-performance-index .cc-performance-chart,
+.cc-performance-index .chart-shell,
+.cc-performance-index .chart-card,
+.cc-performance-index .chart-frame,
+.cc-performance-index .chart-wrap,
+.cc-performance-index .chart-wrapper,
+.cc-performance-index .graph-wrap,
+.cc-performance-index .graph-wrapper,
+.cc-performance-index .plot-wrap,
+.cc-performance-index .plot-wrapper {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+}
+
+/* Also flatten the most likely immediate chart container without affecting stat boxes */
+.cc-performance-index > div:has(svg) {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.cc-performance-index svg {
+  display: block !important;
+  width: 100% !important;
+  max-height: 158px !important;
+  height: auto !important;
+  margin: 4px 0 6px 0 !important;
+}
+
+/* Compact metric chips/cards under the chart */
+.cc-performance-index .cc-card,
+.cc-performance-index .cc-metric,
+.cc-performance-index [class*='metric'],
+.cc-performance-index [class*='stat'] {
+  min-height: 0 !important;
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+}
+
+.cc-performance-index .cc-card strong,
+.cc-performance-index .cc-metric strong,
+.cc-performance-index [class*='metric'] strong,
+.cc-performance-index [class*='stat'] strong {
+  font-size: 0.74rem !important;
+}
+
+.cc-performance-index .cc-card,
+.cc-performance-index .cc-card *,
+.cc-performance-index .cc-metric,
+.cc-performance-index .cc-metric * {
+  line-height: 1.15 !important;
+}
+
+.cc-performance-index .cc-pill,
+.cc-performance-index [class*='pill'],
+.cc-performance-index [class*='tag'] {
+  font-size: 0.78rem !important;
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
+}
+
+.cc-performance-index > p:last-child,
+.cc-performance-index .cc-footnote,
+.cc-performance-index .cc-note {
+  font-size: 0.8rem !important;
+  line-height: 1.35 !important;
+}
+
+/* Recent Buyer / Seller Pressure: compact header and let table reach down lower */
+.cc-pressure-card .cc-panel-title,
+.cc-pressure-card h2,
+.cc-pressure-card h3,
+.cc-pressure-card .eyebrow,
+.cc-pressure-card small {
+  margin-bottom: 6px !important;
+}
+
+.cc-pressure-card h1,
+.cc-pressure-card h2,
+.cc-pressure-card h3 {
+  font-size: 1rem !important;
+  line-height: 1.1 !important;
+}
+
+.cc-pressure-card p,
+.cc-pressure-card .cc-subtitle,
+.cc-pressure-card .cc-description,
+.cc-pressure-card small {
+  font-size: 0.78rem !important;
+  line-height: 1.25 !important;
+}
+
+.cc-pressure-card .cc-scroll-table {
+  height: calc(100% - 34px) !important;
+}
+
+.cc-pressure-card table {
+  width: 100% !important;
+  table-layout: fixed !important;
+}
+
+.cc-pressure-card th,
+.cc-pressure-card td {
+  font-size: 0.74rem !important;
+  line-height: 1.18 !important;
+  padding-top: 9px !important;
+  padding-bottom: 9px !important;
+}
+
