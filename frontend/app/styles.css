@@ -4965,3 +4965,90 @@ body[data-theme="light"] .copycat-local-viewer-time,
   padding-top: 14px !important;
   padding-bottom: 10px !important;
 }
+
+/* Copycat index data lift v1
+   Final tiny adjustment for the locked bottom-card placement.
+   Only affects the Copycat Index card content.
+   Goal: move the data/metric boxes under the chart upward so they fit cleanly.
+   Does not change card placement, card height, Recent Buyer/Seller Pressure,
+   Portfolio Allocation, Long vs Short Exposure, Asset Signal Board, top KPIs,
+   date/time, or data. */
+
+/* Keep the locked card placement exactly as-is. Only change internal Index spacing. */
+.cc-index-compact-wrapper {
+  margin-top: 0 !important;
+}
+
+/* Remove vertical spacer behaviour inside the Index card so the data sits directly under the chart. */
+.cc-index-compact-wrapper > *,
+.cc-index-compact-wrapper > * > *,
+.cc-index-compact-wrapper section,
+.cc-index-compact-wrapper article {
+  justify-content: flex-start !important;
+}
+
+/* If the Index component uses grid/flex gaps internally, tighten them only inside this wrapper. */
+.cc-index-compact-wrapper > * {
+  row-gap: 6px !important;
+  gap: 6px !important;
+}
+
+.cc-index-compact-wrapper > * > * {
+  margin-top: 0 !important;
+}
+
+/* Chart remains full width, but releases vertical space underneath. */
+.cc-index-compact-wrapper svg {
+  margin-top: 0 !important;
+  margin-bottom: 2px !important;
+  max-height: 82px !important;
+}
+
+/* Pull any section immediately after the chart upward. */
+.cc-index-compact-wrapper svg + *,
+.cc-index-compact-wrapper .cc-chart-shell + *,
+.cc-index-compact-wrapper .cc-chart-card + *,
+.cc-index-compact-wrapper .cc-chart-frame + *,
+.cc-index-compact-wrapper .cc-index-chart + *,
+.cc-index-compact-wrapper .cc-performance-chart + *,
+.cc-index-compact-wrapper .chart-shell + *,
+.cc-index-compact-wrapper .chart-card + *,
+.cc-index-compact-wrapper .chart-frame + *,
+.cc-index-compact-wrapper .chart-wrap + *,
+.cc-index-compact-wrapper .chart-wrapper + *,
+.cc-index-compact-wrapper .graph-wrap + *,
+.cc-index-compact-wrapper .graph-wrapper + *,
+.cc-index-compact-wrapper .plot-wrap + *,
+.cc-index-compact-wrapper .plot-wrapper + * {
+  margin-top: 2px !important;
+}
+
+/* Metric/stat boxes below chart: move upward and reduce only vertical padding. */
+.cc-index-compact-wrapper .cc-card,
+.cc-index-compact-wrapper .cc-metric,
+.cc-index-compact-wrapper [class*="metric"],
+.cc-index-compact-wrapper [class*="stat"] {
+  margin-top: 0 !important;
+  padding-top: 5px !important;
+  padding-bottom: 5px !important;
+}
+
+/* Common grids/lists around metric boxes and model weights. */
+.cc-index-compact-wrapper [class*="grid"],
+.cc-index-compact-wrapper [class*="stats"],
+.cc-index-compact-wrapper [class*="metrics"],
+.cc-index-compact-wrapper [class*="weights"],
+.cc-index-compact-wrapper [class*="model"] {
+  margin-top: 4px !important;
+  margin-bottom: 4px !important;
+  row-gap: 6px !important;
+  gap: 6px !important;
+}
+
+/* Keep the explanatory line inside the card. */
+.cc-index-compact-wrapper > * > p:last-child,
+.cc-index-compact-wrapper .cc-footnote,
+.cc-index-compact-wrapper .cc-note {
+  margin-top: 4px !important;
+  margin-bottom: 0 !important;
+}
