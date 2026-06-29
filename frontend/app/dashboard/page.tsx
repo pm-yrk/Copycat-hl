@@ -699,11 +699,11 @@ export default function Dashboard() {
     {err && <p className="notice gold">{err}</p>}
 
 
-    <section className="cc-kpi-grid">
-      <article><small>Copycat-ranked wallets</small><RollingInteger value={summary.qualified_wallets || 0} /><span>{walletUniverseCaption(summary)}</span></article>
-      <article className="cc-tracked-value-card"><small>Tracked account value</small><RollingMoney value={summary.tracked_account_value_usd} /><span>{summary.live_state_active ? 'live wallet state' : 'latest snapshots'}</span>{summary.largest_account_value_usd ? <em>Largest account: {money(summary.largest_account_value_usd)}</em> : null}</article>
-      <article className="cc-open-position-card"><small>Open position value</small><RollingMoney value={summary.tracked_open_position_value_usd} /><span>{summary.open_positions || 0} live positions</span>{grossLeverageValue ? <em>{leverageText(grossLeverageValue)}</em> : null}</article>
-      <article><small>Assets with signals</small><RollingInteger value={signals.length || summary.assets_with_signals || 0} /><span>{summary.markets_monitored ? `${summary.markets_monitored} markets monitored` : 'cross-asset breadth'}</span></article>
+<section className="cc-kpi-grid cc-kpi-grid-tight">
+      <article><small>Copycat-ranked wallets</small><div className="cc-kpi-number-tight"><RollingInteger value={summary.qualified_wallets || 0} /></div><span>{walletUniverseCaption(summary)}</span></article>
+      <article className="cc-tracked-value-card"><small>Tracked account value</small><div className="cc-kpi-number-tight"><RollingMoney value={summary.tracked_account_value_usd} /></div><span>{summary.live_state_active ? 'live wallet state' : 'latest snapshots'}</span>{summary.largest_account_value_usd ? <em>Largest account: {money(summary.largest_account_value_usd)}</em> : null}</article>
+      <article className="cc-open-position-card"><small>Open position value</small><div className="cc-kpi-number-tight"><RollingMoney value={summary.tracked_open_position_value_usd} /></div><span>{summary.open_positions || 0} live positions</span>{grossLeverageValue ? <em>{leverageText(grossLeverageValue)}</em> : null}</article>
+      <article><small>Assets with signals</small><div className="cc-kpi-number-tight"><RollingInteger value={signals.length || summary.assets_with_signals || 0} /></div><span>{summary.markets_monitored ? `${summary.markets_monitored} markets monitored` : 'cross-asset breadth'}</span></article>
     </section>
 
 

@@ -4086,3 +4086,44 @@ body[data-theme="light"] .copycat-local-viewer-time,
   overflow: hidden !important;
 }
 
+/* Copycat KPI source tight + asset flush v1
+   Source-level fix. No overlay behaviour.
+   Only:
+   - tighten top 4 KPI cards / large number size
+   - hide anything after 5 visible rows in Asset Signal Board
+   Does not touch Portfolio Allocation, Long vs Short Exposure, or the locked date/time. */
+
+.cc-kpi-grid-tight article {
+  min-height: 96px !important;
+  padding-top: 14px !important;
+  padding-bottom: 12px !important;
+}
+
+.cc-kpi-number-tight,
+.cc-kpi-number-tight * {
+  font-size: clamp(24px, 2.05vw, 34px) !important;
+  line-height: 1.02 !important;
+  font-weight: 900 !important;
+  letter-spacing: -0.035em !important;
+}
+
+.cc-kpi-grid-tight article small {
+  font-size: 0.68rem !important;
+  line-height: 1.1 !important;
+}
+
+.cc-kpi-grid-tight article > span:not(.cc-kpi-number-tight),
+.cc-kpi-grid-tight article em {
+  font-size: 0.72rem !important;
+  line-height: 1.18 !important;
+}
+
+/* Asset Signal Board: exactly 5 rows, no 6th-row poke */
+.cc-signal-board-card .cc-signal-table tbody tr:nth-child(n+6),
+.cc-signal-table tbody tr:nth-child(n+6) {
+  display: none !important;
+}
+
+.cc-signal-board-card .cc-scroll-table {
+  overflow: hidden !important;
+}
