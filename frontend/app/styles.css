@@ -5218,3 +5218,77 @@ body[data-theme="light"] .copycat-local-viewer-time,
 .cc-pressure-card tbody tr {
   height: auto !important;
 }
+
+/* Copycat final row + scroll height v1
+   Tiny final layout adjustment.
+   Only changes:
+   - Recent Buyer / Seller Pressure height: ends flush around 8 visible rows, scroll still available
+   - Copycat Index height: aligns to the same bottom level
+   - Asset Signal Board: shows 6 visible rows and restores scrolling through all assets
+   Locked sections untouched: Portfolio Allocation, Long vs Short Exposure, top KPIs,
+   top-right date/time, publisher/data/registry. */
+
+/* Bottom row: bring both cards' bottoms up together */
+.cc-index-compact-wrapper,
+.cc-pressure-card {
+  height: 360px !important;
+  min-height: 360px !important;
+  max-height: 360px !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+.cc-index-compact-wrapper > * {
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: 360px !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+  padding-top: 14px !important;
+  padding-bottom: 10px !important;
+}
+
+/* Recent Buyer / Seller Pressure: show a clean 8-row viewport, with scroll for the rest */
+.cc-pressure-card {
+  padding-top: 14px !important;
+  padding-bottom: 10px !important;
+}
+
+.cc-pressure-card .cc-panel-title {
+  margin-bottom: 5px !important;
+}
+
+.cc-pressure-card .cc-scroll-table {
+  height: calc(100% - 32px) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+.cc-pressure-card th,
+.cc-pressure-card td {
+  padding-top: 5px !important;
+  padding-bottom: 5px !important;
+}
+
+/* Asset Signal Board: unlock rows again, show 6 rows, and restore scrolling */
+.cc-signal-board-card .cc-signal-table tbody tr:nth-child(n+6),
+.cc-signal-board-card .cc-scroll-table table tbody tr:nth-child(n+6),
+.copycat-asset-board-flush tbody tr:nth-child(n+6) {
+  display: table-row !important;
+}
+
+.cc-signal-board-card .cc-scroll-table,
+.copycat-asset-board-flush .cc-scroll-table,
+.copycat-asset-board-flush .cc-table-wrap,
+.copycat-asset-board-flush .table-scroll {
+  height: calc(100% - 38px) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+/* Keep Asset Signal rows compact enough for 6 visible rows */
+.cc-signal-board-card th,
+.cc-signal-board-card td {
+  padding-top: 5px !important;
+  padding-bottom: 5px !important;
+}
