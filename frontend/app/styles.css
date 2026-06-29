@@ -3978,3 +3978,77 @@ html[data-theme='light'] .cc-donut-legend .cc-allocation-legend-meta.negative {
   padding-top: 7px !important;
   padding-bottom: 7px !important;
 }
+
+/* Copycat signal value + time theme v1
+   Tiny locked-layout patch.
+   - Does not touch Portfolio Allocation.
+   - Does not touch Long vs Short Exposure.
+   - Keeps Asset Signal Board layout, but adds Value L/S as the 6th visible column.
+   - Updates top-right local time colour for light mode only. */
+
+/* Asset Signal Board: show Value L/S column, keep Net Value and % Total hidden */
+.cc-signal-board-card th:nth-child(6),
+.cc-signal-board-card td:nth-child(6) {
+  display: table-cell !important;
+}
+
+.cc-signal-board-card th:nth-child(n+7),
+.cc-signal-board-card td:nth-child(n+7) {
+  display: none !important;
+}
+
+/* Tighten visible Asset Signal columns so 6 columns fit without overlap */
+.cc-signal-board-card table {
+  table-layout: fixed !important;
+  width: 100% !important;
+}
+
+.cc-signal-board-card th,
+.cc-signal-board-card td {
+  font-size: 0.68rem !important;
+  padding: 5px 4px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.cc-signal-board-card th:nth-child(1),
+.cc-signal-board-card td:nth-child(1) { width: 5% !important; }
+
+.cc-signal-board-card th:nth-child(2),
+.cc-signal-board-card td:nth-child(2) { width: 22% !important; }
+
+.cc-signal-board-card th:nth-child(3),
+.cc-signal-board-card td:nth-child(3) { width: 15% !important; }
+
+.cc-signal-board-card th:nth-child(4),
+.cc-signal-board-card td:nth-child(4) { width: 15% !important; }
+
+.cc-signal-board-card th:nth-child(5),
+.cc-signal-board-card td:nth-child(5) { width: 21% !important; }
+
+.cc-signal-board-card th:nth-child(6),
+.cc-signal-board-card td:nth-child(6) { width: 22% !important; }
+
+/* Keep the 5-row finish clean after adding Value L/S */
+.cc-signal-board-card .cc-scroll-table {
+  height: calc(100% - 52px) !important;
+  overflow: hidden !important;
+}
+
+/* Top-right local viewer time: keep current dark-mode style, add light-mode readability */
+html.light .copycat-local-viewer-time,
+body.light .copycat-local-viewer-time,
+.theme-light .copycat-local-viewer-time,
+[data-theme="light"] .copycat-local-viewer-time,
+html[data-theme="light"] .copycat-local-viewer-time,
+body[data-theme="light"] .copycat-local-viewer-time,
+.light-mode .copycat-local-viewer-time {
+  color: rgba(9, 22, 34, 0.86) !important;
+}
+
+@media (prefers-color-scheme: light) {
+  .copycat-local-viewer-time {
+    color: rgba(9, 22, 34, 0.86) !important;
+  }
+}
