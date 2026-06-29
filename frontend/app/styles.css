@@ -4186,3 +4186,22 @@ body[data-theme="light"] .copycat-local-viewer-time,
   font-size: inherit !important;
   line-height: inherit !important;
 }
+
+/* Copycat KPI original text restore v1
+   Keeps the smaller KPI card sizing.
+   Removes the custom KPI number wrapper styling from later patches.
+   This does not affect layout, date/time, Portfolio Allocation, Long vs Short Exposure, or Asset Signal Board. */
+
+.cc-kpi-grid-tight article {
+  min-height: 96px !important;
+  padding-top: 14px !important;
+  padding-bottom: 12px !important;
+}
+
+/* Safety only: if any old wrapper remains, do not let it force a comic/heavy style. */
+.cc-kpi-number-tight,
+.cc-kpi-number-tight * {
+  font-family: unset !important;
+  font-weight: unset !important;
+  letter-spacing: unset !important;
+}
