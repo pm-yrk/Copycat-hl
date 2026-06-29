@@ -722,7 +722,7 @@ export default function Dashboard() {
     </section>
 
     <section className="cc-dashboard-performance-row">
-      <PerformanceIndex variant="dashboard" />
+      <div className="cc-index-compact-wrapper"><PerformanceIndex variant="dashboard" /></div>
       <div className="cc-card cc-table-card cc-pressure-card">
         <div className="cc-panel-title"><h3>Recent buyer / seller pressure</h3><span>{flowContextText}</span></div>
         <div className="cc-scroll-table cc-scroll-y">
