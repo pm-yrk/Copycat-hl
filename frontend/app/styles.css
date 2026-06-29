@@ -5492,3 +5492,92 @@ body[data-theme="light"] .copycat-local-viewer-time,
   margin-top: 2px !important;
   margin-bottom: 0 !important;
 }
+
+/* Copycat layer + footer fix v2
+   Visual-only correction.
+   - Puts detected dashboard cards/bubbles on the same front visual layer as the Index card
+   - Removes mask/fade/blur treatment from those cards
+   - Compacts the disclaimer/footer card
+   Does not change data, chart contents, table contents, card order, or live publisher logic. */
+
+.copycat-front-layer-v2 {
+  position: relative !important;
+  z-index: 80 !important;
+  opacity: 1 !important;
+  filter: none !important;
+  mix-blend-mode: normal !important;
+  transform: translateZ(0) !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+  isolation: isolate !important;
+}
+
+.copycat-front-layer-v2,
+.copycat-front-layer-v2 * {
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+}
+
+.copycat-front-layer-v2 .cc-scroll-table,
+.copycat-front-layer-v2 [class*="scroll"],
+.copycat-front-layer-v2 table {
+  position: relative !important;
+  z-index: 81 !important;
+  opacity: 1 !important;
+  filter: none !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+}
+
+/* Compact disclaimer footer */
+.copycat-footer-compact-v2 {
+  min-height: 0 !important;
+  height: auto !important;
+  padding: 10px 18px !important;
+  margin-top: 10px !important;
+  margin-bottom: 12px !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 14px !important;
+}
+
+.copycat-footer-compact-v2,
+.copycat-footer-compact-v2 * {
+  line-height: 1.12 !important;
+}
+
+.copycat-footer-compact-v2 h1,
+.copycat-footer-compact-v2 h2,
+.copycat-footer-compact-v2 h3,
+.copycat-footer-compact-v2 strong,
+.copycat-footer-compact-v2 b {
+  font-size: 0.88rem !important;
+  margin-top: 0 !important;
+  margin-bottom: 2px !important;
+}
+
+.copycat-footer-compact-v2 p,
+.copycat-footer-compact-v2 span,
+.copycat-footer-compact-v2 small,
+.copycat-footer-compact-v2 div {
+  font-size: 0.72rem !important;
+}
+
+.copycat-footer-compact-v2 p,
+.copycat-footer-compact-v2 small {
+  margin-top: 0 !important;
+  margin-bottom: 1px !important;
+}
+
+.copycat-footer-compact-v2 > * {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.copycat-footer-compact-v2 [class*="quality"],
+.copycat-footer-compact-v2 [class*="sync"],
+.copycat-footer-compact-v2 [class*="status"] {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}

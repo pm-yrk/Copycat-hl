@@ -12,6 +12,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <script src="/copycat_top_metrics_tight_asset_flush_v1.js" defer></script>
               <script src="/copycat_index_metric_rows_lift_v1.js" defer></script>
               <script src="/copycat_compact_footer_v1.js" defer></script>
+              <script src="/copycat_layer_footer_fix_v2.js" defer></script>
       </body>
     </html>
   )
