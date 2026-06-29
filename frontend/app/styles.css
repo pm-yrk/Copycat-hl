@@ -5292,3 +5292,81 @@ body[data-theme="light"] .copycat-local-viewer-time,
   padding-top: 5px !important;
   padding-bottom: 5px !important;
 }
+
+/* Copycat final tiny reveal v1
+   Final tiny visual nudge only.
+   Changes:
+   - Bottom Index / Recent Pressure row moves down a tiny amount and gets enough height to show row 7 cleanly.
+   - Asset Signal Board scroll area gets a tiny internal allowance so the last visible row is not cut.
+   Locked/untouched: Portfolio Allocation, Long vs Short Exposure, top KPIs,
+   top-right date/time, data, publisher, registry. */
+
+/* Bottom row: tiny downward nudge and a few extra pixels so row 7 clears. */
+.cc-dashboard-performance-row {
+  margin-top: 14px !important;
+  align-items: stretch !important;
+}
+
+.cc-index-compact-wrapper,
+.cc-pressure-card {
+  height: 372px !important;
+  min-height: 372px !important;
+  max-height: 372px !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+.cc-index-compact-wrapper > * {
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: 372px !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+/* Recent Buyer / Seller Pressure: reveal the full 7th row cleanly. */
+.cc-pressure-card {
+  padding-top: 13px !important;
+  padding-bottom: 8px !important;
+}
+
+.cc-pressure-card .cc-panel-title {
+  margin-bottom: 4px !important;
+}
+
+.cc-pressure-card .cc-scroll-table {
+  height: calc(100% - 28px) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+.cc-pressure-card th,
+.cc-pressure-card td {
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
+}
+
+/* Asset Signal Board: keep the same card size, just stop the last visible row clipping. */
+.cc-signal-board-card .cc-scroll-table,
+.copycat-asset-board-flush .cc-scroll-table,
+.copycat-asset-board-flush .cc-table-wrap,
+.copycat-asset-board-flush .table-scroll {
+  height: calc(100% - 34px) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding-bottom: 6px !important;
+  box-sizing: border-box !important;
+}
+
+.cc-signal-board-card th,
+.cc-signal-board-card td {
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
+}
+
+/* Keep Asset Signal Board scroll restored, with rows available beyond the visible area. */
+.cc-signal-board-card .cc-signal-table tbody tr:nth-child(n+6),
+.cc-signal-board-card .cc-scroll-table table tbody tr:nth-child(n+6),
+.copycat-asset-board-flush tbody tr:nth-child(n+6) {
+  display: table-row !important;
+}
