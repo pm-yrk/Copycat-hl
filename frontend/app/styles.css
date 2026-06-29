@@ -3905,3 +3905,76 @@ html[data-theme='light'] .cc-donut-legend .cc-allocation-legend-meta.negative {
 .cc-signal-board-card td:nth-child(4) { width: 16%; }
 .cc-signal-board-card th:nth-child(5),
 .cc-signal-board-card td:nth-child(5) { width: 24%; }
+
+/* Copycat final compact pass v1
+   This is a very small follow-up patch for visual-clean-v2.
+   It intentionally leaves Portfolio Allocation and Long vs Short Exposure untouched.
+   Only adjusts:
+   - Asset Signal Board: stop the 6th row peeking up
+   - Performance Index: slightly smaller header / tighter vertical spacing
+   - Recent Buyer / Seller Pressure: use the card height better so the table runs lower */
+
+/* 1) Asset Signal Board: hide the start of row 6 so the card ends flush after row 5 */
+.cc-signal-board-card .cc-scroll-table {
+  height: calc(100% - 52px) !important;
+  overflow: hidden !important;
+}
+
+/* 2) Copycat Index / Recent Pressure: make the bottom row a little shorter */
+.cc-performance-index,
+.cc-pressure-card {
+  min-height: 0 !important;
+}
+
+/* Slightly smaller index heading so the card compacts vertically without changing the layout */
+.cc-performance-index h1,
+.cc-performance-index h2 {
+  font-size: 2.0rem !important;
+  line-height: 1.02 !important;
+  letter-spacing: -0.02em !important;
+  margin-bottom: 10px !important;
+}
+
+.cc-performance-index h3,
+.cc-performance-index .cc-panel-title h3,
+.cc-performance-index .eyebrow,
+.cc-performance-index small {
+  margin-bottom: 8px !important;
+}
+
+.cc-performance-index p {
+  margin-top: 0 !important;
+  margin-bottom: 10px !important;
+}
+
+/* Make internal blocks a touch tighter so the overall bubble comes down slightly */
+.cc-performance-index svg {
+  max-height: 184px !important;
+}
+
+.cc-performance-index .cc-card,
+.cc-performance-index .cc-metric,
+.cc-performance-index [class*='metric'],
+.cc-performance-index [class*='stat'] {
+  min-height: 0 !important;
+}
+
+/* Let the pressure table fill more of the bubble so it doesn't stop early */
+.cc-pressure-card .cc-panel-title {
+  margin-bottom: 8px !important;
+}
+
+.cc-pressure-card .cc-scroll-table {
+  height: calc(100% - 42px) !important;
+}
+
+.cc-pressure-card table {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.cc-pressure-card th,
+.cc-pressure-card td {
+  padding-top: 7px !important;
+  padding-bottom: 7px !important;
+}
