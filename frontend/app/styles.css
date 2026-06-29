@@ -5581,3 +5581,86 @@ body[data-theme="light"] .copycat-local-viewer-time,
   margin-top: 0 !important;
   margin-bottom: 0 !important;
 }
+
+/* Copycat restore index only v1
+   Fixes the Index card after the layer/footer patch.
+   Only affects the Copycat Index card.
+   Keeps footer compacting and card-layer fixes for the other cards. */
+
+/* Disable the old metric-row lift behavior if that legacy script tags the Index rows. */
+.cc-index-compact-wrapper .copycat-index-metric-row-lift,
+.cc-index-compact-wrapper .copycat-index-follow-row-lift {
+  position: static !important;
+  top: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  right: auto !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  transform: none !important;
+  z-index: auto !important;
+}
+
+/* Do not let the front-layer footer patch alter the Index internals. */
+.cc-index-compact-wrapper .copycat-front-layer-v2 {
+  z-index: auto !important;
+  transform: none !important;
+  isolation: auto !important;
+}
+
+/* Re-assert the good source-level Index layout from the working version. */
+.cc-index-dashboard-fit {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+  gap: 0 !important;
+}
+
+.cc-index-dashboard-fit .cc-index-head {
+  flex: 0 0 auto !important;
+  margin-bottom: 6px !important;
+}
+
+.cc-index-dashboard-fit .cc-index-chart {
+  flex: 0 0 118px !important;
+  height: 118px !important;
+  min-height: 118px !important;
+  max-height: 118px !important;
+  width: 100% !important;
+  margin: 4px 0 8px 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  overflow: visible !important;
+}
+
+.cc-index-dashboard-fit .cc-index-chart svg {
+  display: block !important;
+  width: 100% !important;
+  height: 118px !important;
+  max-height: 118px !important;
+  margin: 0 !important;
+}
+
+.cc-index-dashboard-fit .cc-index-metrics {
+  flex: 0 0 auto !important;
+  margin-top: 0 !important;
+  margin-bottom: 7px !important;
+  gap: 8px !important;
+  align-items: stretch !important;
+}
+
+.cc-index-dashboard-fit .cc-index-weights {
+  flex: 0 0 auto !important;
+  margin-top: 0 !important;
+  margin-bottom: 6px !important;
+  gap: 6px !important;
+}
+
+.cc-index-dashboard-fit .cc-index-note {
+  flex: 0 0 auto !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
