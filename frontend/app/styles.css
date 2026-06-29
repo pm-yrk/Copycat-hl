@@ -5188,3 +5188,33 @@ body[data-theme="light"] .copycat-local-viewer-time,
 .cc-index-dashboard-fit .cc-index-warning {
   margin-top: 4px !important;
 }
+
+/* Copycat recent pressure row 8 fit v1
+   Tiny final adjustment.
+   Only affects Recent Buyer / Seller Pressure table internals.
+   Goal: make the 8th visible row fit cleanly without changing card placement/height.
+   Does not touch Copycat Index, Portfolio Allocation, Long vs Short Exposure,
+   Asset Signal Board, top KPIs, date/time, or data. */
+
+.cc-pressure-card .cc-scroll-table {
+  height: calc(100% - 26px) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+/* Slightly reduce vertical row padding only inside Recent Buyer / Seller Pressure. */
+.cc-pressure-card th,
+.cc-pressure-card td {
+  padding-top: 5px !important;
+  padding-bottom: 5px !important;
+}
+
+/* Keep the table tight to the top of its available area so row 8 clears the bottom. */
+.cc-pressure-card table {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.cc-pressure-card tbody tr {
+  height: auto !important;
+}
