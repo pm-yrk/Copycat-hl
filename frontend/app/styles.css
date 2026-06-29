@@ -4127,3 +4127,31 @@ body[data-theme="light"] .copycat-local-viewer-time,
 .cc-signal-board-card .cc-scroll-table {
   overflow: hidden !important;
 }
+
+/* Copycat KPI font restore v1
+   Tiny visual correction only.
+   Keeps the smaller KPI bubble sizes, but removes the forced heavy/bold KPI font styling from the last patch.
+   Does not move layout, rows, date/time, Portfolio Allocation, Long vs Short Exposure, or Asset Signal Board. */
+
+.cc-kpi-grid-tight article,
+.cc-kpi-grid-tight article * {
+  font-family: inherit !important;
+}
+
+.cc-kpi-number-tight,
+.cc-kpi-number-tight * {
+  font-family: inherit !important;
+  font-weight: inherit !important;
+  letter-spacing: normal !important;
+}
+
+/* Keep only the smaller size/height effect from the previous patch. */
+.cc-kpi-number-tight {
+  font-size: clamp(24px, 2.05vw, 34px) !important;
+  line-height: 1.02 !important;
+}
+
+.cc-kpi-number-tight * {
+  font-size: inherit !important;
+  line-height: inherit !important;
+}
