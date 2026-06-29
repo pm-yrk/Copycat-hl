@@ -4680,3 +4680,148 @@ body[data-theme="light"] .copycat-local-viewer-time,
   padding-top: 7px !important;
   padding-bottom: 7px !important;
 }
+
+/* Copycat index fit + align v3
+   Only adjusts the bottom row cards.
+   Goal:
+   - move Copycat Index up slightly
+   - stop the Index content being cut off
+   - keep chart full-width
+   - keep Copycat Index and Recent Buyer / Seller Pressure aligned
+   Locked sections untouched: Portfolio Allocation, Long vs Short Exposure,
+   Asset Signal Board, top KPIs, date/time, data. */
+
+.cc-dashboard-performance-row {
+  align-items: stretch !important;
+  margin-top: 10px !important;
+}
+
+/* Align both bottom cards and give the Index enough height for its full data */
+.cc-index-compact-wrapper {
+  margin-top: -12px !important;
+}
+
+.cc-index-compact-wrapper,
+.cc-pressure-card {
+  height: 438px !important;
+  min-height: 438px !important;
+  max-height: 438px !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+.cc-index-compact-wrapper > * {
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: 438px !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+  margin-top: 0 !important;
+  padding-top: 15px !important;
+  padding-bottom: 14px !important;
+}
+
+/* Bring Index content up and make it fit without changing chart width */
+.cc-index-compact-wrapper h1,
+.cc-index-compact-wrapper h2 {
+  font-size: clamp(1.45rem, 1.5vw, 1.95rem) !important;
+  line-height: 0.98 !important;
+  letter-spacing: -0.025em !important;
+  margin-top: 0 !important;
+  margin-bottom: 4px !important;
+}
+
+.cc-index-compact-wrapper h3,
+.cc-index-compact-wrapper .eyebrow,
+.cc-index-compact-wrapper small {
+  font-size: 0.66rem !important;
+  line-height: 1.1 !important;
+  margin-top: 0 !important;
+  margin-bottom: 3px !important;
+}
+
+.cc-index-compact-wrapper p,
+.cc-index-compact-wrapper .cc-subtitle,
+.cc-index-compact-wrapper .cc-description {
+  font-size: 0.69rem !important;
+  line-height: 1.17 !important;
+  margin-top: 0 !important;
+  margin-bottom: 4px !important;
+}
+
+/* Chart remains full width, only vertical footprint is trimmed */
+.cc-index-compact-wrapper svg {
+  width: 100% !important;
+  max-width: 100% !important;
+  max-height: 108px !important;
+  height: auto !important;
+  margin-top: 2px !important;
+  margin-bottom: 5px !important;
+}
+
+/* Keep chart directly on the card background */
+.cc-index-compact-wrapper .cc-chart-shell,
+.cc-index-compact-wrapper .cc-chart-card,
+.cc-index-compact-wrapper .cc-chart-frame,
+.cc-index-compact-wrapper .cc-index-chart,
+.cc-index-compact-wrapper .cc-performance-chart,
+.cc-index-compact-wrapper .chart-shell,
+.cc-index-compact-wrapper .chart-card,
+.cc-index-compact-wrapper .chart-frame,
+.cc-index-compact-wrapper .chart-wrap,
+.cc-index-compact-wrapper .chart-wrapper,
+.cc-index-compact-wrapper .graph-wrap,
+.cc-index-compact-wrapper .graph-wrapper,
+.cc-index-compact-wrapper .plot-wrap,
+.cc-index-compact-wrapper .plot-wrapper {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+}
+
+/* Compact the Index stats and model-weight chips so nothing sits under the cut line */
+.cc-index-compact-wrapper .cc-card,
+.cc-index-compact-wrapper .cc-metric,
+.cc-index-compact-wrapper [class*="metric"],
+.cc-index-compact-wrapper [class*="stat"] {
+  min-height: 0 !important;
+  padding-top: 6px !important;
+  padding-bottom: 6px !important;
+}
+
+.cc-index-compact-wrapper .cc-card *,
+.cc-index-compact-wrapper .cc-metric *,
+.cc-index-compact-wrapper [class*="metric"] *,
+.cc-index-compact-wrapper [class*="stat"] * {
+  line-height: 1.06 !important;
+}
+
+.cc-index-compact-wrapper .cc-pill,
+.cc-index-compact-wrapper [class*="pill"],
+.cc-index-compact-wrapper [class*="tag"] {
+  font-size: 0.66rem !important;
+  line-height: 1.05 !important;
+  padding-top: 2px !important;
+  padding-bottom: 2px !important;
+}
+
+.cc-index-compact-wrapper > * > p:last-child,
+.cc-index-compact-wrapper .cc-footnote,
+.cc-index-compact-wrapper .cc-note {
+  font-size: 0.66rem !important;
+  line-height: 1.2 !important;
+  margin-top: 4px !important;
+  margin-bottom: 0 !important;
+}
+
+/* Keep pressure card aligned and allow its table to use the added height */
+.cc-pressure-card {
+  padding-top: 15px !important;
+  padding-bottom: 14px !important;
+}
+
+.cc-pressure-card .cc-scroll-table {
+  height: calc(100% - 34px) !important;
+}
