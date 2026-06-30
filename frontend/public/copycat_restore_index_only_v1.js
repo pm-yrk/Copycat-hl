@@ -1,3 +1,11 @@
+/* COPYCAT_DASHBOARD_ONLY_SCRIPT_SCOPE_V1
+   This helper is dashboard-only so it cannot affect the landing page, API page,
+   or the top-right menu on first load. */
+(function () {
+  if (!/^\/dashboard(?:\/|$)/.test(window.location.pathname)) {
+    return;
+  }
+
 (function () {
   function cleanIndexOnly() {
     const index = document.querySelector(".cc-index-compact-wrapper");
@@ -30,4 +38,6 @@
   }
 
   window.addEventListener("load", run);
+})();
+
 })();

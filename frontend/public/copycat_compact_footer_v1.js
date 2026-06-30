@@ -1,3 +1,11 @@
+/* COPYCAT_DASHBOARD_ONLY_SCRIPT_SCOPE_V1
+   This helper is dashboard-only so it cannot affect the landing page, API page,
+   or the top-right menu on first load. */
+(function () {
+  if (!/^\/dashboard(?:\/|$)/.test(window.location.pathname)) {
+    return;
+  }
+
 (function () {
   function norm(text) {
     return (text || "").replace(/\s+/g, " ").trim().toUpperCase();
@@ -51,4 +59,6 @@
     setTimeout(apply, 250);
     setTimeout(apply, 1000);
   });
+})();
+
 })();
