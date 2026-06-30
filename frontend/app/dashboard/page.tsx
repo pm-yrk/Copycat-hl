@@ -699,22 +699,18 @@ export default function Dashboard() {
     {err && <p className="notice gold">{err}</p>}
 
 
-    <section className="cc-kpi-grid">
+<section className="cc-kpi-grid cc-kpi-grid-tight">
       <article><small>Copycat-ranked wallets</small><RollingInteger value={summary.qualified_wallets || 0} /><span>{walletUniverseCaption(summary)}</span></article>
       <article className="cc-tracked-value-card"><small>Tracked account value</small><RollingMoney value={summary.tracked_account_value_usd} /><span>{summary.live_state_active ? 'live wallet state' : 'latest snapshots'}</span>{summary.largest_account_value_usd ? <em>Largest account: {money(summary.largest_account_value_usd)}</em> : null}</article>
       <article className="cc-open-position-card"><small>Open position value</small><RollingMoney value={summary.tracked_open_position_value_usd} /><span>{summary.open_positions || 0} live positions</span>{grossLeverageValue ? <em>{leverageText(grossLeverageValue)}</em> : null}</article>
       <article><small>Assets with signals</small><RollingInteger value={signals.length || summary.assets_with_signals || 0} /><span>{summary.markets_monitored ? `${summary.markets_monitored} markets monitored` : 'cross-asset breadth'}</span></article>
     </section>
 
-    <section className="cc-chart-grid">
+
+    <section className="cc-dashboard-analysis-row">
       <div className="cc-card cc-allocation-card"><div className="cc-card-title-row"><h3>Portfolio allocation</h3><span>Last rebalanced: {fmtTime(latestAllocationTs(targets, signals, summary))} UTC</span></div><AllocationDonut targets={targets} signals={signals} trackedValue={Number(summary.tracked_account_value_usd || 0)} icons={icons} assetDetails={mergedAssetDetails} /></div>
       <div className="cc-card cc-exposure-card"><div className="cc-panel-title"><h3>Long vs short exposure</h3><span><i />Long <em />Short</span></div><ExposureBars signals={signals} icons={icons} assetDetails={mergedAssetDetails} /></div>
-    </section>
-
-    <PerformanceIndex variant="dashboard" />
-
-    <section className="cc-table-grid">
-      <div className="cc-card cc-table-card">
+      <div className="cc-card cc-table-card cc-signal-board-card">
         <div className="cc-panel-title"><h3>Asset signal board</h3><span>clearest long/short conviction first</span></div>
         <div className="cc-scroll-table cc-scroll-y">
           <table className="cc-signal-table">
@@ -723,7 +719,11 @@ export default function Dashboard() {
           </table>
         </div>
       </div>
-      <div className="cc-card cc-table-card">
+    </section>
+
+    <section className="cc-dashboard-performance-row">
+      <div className="cc-index-compact-wrapper"><PerformanceIndex variant="dashboard" /></div>
+      <div className="cc-card cc-table-card cc-pressure-card">
         <div className="cc-panel-title"><h3>Recent buyer / seller pressure</h3><span>{flowContextText}</span></div>
         <div className="cc-scroll-table cc-scroll-y">
           <table className="cc-flow-table">
@@ -733,6 +733,7 @@ export default function Dashboard() {
         </div>
       </div>
     </section>
+
 
     <footer className="cc-warning-banner"><span className="cc-shield" aria-hidden><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5.2c0 4.5-2.7 8.4-7 9.8-4.3-1.4-7-5.3-7-9.8V6l7-3z"/><path d="M9.2 12.1l1.7 1.7 3.9-4.1"/></svg></span><div className="cc-footer-main"><strong>Market intelligence only.</strong><em>Not financial advice. {rankingScope}. {claimReady ? 'Broad-index threshold met.' : 'Not claiming all-Hyperliquid top 50 yet.'}</em><small>Live coverage: {liveCoverageText} · {summary.snapshot_wallets || 0} fallback · Sync: <b className={`cc-audit-${auditStatus}`}>{auditStatus}</b> · {audit?.message || 'Checking dashboard consistency'}</small></div><div className={`cc-footer-meta ${dataHealthy ? 'healthy' : 'checking'}`}><span className="cc-footer-quality"><span className="cc-pulse-dot" /><b>{dataHealthy ? 'Data quality healthy' : 'Data quality checking'}</b></span><small>Signal refresh: {fmtTime(summary.latest_signal_ts_ms)} UTC · {summary.live_state_active ? `Live state: ${fmtTime(summary.latest_live_state_ts_ms)} UTC` : 'Snapshot mode'} · Snapshot/cache refresh</small></div></footer>
   </main></>

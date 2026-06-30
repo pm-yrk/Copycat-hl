@@ -3518,3 +3518,2149 @@ html[data-theme='light'] .cc-donut-legend .cc-allocation-legend-meta.negative {
   }
 }
 /* --- End Copycat mobile/table polish. --- */
+
+
+/* Copycat local viewer time - visual only */
+.copycat-local-viewer-time {
+  display: inline-block !important;
+  margin-right: 12px !important;
+  color: rgba(230, 245, 255, 0.86) !important;
+  font-size: 12px !important;
+  line-height: 1 !important;
+  letter-spacing: 0.08em !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  white-space: nowrap !important;
+  font-family: inherit !important;
+  background: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+
+/* Copycat real dashboard rows v1.
+   Source-level layout only:
+   Row 1: Portfolio Allocation | Long vs Short Exposure | Asset Signal Board
+   Row 2: Copycat Index | Recent Buyer / Seller Pressure
+   Date/time is untouched. */
+
+.cc-dashboard-analysis-row {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.72fr) minmax(320px, 0.9fr) minmax(540px, 1.55fr);
+  gap: 16px;
+  align-items: stretch;
+  margin-top: 16px;
+  margin-bottom: 16px;
+}
+
+.cc-dashboard-performance-row {
+  display: grid;
+  grid-template-columns: minmax(560px, 1fr) minmax(520px, 0.92fr);
+  gap: 16px;
+  align-items: stretch;
+  margin-top: 16px;
+  margin-bottom: 18px;
+}
+
+.cc-dashboard-analysis-row > *,
+.cc-dashboard-performance-row > * {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.cc-dashboard-analysis-row .cc-table-card,
+.cc-dashboard-performance-row .cc-table-card {
+  min-width: 0;
+}
+
+@media (max-width: 1180px) {
+  .cc-dashboard-analysis-row,
+  .cc-dashboard-performance-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Copycat gentle rows polish v1
+   Small layout polish only.
+   - Keeps the locked top-right date/time untouched.
+   - Keeps the existing two-row dashboard layout.
+   - Trims Asset Signal Board to the first 5 columns so the card stays compact.
+   - Keeps row-1 cards aligned and slightly shorter so row 2 sits higher.
+   - Tightens table sizing so content stays inside each bubble. */
+
+.cc-dashboard-analysis-row {
+  align-items: start;
+}
+
+.cc-dashboard-analysis-row > .cc-card {
+  min-height: 0;
+}
+
+.cc-allocation-card,
+.cc-exposure-card,
+.cc-signal-board-card {
+  height: 316px;
+}
+
+.cc-allocation-card,
+.cc-exposure-card,
+.cc-signal-board-card,
+.cc-pressure-card,
+.cc-performance-index {
+  overflow: hidden;
+}
+
+.cc-allocation-card .cc-card-title-row,
+.cc-exposure-card .cc-panel-title,
+.cc-signal-board-card .cc-panel-title,
+.cc-pressure-card .cc-panel-title {
+  margin-bottom: 8px;
+}
+
+.cc-allocation-card .cc-card-title-row h3,
+.cc-exposure-card .cc-panel-title h3,
+.cc-signal-board-card .cc-panel-title h3,
+.cc-pressure-card .cc-panel-title h3 {
+  font-size: 0.98rem;
+}
+
+.cc-allocation-card .cc-card-title-row span,
+.cc-exposure-card .cc-panel-title span,
+.cc-signal-board-card .cc-panel-title span,
+.cc-pressure-card .cc-panel-title span {
+  font-size: 0.72rem;
+}
+
+.cc-allocation-card .cc-donut-wrap,
+.cc-exposure-card .cc-bars-wrap,
+.cc-signal-board-card .cc-scroll-table,
+.cc-pressure-card .cc-scroll-table {
+  height: calc(100% - 44px);
+}
+
+.cc-signal-board-card table,
+.cc-pressure-card table {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.cc-signal-board-card th,
+.cc-signal-board-card td,
+.cc-pressure-card th,
+.cc-pressure-card td {
+  font-size: 0.72rem;
+  padding: 7px 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+
+.cc-signal-board-card td .cc-asset-cell,
+.cc-pressure-card td .cc-asset-cell {
+  min-width: 0;
+}
+
+/* Keep only the first 5 columns in Asset Signal Board:
+   # | Asset | Signal | Confidence | Wallets */
+.cc-signal-board-card th:nth-child(n+6),
+.cc-signal-board-card td:nth-child(n+6) {
+  display: none;
+}
+
+/* Re-balance the visible signal board columns */
+.cc-signal-board-card th:nth-child(1),
+.cc-signal-board-card td:nth-child(1) { width: 6%; }
+.cc-signal-board-card th:nth-child(2),
+.cc-signal-board-card td:nth-child(2) { width: 29%; }
+.cc-signal-board-card th:nth-child(3),
+.cc-signal-board-card td:nth-child(3) { width: 20%; }
+.cc-signal-board-card th:nth-child(4),
+.cc-signal-board-card td:nth-child(4) { width: 18%; }
+.cc-signal-board-card th:nth-child(5),
+.cc-signal-board-card td:nth-child(5) { width: 27%; }
+
+/* Pressure board: just tighten slightly so all columns stay inside */
+.cc-pressure-card th,
+.cc-pressure-card td {
+  font-size: 0.71rem;
+  padding: 7px 7px;
+}
+
+.cc-pressure-card th:nth-child(1),
+.cc-pressure-card td:nth-child(1) { width: 18%; }
+.cc-pressure-card th:nth-child(2),
+.cc-pressure-card td:nth-child(2) { width: 11%; }
+.cc-pressure-card th:nth-child(3),
+.cc-pressure-card td:nth-child(3) { width: 15%; }
+.cc-pressure-card th:nth-child(4),
+.cc-pressure-card td:nth-child(4) { width: 16%; }
+.cc-pressure-card th:nth-child(5),
+.cc-pressure-card td:nth-child(5) { width: 16%; }
+.cc-pressure-card th:nth-child(6),
+.cc-pressure-card td:nth-child(6) { width: 14%; }
+
+/* Keep scroll inside cards, not outside the bubble */
+.cc-signal-board-card .cc-scroll-y,
+.cc-pressure-card .cc-scroll-y {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Slightly shorten the index card so the second row feels tighter */
+.cc-dashboard-performance-row .cc-performance-index,
+.cc-dashboard-performance-row > .cc-card {
+  min-height: 0;
+}
+
+@media (max-width: 1180px) {
+  .cc-allocation-card,
+  .cc-exposure-card,
+  .cc-signal-board-card,
+  .cc-pressure-card {
+    height: auto;
+    min-height: 300px;
+  }
+
+  .cc-signal-board-card th:nth-child(n+6),
+  .cc-signal-board-card td:nth-child(n+6) {
+    display: none;
+  }
+}
+
+/* Copycat micro fit polish v1
+   Tiny sizing-only follow-up for visual-clean-v2.
+   Keeps the locked date/time and current layout.
+   Only nudges the three analysis cards so all content fits. */
+
+.cc-allocation-card,
+.cc-exposure-card,
+.cc-signal-board-card {
+  height: 324px !important;
+}
+
+/* Portfolio Allocation: slightly smaller donut so the token list stays inside */
+.cc-allocation-card .cc-donut-layout {
+  grid-template-columns: 168px minmax(0, 1fr) !important;
+  gap: 12px !important;
+  align-items: start !important;
+}
+
+.cc-allocation-card .cc-donut-svg {
+  width: 164px !important;
+  height: 164px !important;
+  display: block;
+  margin: 4px auto 0 !important;
+}
+
+.cc-allocation-card .cc-donut-tooltip {
+  font-size: 10.5px !important;
+  line-height: 1.32 !important;
+}
+
+.cc-allocation-card .cc-donut-legend {
+  gap: 6px !important;
+}
+
+.cc-allocation-card .cc-donut-legend div {
+  padding: 6px 7px !important;
+  gap: 8px !important;
+}
+
+.cc-allocation-card .cc-donut-legend b,
+.cc-allocation-card .cc-asset-cell b {
+  font-size: 11px !important;
+}
+
+.cc-allocation-card .cc-donut-legend span {
+  font-size: 10px !important;
+}
+
+/* Long vs Short Exposure: reduce bar width materially so all columns fit */
+.cc-exposure-card .cc-ex-row {
+  grid-template-columns: 112px 86px 46px 46px !important;
+  gap: 8px !important;
+}
+
+.cc-exposure-card .cc-ex-name {
+  grid-template-columns: 24px minmax(0, 1fr) 34px !important;
+  gap: 6px !important;
+}
+
+.cc-exposure-card .cc-ex-name b {
+  font-size: 11px !important;
+  max-width: none !important;
+}
+
+.cc-exposure-card .cc-ex-name span {
+  font-size: 11px !important;
+}
+
+.cc-exposure-card .cc-ex-track {
+  width: 86px !important;
+  max-width: 86px !important;
+  justify-self: start !important;
+  background: transparent !important;
+}
+
+.cc-exposure-card .cc-ex-track > div {
+  width: 100% !important;
+}
+
+.cc-exposure-card .cc-ex-row small {
+  font-size: 10px !important;
+}
+
+/* Asset Signal Board: tiny lift so the 5th visible row clears the bottom */
+.cc-signal-board-card .cc-scroll-table {
+  height: calc(100% - 40px) !important;
+}
+
+.cc-signal-board-card th,
+.cc-signal-board-card td {
+  padding: 6px 8px !important;
+  font-size: 0.71rem !important;
+  line-height: 1.18 !important;
+}
+
+.cc-signal-board-card .cc-scroll-y {
+  padding-bottom: 3px !important;
+}
+
+/* Copycat final fit tiny v1
+   Very small follow-up for visual-clean-v2.
+   Only does three tiny things:
+   1) gives Portfolio Allocation a little more usable room
+   2) nudges Long vs Short names off the icons
+   3) tightens Asset Signal Board a touch so row 5 clears cleanly
+   Nothing else is changed. */
+
+/* Slightly rebalance the first analysis row so Portfolio Allocation gets a bit more room
+   while Asset Signal Board gives back a small amount of width. */
+.cc-dashboard-analysis-row {
+  grid-template-columns: minmax(286px, 0.80fr) minmax(318px, 0.88fr) minmax(505px, 1.44fr) !important;
+}
+
+/* Portfolio Allocation: tiny shrink so the token list fits inside the same bubble */
+.cc-allocation-card .cc-donut-layout {
+  grid-template-columns: 154px minmax(0, 1fr) !important;
+  gap: 10px !important;
+}
+
+.cc-allocation-card .cc-donut-svg {
+  width: 150px !important;
+  height: 150px !important;
+  margin-top: 2px !important;
+}
+
+.cc-allocation-card .cc-donut-legend {
+  gap: 5px !important;
+}
+
+.cc-allocation-card .cc-donut-legend div {
+  padding: 5px 6px !important;
+  gap: 7px !important;
+}
+
+.cc-allocation-card .cc-donut-legend b,
+.cc-allocation-card .cc-asset-cell b {
+  font-size: 10.5px !important;
+}
+
+.cc-allocation-card .cc-donut-legend span {
+  font-size: 9.75px !important;
+}
+
+/* Long vs Short Exposure: move token name off the icon without changing the overall layout */
+.cc-exposure-card .cc-ex-name {
+  grid-template-columns: 24px minmax(0, 1fr) 34px !important;
+  column-gap: 9px !important;
+}
+
+.cc-exposure-card .cc-ex-name b {
+  padding-left: 1px !important;
+}
+
+/* Asset Signal Board: just a little tighter so the 5th row finishes cleanly */
+.cc-signal-board-card .cc-scroll-table {
+  height: calc(100% - 38px) !important;
+}
+
+.cc-signal-board-card th,
+.cc-signal-board-card td {
+  padding: 6px 7px !important;
+  font-size: 0.70rem !important;
+  line-height: 1.16 !important;
+}
+
+.cc-signal-board-card th:nth-child(1),
+.cc-signal-board-card td:nth-child(1) { width: 5%; }
+.cc-signal-board-card th:nth-child(2),
+.cc-signal-board-card td:nth-child(2) { width: 28%; }
+.cc-signal-board-card th:nth-child(3),
+.cc-signal-board-card td:nth-child(3) { width: 18%; }
+.cc-signal-board-card th:nth-child(4),
+.cc-signal-board-card td:nth-child(4) { width: 16%; }
+.cc-signal-board-card th:nth-child(5),
+.cc-signal-board-card td:nth-child(5) { width: 24%; }
+
+/* Copycat final compact pass v1
+   This is a very small follow-up patch for visual-clean-v2.
+   It intentionally leaves Portfolio Allocation and Long vs Short Exposure untouched.
+   Only adjusts:
+   - Asset Signal Board: stop the 6th row peeking up
+   - Performance Index: slightly smaller header / tighter vertical spacing
+   - Recent Buyer / Seller Pressure: use the card height better so the table runs lower */
+
+/* 1) Asset Signal Board: hide the start of row 6 so the card ends flush after row 5 */
+.cc-signal-board-card .cc-scroll-table {
+  height: calc(100% - 52px) !important;
+  overflow: hidden !important;
+}
+
+/* 2) Copycat Index / Recent Pressure: make the bottom row a little shorter */
+.cc-performance-index,
+.cc-pressure-card {
+  min-height: 0 !important;
+}
+
+/* Slightly smaller index heading so the card compacts vertically without changing the layout */
+.cc-performance-index h1,
+.cc-performance-index h2 {
+  font-size: 2.0rem !important;
+  line-height: 1.02 !important;
+  letter-spacing: -0.02em !important;
+  margin-bottom: 10px !important;
+}
+
+.cc-performance-index h3,
+.cc-performance-index .cc-panel-title h3,
+.cc-performance-index .eyebrow,
+.cc-performance-index small {
+  margin-bottom: 8px !important;
+}
+
+.cc-performance-index p {
+  margin-top: 0 !important;
+  margin-bottom: 10px !important;
+}
+
+/* Make internal blocks a touch tighter so the overall bubble comes down slightly */
+.cc-performance-index svg {
+  max-height: 184px !important;
+}
+
+.cc-performance-index .cc-card,
+.cc-performance-index .cc-metric,
+.cc-performance-index [class*='metric'],
+.cc-performance-index [class*='stat'] {
+  min-height: 0 !important;
+}
+
+/* Let the pressure table fill more of the bubble so it doesn't stop early */
+.cc-pressure-card .cc-panel-title {
+  margin-bottom: 8px !important;
+}
+
+.cc-pressure-card .cc-scroll-table {
+  height: calc(100% - 42px) !important;
+}
+
+.cc-pressure-card table {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.cc-pressure-card th,
+.cc-pressure-card td {
+  padding-top: 7px !important;
+  padding-bottom: 7px !important;
+}
+
+/* Copycat signal value + time theme v1
+   Tiny locked-layout patch.
+   - Does not touch Portfolio Allocation.
+   - Does not touch Long vs Short Exposure.
+   - Keeps Asset Signal Board layout, but adds Value L/S as the 6th visible column.
+   - Updates top-right local time colour for light mode only. */
+
+/* Asset Signal Board: show Value L/S column, keep Net Value and % Total hidden */
+.cc-signal-board-card th:nth-child(6),
+.cc-signal-board-card td:nth-child(6) {
+  display: table-cell !important;
+}
+
+.cc-signal-board-card th:nth-child(n+7),
+.cc-signal-board-card td:nth-child(n+7) {
+  display: none !important;
+}
+
+/* Tighten visible Asset Signal columns so 6 columns fit without overlap */
+.cc-signal-board-card table {
+  table-layout: fixed !important;
+  width: 100% !important;
+}
+
+.cc-signal-board-card th,
+.cc-signal-board-card td {
+  font-size: 0.68rem !important;
+  padding: 5px 4px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.cc-signal-board-card th:nth-child(1),
+.cc-signal-board-card td:nth-child(1) { width: 5% !important; }
+
+.cc-signal-board-card th:nth-child(2),
+.cc-signal-board-card td:nth-child(2) { width: 22% !important; }
+
+.cc-signal-board-card th:nth-child(3),
+.cc-signal-board-card td:nth-child(3) { width: 15% !important; }
+
+.cc-signal-board-card th:nth-child(4),
+.cc-signal-board-card td:nth-child(4) { width: 15% !important; }
+
+.cc-signal-board-card th:nth-child(5),
+.cc-signal-board-card td:nth-child(5) { width: 21% !important; }
+
+.cc-signal-board-card th:nth-child(6),
+.cc-signal-board-card td:nth-child(6) { width: 22% !important; }
+
+/* Keep the 5-row finish clean after adding Value L/S */
+.cc-signal-board-card .cc-scroll-table {
+  height: calc(100% - 52px) !important;
+  overflow: hidden !important;
+}
+
+/* Top-right local viewer time: keep current dark-mode style, add light-mode readability */
+html.light .copycat-local-viewer-time,
+body.light .copycat-local-viewer-time,
+.theme-light .copycat-local-viewer-time,
+[data-theme="light"] .copycat-local-viewer-time,
+html[data-theme="light"] .copycat-local-viewer-time,
+body[data-theme="light"] .copycat-local-viewer-time,
+.light-mode .copycat-local-viewer-time {
+  color: rgba(9, 22, 34, 0.86) !important;
+}
+
+@media (prefers-color-scheme: light) {
+  .copycat-local-viewer-time {
+    color: rgba(9, 22, 34, 0.86) !important;
+  }
+}
+
+/* Copycat top metrics tight + asset flush v1
+   Only:
+   - slightly reduce top 4 metric card number sizing/height
+   - keep Asset Signal Board to exactly 5 visible rows (no 6th-row poke)
+   Does NOT change Portfolio Allocation, Long vs Short Exposure, or their layout. */
+
+.copycat-top-metric-tight {
+  min-height: 104px !important;
+  padding-top: 14px !important;
+  padding-bottom: 12px !important;
+}
+
+.copycat-top-metric-tight .copycat-top-metric-value {
+  font-size: 2.05rem !important;
+  line-height: 1.02 !important;
+}
+
+.copycat-top-metric-tight .copycat-top-metric-support {
+  font-size: 0.78rem !important;
+  line-height: 1.2 !important;
+}
+
+/* Asset signal board: keep it visually flush at 5 rows */
+.copycat-asset-board-flush tbody tr:nth-child(n+6) {
+  display: none !important;
+}
+
+.copycat-asset-board-flush .cc-scroll-table,
+.copycat-asset-board-flush .cc-table-wrap,
+.copycat-asset-board-flush .table-scroll {
+  overflow: hidden !important;
+}
+
+/* Copycat KPI source tight + asset flush v1
+   Source-level fix. No overlay behaviour.
+   Only:
+   - tighten top 4 KPI cards / large number size
+   - hide anything after 5 visible rows in Asset Signal Board
+   Does not touch Portfolio Allocation, Long vs Short Exposure, or the locked date/time. */
+
+.cc-kpi-grid-tight article {
+  min-height: 96px !important;
+  padding-top: 14px !important;
+  padding-bottom: 12px !important;
+}
+
+.cc-kpi-number-tight,
+.cc-kpi-number-tight * {
+  font-size: clamp(24px, 2.05vw, 34px) !important;
+  line-height: 1.02 !important;
+  font-weight: 900 !important;
+  letter-spacing: -0.035em !important;
+}
+
+.cc-kpi-grid-tight article small {
+  font-size: 0.68rem !important;
+  line-height: 1.1 !important;
+}
+
+.cc-kpi-grid-tight article > span:not(.cc-kpi-number-tight),
+.cc-kpi-grid-tight article em {
+  font-size: 0.72rem !important;
+  line-height: 1.18 !important;
+}
+
+/* Asset Signal Board: exactly 5 rows, no 6th-row poke */
+.cc-signal-board-card .cc-signal-table tbody tr:nth-child(n+6),
+.cc-signal-table tbody tr:nth-child(n+6) {
+  display: none !important;
+}
+
+.cc-signal-board-card .cc-scroll-table {
+  overflow: hidden !important;
+}
+
+/* Copycat KPI font restore v1
+   Tiny visual correction only.
+   Keeps the smaller KPI bubble sizes, but removes the forced heavy/bold KPI font styling from the last patch.
+   Does not move layout, rows, date/time, Portfolio Allocation, Long vs Short Exposure, or Asset Signal Board. */
+
+.cc-kpi-grid-tight article,
+.cc-kpi-grid-tight article * {
+  font-family: inherit !important;
+}
+
+.cc-kpi-number-tight,
+.cc-kpi-number-tight * {
+  font-family: inherit !important;
+  font-weight: inherit !important;
+  letter-spacing: normal !important;
+}
+
+/* Keep only the smaller size/height effect from the previous patch. */
+.cc-kpi-number-tight {
+  font-size: clamp(24px, 2.05vw, 34px) !important;
+  line-height: 1.02 !important;
+}
+
+.cc-kpi-number-tight * {
+  font-size: inherit !important;
+  line-height: inherit !important;
+}
+
+/* Copycat KPI original font v1
+   Only restores the top KPI cards to the pre-shrink font feel.
+   Does not change bubble size, layout, date/time, Portfolio Allocation,
+   Long vs Short Exposure, Asset Signal Board, or data. */
+
+.cc-kpi-grid-tight article,
+.cc-kpi-grid-tight article small,
+.cc-kpi-grid-tight article span,
+.cc-kpi-grid-tight article em,
+.cc-kpi-number-tight,
+.cc-kpi-number-tight * {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+}
+
+.cc-kpi-number-tight,
+.cc-kpi-number-tight * {
+  font-weight: 800 !important;
+  letter-spacing: -0.045em !important;
+}
+
+/* Keep the smaller bubble sizing from the shrink patch, but restore the original-looking KPI number style. */
+.cc-kpi-number-tight {
+  font-size: clamp(24px, 2.05vw, 34px) !important;
+  line-height: 1.02 !important;
+}
+
+.cc-kpi-number-tight * {
+  font-size: inherit !important;
+  line-height: inherit !important;
+}
+
+/* Copycat KPI original text restore v1
+   Keeps the smaller KPI card sizing.
+   Removes the custom KPI number wrapper styling from later patches.
+   This does not affect layout, date/time, Portfolio Allocation, Long vs Short Exposure, or Asset Signal Board. */
+
+.cc-kpi-grid-tight article {
+  min-height: 96px !important;
+  padding-top: 14px !important;
+  padding-bottom: 12px !important;
+}
+
+/* Safety only: if any old wrapper remains, do not let it force a comic/heavy style. */
+.cc-kpi-number-tight,
+.cc-kpi-number-tight * {
+  font-family: unset !important;
+  font-weight: unset !important;
+  letter-spacing: unset !important;
+}
+
+/* Copycat index + recent pressure compact match v1
+   Only adjusts the bottom two cards to match the cleaner compact reference.
+   Keeps Portfolio Allocation, Long vs Short Exposure, Asset Signal Board,
+   date/time, and the rest of the site untouched.
+
+   Changes:
+   - Asset Signal Board: ensure row 6 is hidden cleanly so the card ends flush after row 5
+   - Copycat Index: smaller header/text, shorter overall card, chart sits directly on card background
+   - Recent Buyer / Seller Pressure: smaller header/text, shorter overall card, table fills lower portion of the card
+*/
+
+/* Safety: preserve the locked top row exactly as-is */
+.cc-signal-board-card .cc-signal-table tbody tr:nth-child(n+6),
+.cc-signal-board-card .cc-scroll-table table tbody tr:nth-child(n+6) {
+  display: none !important;
+}
+
+.cc-signal-board-card .cc-scroll-table {
+  overflow: hidden !important;
+}
+
+/* Bottom row cards: shorter and more compact */
+.cc-performance-index,
+.cc-pressure-card {
+  min-height: 0 !important;
+}
+
+/* Copycat Index: reduce top text footprint */
+.cc-performance-index h1,
+.cc-performance-index h2 {
+  font-size: clamp(2.1rem, 2.35vw, 3rem) !important;
+  line-height: 0.96 !important;
+  letter-spacing: -0.035em !important;
+  margin: 0 0 8px 0 !important;
+}
+
+.cc-performance-index .cc-panel-title,
+.cc-performance-index h3,
+.cc-performance-index .eyebrow,
+.cc-performance-index small {
+  margin-bottom: 6px !important;
+}
+
+.cc-performance-index p,
+.cc-performance-index .cc-subtitle,
+.cc-performance-index .cc-description {
+  font-size: 0.82rem !important;
+  line-height: 1.25 !important;
+  margin-top: 0 !important;
+  margin-bottom: 8px !important;
+}
+
+/* Remove the "bubble within a bubble" feel around the chart */
+.cc-performance-index .cc-chart-shell,
+.cc-performance-index .cc-chart-card,
+.cc-performance-index .cc-chart-frame,
+.cc-performance-index .cc-index-chart,
+.cc-performance-index .cc-performance-chart,
+.cc-performance-index .chart-shell,
+.cc-performance-index .chart-card,
+.cc-performance-index .chart-frame,
+.cc-performance-index .chart-wrap,
+.cc-performance-index .chart-wrapper,
+.cc-performance-index .graph-wrap,
+.cc-performance-index .graph-wrapper,
+.cc-performance-index .plot-wrap,
+.cc-performance-index .plot-wrapper {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+}
+
+/* Also flatten the most likely immediate chart container without affecting stat boxes */
+.cc-performance-index > div:has(svg) {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.cc-performance-index svg {
+  display: block !important;
+  width: 100% !important;
+  max-height: 158px !important;
+  height: auto !important;
+  margin: 4px 0 6px 0 !important;
+}
+
+/* Compact metric chips/cards under the chart */
+.cc-performance-index .cc-card,
+.cc-performance-index .cc-metric,
+.cc-performance-index [class*='metric'],
+.cc-performance-index [class*='stat'] {
+  min-height: 0 !important;
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+}
+
+.cc-performance-index .cc-card strong,
+.cc-performance-index .cc-metric strong,
+.cc-performance-index [class*='metric'] strong,
+.cc-performance-index [class*='stat'] strong {
+  font-size: 0.74rem !important;
+}
+
+.cc-performance-index .cc-card,
+.cc-performance-index .cc-card *,
+.cc-performance-index .cc-metric,
+.cc-performance-index .cc-metric * {
+  line-height: 1.15 !important;
+}
+
+.cc-performance-index .cc-pill,
+.cc-performance-index [class*='pill'],
+.cc-performance-index [class*='tag'] {
+  font-size: 0.78rem !important;
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
+}
+
+.cc-performance-index > p:last-child,
+.cc-performance-index .cc-footnote,
+.cc-performance-index .cc-note {
+  font-size: 0.8rem !important;
+  line-height: 1.35 !important;
+}
+
+/* Recent Buyer / Seller Pressure: compact header and let table reach down lower */
+.cc-pressure-card .cc-panel-title,
+.cc-pressure-card h2,
+.cc-pressure-card h3,
+.cc-pressure-card .eyebrow,
+.cc-pressure-card small {
+  margin-bottom: 6px !important;
+}
+
+.cc-pressure-card h1,
+.cc-pressure-card h2,
+.cc-pressure-card h3 {
+  font-size: 1rem !important;
+  line-height: 1.1 !important;
+}
+
+.cc-pressure-card p,
+.cc-pressure-card .cc-subtitle,
+.cc-pressure-card .cc-description,
+.cc-pressure-card small {
+  font-size: 0.78rem !important;
+  line-height: 1.25 !important;
+}
+
+.cc-pressure-card .cc-scroll-table {
+  height: calc(100% - 34px) !important;
+}
+
+.cc-pressure-card table {
+  width: 100% !important;
+  table-layout: fixed !important;
+}
+
+.cc-pressure-card th,
+.cc-pressure-card td {
+  font-size: 0.74rem !important;
+  line-height: 1.18 !important;
+  padding-top: 9px !important;
+  padding-bottom: 9px !important;
+}
+
+/* Copycat index + pressure source-wrap compact v1
+   Corrected patch: the previous selectors did not hit the real Copycat Index component.
+   This patch wraps the component in dashboard source and styles that wrapper directly.
+   Only touches:
+   - Copycat Index card
+   - Recent Buyer / Seller Pressure card
+   It does NOT touch Portfolio Allocation, Long vs Short Exposure, Asset Signal Board row layout,
+   top KPI cards, date/time, data, publisher, or registry. */
+
+.cc-index-compact-wrapper {
+  min-width: 0 !important;
+  width: 100% !important;
+}
+
+/* Shorter bottom row cards */
+.cc-index-compact-wrapper > *,
+.cc-pressure-card {
+  min-height: 0 !important;
+  height: 430px !important;
+  max-height: 430px !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+/* Copycat Index: smaller header and tighter spacing */
+.cc-index-compact-wrapper h1,
+.cc-index-compact-wrapper h2 {
+  font-size: clamp(1.65rem, 2.05vw, 2.45rem) !important;
+  line-height: 0.98 !important;
+  letter-spacing: -0.035em !important;
+  margin-top: 0 !important;
+  margin-bottom: 6px !important;
+}
+
+.cc-index-compact-wrapper h3,
+.cc-index-compact-wrapper .eyebrow,
+.cc-index-compact-wrapper small {
+  font-size: 0.76rem !important;
+  line-height: 1.15 !important;
+  margin-bottom: 5px !important;
+}
+
+.cc-index-compact-wrapper p,
+.cc-index-compact-wrapper .cc-subtitle,
+.cc-index-compact-wrapper .cc-description {
+  font-size: 0.78rem !important;
+  line-height: 1.22 !important;
+  margin-top: 0 !important;
+  margin-bottom: 6px !important;
+}
+
+/* Remove the inner chart bubble/frame feel. */
+.cc-index-compact-wrapper .cc-chart-shell,
+.cc-index-compact-wrapper .cc-chart-card,
+.cc-index-compact-wrapper .cc-chart-frame,
+.cc-index-compact-wrapper .cc-index-chart,
+.cc-index-compact-wrapper .cc-performance-chart,
+.cc-index-compact-wrapper .chart-shell,
+.cc-index-compact-wrapper .chart-card,
+.cc-index-compact-wrapper .chart-frame,
+.cc-index-compact-wrapper .chart-wrap,
+.cc-index-compact-wrapper .chart-wrapper,
+.cc-index-compact-wrapper .graph-wrap,
+.cc-index-compact-wrapper .graph-wrapper,
+.cc-index-compact-wrapper .plot-wrap,
+.cc-index-compact-wrapper .plot-wrapper {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+}
+
+/* Target common direct SVG containers but keep the outer card border intact. */
+.cc-index-compact-wrapper svg {
+  display: block !important;
+  width: 100% !important;
+  height: auto !important;
+  max-height: 145px !important;
+  margin: 4px 0 8px 0 !important;
+}
+
+/* Compact metric boxes / weights / footnote inside the index only. */
+.cc-index-compact-wrapper .cc-card,
+.cc-index-compact-wrapper .cc-metric,
+.cc-index-compact-wrapper [class*="metric"],
+.cc-index-compact-wrapper [class*="stat"] {
+  min-height: 0 !important;
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+}
+
+.cc-index-compact-wrapper .cc-card *,
+.cc-index-compact-wrapper .cc-metric *,
+.cc-index-compact-wrapper [class*="metric"] *,
+.cc-index-compact-wrapper [class*="stat"] * {
+  line-height: 1.12 !important;
+}
+
+.cc-index-compact-wrapper .cc-pill,
+.cc-index-compact-wrapper [class*="pill"],
+.cc-index-compact-wrapper [class*="tag"] {
+  font-size: 0.72rem !important;
+  padding-top: 3px !important;
+  padding-bottom: 3px !important;
+}
+
+/* Recent Buyer / Seller Pressure: shorter card, table fills more of it. */
+.cc-pressure-card .cc-panel-title {
+  margin-bottom: 6px !important;
+}
+
+.cc-pressure-card .cc-panel-title h3 {
+  font-size: 0.98rem !important;
+  line-height: 1.08 !important;
+}
+
+.cc-pressure-card .cc-panel-title span {
+  font-size: 0.74rem !important;
+  line-height: 1.2 !important;
+}
+
+.cc-pressure-card .cc-scroll-table {
+  height: calc(100% - 36px) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+.cc-pressure-card table {
+  width: 100% !important;
+  table-layout: fixed !important;
+}
+
+.cc-pressure-card th,
+.cc-pressure-card td {
+  font-size: 0.72rem !important;
+  line-height: 1.16 !important;
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+}
+
+/* Keep Asset Signal Board flush after the approved 5 rows, without changing that row layout. */
+.cc-signal-board-card .cc-signal-table tbody tr:nth-child(n+6),
+.cc-signal-board-card .cc-scroll-table table tbody tr:nth-child(n+6) {
+  display: none !important;
+}
+
+/* Copycat index + pressure align/fit v2
+   Only adjusts the bottom row cards:
+   - Copycat Index content is brought upward / tightened so all data fits again
+   - Copycat Index and Recent Buyer/Seller Pressure start and finish at the same height
+   Locked sections untouched: Portfolio Allocation, Long vs Short Exposure, Asset Signal Board row, top KPIs, date/time. */
+
+/* Make the two bottom cards align top and bottom */
+.cc-dashboard-performance-row {
+  align-items: stretch !important;
+}
+
+.cc-index-compact-wrapper,
+.cc-pressure-card {
+  height: 392px !important;
+  max-height: 392px !important;
+  min-height: 392px !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+.cc-index-compact-wrapper > * {
+  height: 100% !important;
+  max-height: 392px !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+  padding-top: 20px !important;
+  padding-bottom: 16px !important;
+}
+
+/* Bring the Copycat Index text/data up without changing chart width */
+.cc-index-compact-wrapper h1,
+.cc-index-compact-wrapper h2 {
+  font-size: clamp(1.55rem, 1.65vw, 2.05rem) !important;
+  line-height: 0.98 !important;
+  letter-spacing: -0.03em !important;
+  margin-top: 0 !important;
+  margin-bottom: 5px !important;
+}
+
+.cc-index-compact-wrapper h3,
+.cc-index-compact-wrapper .eyebrow,
+.cc-index-compact-wrapper small {
+  font-size: 0.68rem !important;
+  line-height: 1.1 !important;
+  margin-top: 0 !important;
+  margin-bottom: 4px !important;
+}
+
+.cc-index-compact-wrapper p,
+.cc-index-compact-wrapper .cc-subtitle,
+.cc-index-compact-wrapper .cc-description {
+  font-size: 0.72rem !important;
+  line-height: 1.2 !important;
+  margin-top: 0 !important;
+  margin-bottom: 5px !important;
+}
+
+/* Keep the chart full width, just reduce vertical footprint slightly */
+.cc-index-compact-wrapper svg {
+  width: 100% !important;
+  max-width: 100% !important;
+  max-height: 118px !important;
+  height: auto !important;
+  margin-top: 2px !important;
+  margin-bottom: 6px !important;
+}
+
+/* Keep chart directly on the card background */
+.cc-index-compact-wrapper .cc-chart-shell,
+.cc-index-compact-wrapper .cc-chart-card,
+.cc-index-compact-wrapper .cc-chart-frame,
+.cc-index-compact-wrapper .cc-index-chart,
+.cc-index-compact-wrapper .cc-performance-chart,
+.cc-index-compact-wrapper .chart-shell,
+.cc-index-compact-wrapper .chart-card,
+.cc-index-compact-wrapper .chart-frame,
+.cc-index-compact-wrapper .chart-wrap,
+.cc-index-compact-wrapper .chart-wrapper,
+.cc-index-compact-wrapper .graph-wrap,
+.cc-index-compact-wrapper .graph-wrapper,
+.cc-index-compact-wrapper .plot-wrap,
+.cc-index-compact-wrapper .plot-wrapper {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+}
+
+/* Compact the index metric boxes and model-weight pills so they fit in the shorter card */
+.cc-index-compact-wrapper .cc-card,
+.cc-index-compact-wrapper .cc-metric,
+.cc-index-compact-wrapper [class*="metric"],
+.cc-index-compact-wrapper [class*="stat"] {
+  min-height: 0 !important;
+  padding-top: 7px !important;
+  padding-bottom: 7px !important;
+}
+
+.cc-index-compact-wrapper .cc-card *,
+.cc-index-compact-wrapper .cc-metric *,
+.cc-index-compact-wrapper [class*="metric"] *,
+.cc-index-compact-wrapper [class*="stat"] * {
+  line-height: 1.08 !important;
+}
+
+.cc-index-compact-wrapper .cc-pill,
+.cc-index-compact-wrapper [class*="pill"],
+.cc-index-compact-wrapper [class*="tag"] {
+  font-size: 0.68rem !important;
+  line-height: 1.05 !important;
+  padding-top: 3px !important;
+  padding-bottom: 3px !important;
+}
+
+/* Keep the footnote visible but smaller */
+.cc-index-compact-wrapper > * > p:last-child,
+.cc-index-compact-wrapper .cc-footnote,
+.cc-index-compact-wrapper .cc-note {
+  font-size: 0.68rem !important;
+  line-height: 1.25 !important;
+  margin-top: 6px !important;
+  margin-bottom: 0 !important;
+}
+
+/* Match Recent Buyer / Seller Pressure to the same card height and fill its table area */
+.cc-pressure-card {
+  padding-top: 20px !important;
+  padding-bottom: 16px !important;
+}
+
+.cc-pressure-card .cc-panel-title {
+  margin-bottom: 6px !important;
+}
+
+.cc-pressure-card .cc-panel-title h3 {
+  font-size: 0.92rem !important;
+  line-height: 1.06 !important;
+}
+
+.cc-pressure-card .cc-panel-title span {
+  font-size: 0.68rem !important;
+  line-height: 1.15 !important;
+}
+
+.cc-pressure-card .cc-scroll-table {
+  height: calc(100% - 36px) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+.cc-pressure-card th,
+.cc-pressure-card td {
+  font-size: 0.68rem !important;
+  line-height: 1.13 !important;
+  padding-top: 7px !important;
+  padding-bottom: 7px !important;
+}
+
+/* Copycat index fit + align v3
+   Only adjusts the bottom row cards.
+   Goal:
+   - move Copycat Index up slightly
+   - stop the Index content being cut off
+   - keep chart full-width
+   - keep Copycat Index and Recent Buyer / Seller Pressure aligned
+   Locked sections untouched: Portfolio Allocation, Long vs Short Exposure,
+   Asset Signal Board, top KPIs, date/time, data. */
+
+.cc-dashboard-performance-row {
+  align-items: stretch !important;
+  margin-top: 10px !important;
+}
+
+/* Align both bottom cards and give the Index enough height for its full data */
+.cc-index-compact-wrapper {
+  margin-top: -12px !important;
+}
+
+.cc-index-compact-wrapper,
+.cc-pressure-card {
+  height: 438px !important;
+  min-height: 438px !important;
+  max-height: 438px !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+.cc-index-compact-wrapper > * {
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: 438px !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+  margin-top: 0 !important;
+  padding-top: 15px !important;
+  padding-bottom: 14px !important;
+}
+
+/* Bring Index content up and make it fit without changing chart width */
+.cc-index-compact-wrapper h1,
+.cc-index-compact-wrapper h2 {
+  font-size: clamp(1.45rem, 1.5vw, 1.95rem) !important;
+  line-height: 0.98 !important;
+  letter-spacing: -0.025em !important;
+  margin-top: 0 !important;
+  margin-bottom: 4px !important;
+}
+
+.cc-index-compact-wrapper h3,
+.cc-index-compact-wrapper .eyebrow,
+.cc-index-compact-wrapper small {
+  font-size: 0.66rem !important;
+  line-height: 1.1 !important;
+  margin-top: 0 !important;
+  margin-bottom: 3px !important;
+}
+
+.cc-index-compact-wrapper p,
+.cc-index-compact-wrapper .cc-subtitle,
+.cc-index-compact-wrapper .cc-description {
+  font-size: 0.69rem !important;
+  line-height: 1.17 !important;
+  margin-top: 0 !important;
+  margin-bottom: 4px !important;
+}
+
+/* Chart remains full width, only vertical footprint is trimmed */
+.cc-index-compact-wrapper svg {
+  width: 100% !important;
+  max-width: 100% !important;
+  max-height: 108px !important;
+  height: auto !important;
+  margin-top: 2px !important;
+  margin-bottom: 5px !important;
+}
+
+/* Keep chart directly on the card background */
+.cc-index-compact-wrapper .cc-chart-shell,
+.cc-index-compact-wrapper .cc-chart-card,
+.cc-index-compact-wrapper .cc-chart-frame,
+.cc-index-compact-wrapper .cc-index-chart,
+.cc-index-compact-wrapper .cc-performance-chart,
+.cc-index-compact-wrapper .chart-shell,
+.cc-index-compact-wrapper .chart-card,
+.cc-index-compact-wrapper .chart-frame,
+.cc-index-compact-wrapper .chart-wrap,
+.cc-index-compact-wrapper .chart-wrapper,
+.cc-index-compact-wrapper .graph-wrap,
+.cc-index-compact-wrapper .graph-wrapper,
+.cc-index-compact-wrapper .plot-wrap,
+.cc-index-compact-wrapper .plot-wrapper {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+}
+
+/* Compact the Index stats and model-weight chips so nothing sits under the cut line */
+.cc-index-compact-wrapper .cc-card,
+.cc-index-compact-wrapper .cc-metric,
+.cc-index-compact-wrapper [class*="metric"],
+.cc-index-compact-wrapper [class*="stat"] {
+  min-height: 0 !important;
+  padding-top: 6px !important;
+  padding-bottom: 6px !important;
+}
+
+.cc-index-compact-wrapper .cc-card *,
+.cc-index-compact-wrapper .cc-metric *,
+.cc-index-compact-wrapper [class*="metric"] *,
+.cc-index-compact-wrapper [class*="stat"] * {
+  line-height: 1.06 !important;
+}
+
+.cc-index-compact-wrapper .cc-pill,
+.cc-index-compact-wrapper [class*="pill"],
+.cc-index-compact-wrapper [class*="tag"] {
+  font-size: 0.66rem !important;
+  line-height: 1.05 !important;
+  padding-top: 2px !important;
+  padding-bottom: 2px !important;
+}
+
+.cc-index-compact-wrapper > * > p:last-child,
+.cc-index-compact-wrapper .cc-footnote,
+.cc-index-compact-wrapper .cc-note {
+  font-size: 0.66rem !important;
+  line-height: 1.2 !important;
+  margin-top: 4px !important;
+  margin-bottom: 0 !important;
+}
+
+/* Keep pressure card aligned and allow its table to use the added height */
+.cc-pressure-card {
+  padding-top: 15px !important;
+  padding-bottom: 14px !important;
+}
+
+.cc-pressure-card .cc-scroll-table {
+  height: calc(100% - 34px) !important;
+}
+
+/* Copycat index align + fit v4
+   Only adjusts the bottom two cards.
+   Keeps the current Index title font size.
+   Fixes:
+   - Index card no longer sits too high
+   - Index data is lifted/compressed so it fits inside the card
+   - Index and Recent Buyer / Seller Pressure align cleanly again
+   Locked sections untouched: Portfolio Allocation, Long vs Short Exposure,
+   Asset Signal Board, top KPIs, date/time, data. */
+
+.cc-dashboard-performance-row {
+  align-items: stretch !important;
+  margin-top: 10px !important;
+}
+
+/* Put the Index back in line with Recent Buyer / Seller Pressure */
+.cc-index-compact-wrapper {
+  margin-top: 0 !important;
+}
+
+.cc-index-compact-wrapper,
+.cc-pressure-card {
+  height: 438px !important;
+  min-height: 438px !important;
+  max-height: 438px !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+.cc-index-compact-wrapper > * {
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: 438px !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+  padding-top: 14px !important;
+  padding-bottom: 10px !important;
+}
+
+/* Keep the current Index title sizing/feel */
+.cc-index-compact-wrapper h1,
+.cc-index-compact-wrapper h2 {
+  font-size: clamp(1.45rem, 1.5vw, 1.95rem) !important;
+  line-height: 0.98 !important;
+  letter-spacing: -0.025em !important;
+  margin-top: 0 !important;
+  margin-bottom: 4px !important;
+}
+
+/* Reduce vertical waste, without changing the title size */
+.cc-index-compact-wrapper h3,
+.cc-index-compact-wrapper .eyebrow,
+.cc-index-compact-wrapper small {
+  margin-top: 0 !important;
+  margin-bottom: 3px !important;
+}
+
+.cc-index-compact-wrapper p,
+.cc-index-compact-wrapper .cc-subtitle,
+.cc-index-compact-wrapper .cc-description {
+  margin-top: 0 !important;
+  margin-bottom: 4px !important;
+}
+
+/* Keep chart full width, but reduce height a touch so the lower data fits */
+.cc-index-compact-wrapper svg {
+  width: 100% !important;
+  max-width: 100% !important;
+  max-height: 92px !important;
+  height: auto !important;
+  margin-top: 0 !important;
+  margin-bottom: 4px !important;
+}
+
+/* Keep chart directly on the card background */
+.cc-index-compact-wrapper .cc-chart-shell,
+.cc-index-compact-wrapper .cc-chart-card,
+.cc-index-compact-wrapper .cc-chart-frame,
+.cc-index-compact-wrapper .cc-index-chart,
+.cc-index-compact-wrapper .cc-performance-chart,
+.cc-index-compact-wrapper .chart-shell,
+.cc-index-compact-wrapper .chart-card,
+.cc-index-compact-wrapper .chart-frame,
+.cc-index-compact-wrapper .chart-wrap,
+.cc-index-compact-wrapper .chart-wrapper,
+.cc-index-compact-wrapper .graph-wrap,
+.cc-index-compact-wrapper .graph-wrapper,
+.cc-index-compact-wrapper .plot-wrap,
+.cc-index-compact-wrapper .plot-wrapper {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  margin-bottom: 2px !important;
+}
+
+/* Pull the lower Index data up and reduce card/chip vertical padding */
+.cc-index-compact-wrapper .cc-card,
+.cc-index-compact-wrapper .cc-metric,
+.cc-index-compact-wrapper [class*="metric"],
+.cc-index-compact-wrapper [class*="stat"] {
+  min-height: 0 !important;
+  padding-top: 5px !important;
+  padding-bottom: 5px !important;
+}
+
+.cc-index-compact-wrapper .cc-card *,
+.cc-index-compact-wrapper .cc-metric *,
+.cc-index-compact-wrapper [class*="metric"] *,
+.cc-index-compact-wrapper [class*="stat"] * {
+  line-height: 1.04 !important;
+}
+
+.cc-index-compact-wrapper .cc-pill,
+.cc-index-compact-wrapper [class*="pill"],
+.cc-index-compact-wrapper [class*="tag"] {
+  padding-top: 2px !important;
+  padding-bottom: 2px !important;
+  line-height: 1.02 !important;
+}
+
+/* Last explanatory line stays inside the card */
+.cc-index-compact-wrapper > * > p:last-child,
+.cc-index-compact-wrapper .cc-footnote,
+.cc-index-compact-wrapper .cc-note {
+  margin-top: 3px !important;
+  margin-bottom: 0 !important;
+  line-height: 1.16 !important;
+}
+
+/* Keep pressure aligned to the Index */
+.cc-pressure-card {
+  height: 438px !important;
+  min-height: 438px !important;
+  max-height: 438px !important;
+  padding-top: 14px !important;
+  padding-bottom: 10px !important;
+}
+
+/* Copycat index data lift v1
+   Final tiny adjustment for the locked bottom-card placement.
+   Only affects the Copycat Index card content.
+   Goal: move the data/metric boxes under the chart upward so they fit cleanly.
+   Does not change card placement, card height, Recent Buyer/Seller Pressure,
+   Portfolio Allocation, Long vs Short Exposure, Asset Signal Board, top KPIs,
+   date/time, or data. */
+
+/* Keep the locked card placement exactly as-is. Only change internal Index spacing. */
+.cc-index-compact-wrapper {
+  margin-top: 0 !important;
+}
+
+/* Remove vertical spacer behaviour inside the Index card so the data sits directly under the chart. */
+.cc-index-compact-wrapper > *,
+.cc-index-compact-wrapper > * > *,
+.cc-index-compact-wrapper section,
+.cc-index-compact-wrapper article {
+  justify-content: flex-start !important;
+}
+
+/* If the Index component uses grid/flex gaps internally, tighten them only inside this wrapper. */
+.cc-index-compact-wrapper > * {
+  row-gap: 6px !important;
+  gap: 6px !important;
+}
+
+.cc-index-compact-wrapper > * > * {
+  margin-top: 0 !important;
+}
+
+/* Chart remains full width, but releases vertical space underneath. */
+.cc-index-compact-wrapper svg {
+  margin-top: 0 !important;
+  margin-bottom: 2px !important;
+  max-height: 82px !important;
+}
+
+/* Pull any section immediately after the chart upward. */
+.cc-index-compact-wrapper svg + *,
+.cc-index-compact-wrapper .cc-chart-shell + *,
+.cc-index-compact-wrapper .cc-chart-card + *,
+.cc-index-compact-wrapper .cc-chart-frame + *,
+.cc-index-compact-wrapper .cc-index-chart + *,
+.cc-index-compact-wrapper .cc-performance-chart + *,
+.cc-index-compact-wrapper .chart-shell + *,
+.cc-index-compact-wrapper .chart-card + *,
+.cc-index-compact-wrapper .chart-frame + *,
+.cc-index-compact-wrapper .chart-wrap + *,
+.cc-index-compact-wrapper .chart-wrapper + *,
+.cc-index-compact-wrapper .graph-wrap + *,
+.cc-index-compact-wrapper .graph-wrapper + *,
+.cc-index-compact-wrapper .plot-wrap + *,
+.cc-index-compact-wrapper .plot-wrapper + * {
+  margin-top: 2px !important;
+}
+
+/* Metric/stat boxes below chart: move upward and reduce only vertical padding. */
+.cc-index-compact-wrapper .cc-card,
+.cc-index-compact-wrapper .cc-metric,
+.cc-index-compact-wrapper [class*="metric"],
+.cc-index-compact-wrapper [class*="stat"] {
+  margin-top: 0 !important;
+  padding-top: 5px !important;
+  padding-bottom: 5px !important;
+}
+
+/* Common grids/lists around metric boxes and model weights. */
+.cc-index-compact-wrapper [class*="grid"],
+.cc-index-compact-wrapper [class*="stats"],
+.cc-index-compact-wrapper [class*="metrics"],
+.cc-index-compact-wrapper [class*="weights"],
+.cc-index-compact-wrapper [class*="model"] {
+  margin-top: 4px !important;
+  margin-bottom: 4px !important;
+  row-gap: 6px !important;
+  gap: 6px !important;
+}
+
+/* Keep the explanatory line inside the card. */
+.cc-index-compact-wrapper > * > p:last-child,
+.cc-index-compact-wrapper .cc-footnote,
+.cc-index-compact-wrapper .cc-note {
+  margin-top: 4px !important;
+  margin-bottom: 0 !important;
+}
+
+/* Copycat index metric rows lift v1
+   Only affects the rows/data under the Copycat Index chart.
+   Card placement, card size, chart width, Recent Buyer/Seller card,
+   and all locked sections are untouched. */
+
+.cc-index-compact-wrapper .copycat-index-metric-row-lift,
+.cc-index-compact-wrapper .copycat-index-follow-row-lift {
+  position: relative !important;
+  top: -108px !important;
+  margin-bottom: -108px !important;
+  z-index: 3 !important;
+}
+
+/* Keep lifted metric boxes compact so they fit inside the existing card. */
+.cc-index-compact-wrapper .copycat-index-metric-row-lift .cc-card,
+.cc-index-compact-wrapper .copycat-index-metric-row-lift [class*="metric"],
+.cc-index-compact-wrapper .copycat-index-metric-row-lift [class*="stat"] {
+  padding-top: 5px !important;
+  padding-bottom: 5px !important;
+  min-height: 0 !important;
+}
+
+.cc-index-compact-wrapper .copycat-index-follow-row-lift {
+  font-size: 0.66rem !important;
+  line-height: 1.16 !important;
+}
+
+/* Copycat index source metrics fit v1
+   Source-level fix for the Copycat Index card.
+   Only affects the dashboard Index component internals:
+   - chart stays full width
+   - chart container stops taking too much vertical space
+   - metric rows / weights / note move up and fit inside the card
+   Does not change card placement, card height, Recent Buyer/Seller Pressure,
+   Portfolio Allocation, Long vs Short Exposure, Asset Signal Board, top KPIs,
+   top-right date/time, data, publisher, or registry. */
+
+.cc-index-dashboard-fit {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+  gap: 0 !important;
+}
+
+.cc-index-dashboard-fit .cc-index-head {
+  flex: 0 0 auto !important;
+  margin-bottom: 6px !important;
+}
+
+/* This is the important part: the chart container was consuming too much height.
+   Keep full width, but make the chart area compact so the data rows sit underneath it. */
+.cc-index-dashboard-fit .cc-index-chart {
+  flex: 0 0 118px !important;
+  height: 118px !important;
+  min-height: 118px !important;
+  max-height: 118px !important;
+  width: 100% !important;
+  margin: 4px 0 8px 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  overflow: visible !important;
+}
+
+.cc-index-dashboard-fit .cc-index-chart svg {
+  display: block !important;
+  width: 100% !important;
+  height: 118px !important;
+  max-height: 118px !important;
+  margin: 0 !important;
+}
+
+/* Metric row directly under chart */
+.cc-index-dashboard-fit .cc-index-metrics {
+  flex: 0 0 auto !important;
+  margin-top: 0 !important;
+  margin-bottom: 7px !important;
+  gap: 8px !important;
+  align-items: stretch !important;
+}
+
+.cc-index-dashboard-fit .cc-index-metrics > div {
+  min-height: 58px !important;
+  padding-top: 7px !important;
+  padding-bottom: 7px !important;
+}
+
+.cc-index-dashboard-fit .cc-index-metrics small {
+  font-size: 0.66rem !important;
+  line-height: 1.05 !important;
+}
+
+.cc-index-dashboard-fit .cc-index-metrics b {
+  font-size: 1.05rem !important;
+  line-height: 1.02 !important;
+}
+
+.cc-index-dashboard-fit .cc-index-metrics em {
+  font-size: 0.70rem !important;
+  line-height: 1.05 !important;
+}
+
+/* Weights row and note sit immediately below metrics */
+.cc-index-dashboard-fit .cc-index-weights {
+  flex: 0 0 auto !important;
+  margin-top: 0 !important;
+  margin-bottom: 6px !important;
+  gap: 6px !important;
+}
+
+.cc-index-dashboard-fit .cc-index-weights span {
+  font-size: 0.66rem !important;
+  line-height: 1.05 !important;
+}
+
+.cc-index-dashboard-fit .cc-index-weights i {
+  font-size: 0.66rem !important;
+  line-height: 1.05 !important;
+  padding-top: 3px !important;
+  padding-bottom: 3px !important;
+}
+
+.cc-index-dashboard-fit .cc-index-note {
+  flex: 0 0 auto !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  font-size: 0.66rem !important;
+  line-height: 1.18 !important;
+}
+
+.cc-index-dashboard-fit .cc-index-warning {
+  margin-top: 4px !important;
+}
+
+/* Copycat recent pressure row 8 fit v1
+   Tiny final adjustment.
+   Only affects Recent Buyer / Seller Pressure table internals.
+   Goal: make the 8th visible row fit cleanly without changing card placement/height.
+   Does not touch Copycat Index, Portfolio Allocation, Long vs Short Exposure,
+   Asset Signal Board, top KPIs, date/time, or data. */
+
+.cc-pressure-card .cc-scroll-table {
+  height: calc(100% - 26px) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+/* Slightly reduce vertical row padding only inside Recent Buyer / Seller Pressure. */
+.cc-pressure-card th,
+.cc-pressure-card td {
+  padding-top: 5px !important;
+  padding-bottom: 5px !important;
+}
+
+/* Keep the table tight to the top of its available area so row 8 clears the bottom. */
+.cc-pressure-card table {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.cc-pressure-card tbody tr {
+  height: auto !important;
+}
+
+/* Copycat final row + scroll height v1
+   Tiny final layout adjustment.
+   Only changes:
+   - Recent Buyer / Seller Pressure height: ends flush around 8 visible rows, scroll still available
+   - Copycat Index height: aligns to the same bottom level
+   - Asset Signal Board: shows 6 visible rows and restores scrolling through all assets
+   Locked sections untouched: Portfolio Allocation, Long vs Short Exposure, top KPIs,
+   top-right date/time, publisher/data/registry. */
+
+/* Bottom row: bring both cards' bottoms up together */
+.cc-index-compact-wrapper,
+.cc-pressure-card {
+  height: 360px !important;
+  min-height: 360px !important;
+  max-height: 360px !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+.cc-index-compact-wrapper > * {
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: 360px !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+  padding-top: 14px !important;
+  padding-bottom: 10px !important;
+}
+
+/* Recent Buyer / Seller Pressure: show a clean 8-row viewport, with scroll for the rest */
+.cc-pressure-card {
+  padding-top: 14px !important;
+  padding-bottom: 10px !important;
+}
+
+.cc-pressure-card .cc-panel-title {
+  margin-bottom: 5px !important;
+}
+
+.cc-pressure-card .cc-scroll-table {
+  height: calc(100% - 32px) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+.cc-pressure-card th,
+.cc-pressure-card td {
+  padding-top: 5px !important;
+  padding-bottom: 5px !important;
+}
+
+/* Asset Signal Board: unlock rows again, show 6 rows, and restore scrolling */
+.cc-signal-board-card .cc-signal-table tbody tr:nth-child(n+6),
+.cc-signal-board-card .cc-scroll-table table tbody tr:nth-child(n+6),
+.copycat-asset-board-flush tbody tr:nth-child(n+6) {
+  display: table-row !important;
+}
+
+.cc-signal-board-card .cc-scroll-table,
+.copycat-asset-board-flush .cc-scroll-table,
+.copycat-asset-board-flush .cc-table-wrap,
+.copycat-asset-board-flush .table-scroll {
+  height: calc(100% - 38px) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+/* Keep Asset Signal rows compact enough for 6 visible rows */
+.cc-signal-board-card th,
+.cc-signal-board-card td {
+  padding-top: 5px !important;
+  padding-bottom: 5px !important;
+}
+
+/* Copycat final tiny reveal v1
+   Final tiny visual nudge only.
+   Changes:
+   - Bottom Index / Recent Pressure row moves down a tiny amount and gets enough height to show row 7 cleanly.
+   - Asset Signal Board scroll area gets a tiny internal allowance so the last visible row is not cut.
+   Locked/untouched: Portfolio Allocation, Long vs Short Exposure, top KPIs,
+   top-right date/time, data, publisher, registry. */
+
+/* Bottom row: tiny downward nudge and a few extra pixels so row 7 clears. */
+.cc-dashboard-performance-row {
+  margin-top: 14px !important;
+  align-items: stretch !important;
+}
+
+.cc-index-compact-wrapper,
+.cc-pressure-card {
+  height: 372px !important;
+  min-height: 372px !important;
+  max-height: 372px !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+.cc-index-compact-wrapper > * {
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: 372px !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+/* Recent Buyer / Seller Pressure: reveal the full 7th row cleanly. */
+.cc-pressure-card {
+  padding-top: 13px !important;
+  padding-bottom: 8px !important;
+}
+
+.cc-pressure-card .cc-panel-title {
+  margin-bottom: 4px !important;
+}
+
+.cc-pressure-card .cc-scroll-table {
+  height: calc(100% - 28px) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+.cc-pressure-card th,
+.cc-pressure-card td {
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
+}
+
+/* Asset Signal Board: keep the same card size, just stop the last visible row clipping. */
+.cc-signal-board-card .cc-scroll-table,
+.copycat-asset-board-flush .cc-scroll-table,
+.copycat-asset-board-flush .cc-table-wrap,
+.copycat-asset-board-flush .table-scroll {
+  height: calc(100% - 34px) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding-bottom: 6px !important;
+  box-sizing: border-box !important;
+}
+
+.cc-signal-board-card th,
+.cc-signal-board-card td {
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
+}
+
+/* Keep Asset Signal Board scroll restored, with rows available beyond the visible area. */
+.cc-signal-board-card .cc-signal-table tbody tr:nth-child(n+6),
+.cc-signal-board-card .cc-scroll-table table tbody tr:nth-child(n+6),
+.copycat-asset-board-flush tbody tr:nth-child(n+6) {
+  display: table-row !important;
+}
+
+/* Copycat bottom cards expand tiny v1
+   Final tiny adjustment.
+   Only expands the bottom Index / Recent Buyer-Seller cards downward slightly.
+   It does NOT move them, and does NOT touch Asset Signal Board, Portfolio Allocation,
+   Long vs Short Exposure, top KPIs, date/time, data, publisher, or registry. */
+
+/* Keep the current top placement locked. Only add a little height downward. */
+.cc-index-compact-wrapper,
+.cc-pressure-card {
+  height: 392px !important;
+  min-height: 392px !important;
+  max-height: 392px !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+.cc-index-compact-wrapper > * {
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: 392px !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+/* Recent Buyer / Seller Pressure: use the expanded card space to reveal the last visible row. */
+.cc-pressure-card .cc-scroll-table {
+  height: calc(100% - 28px) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+/* Copycat unify card layer v1
+   Tiny visual-only layer fix.
+   Goal: put all dashboard cards on the same visual layer as the Index card,
+   removing edge fading/lower-layer look without changing size, placement, scrolling,
+   data, or content. */
+
+/* Create one clean stacking context for dashboard cards. */
+.cc-dashboard,
+.cc-dashboard-grid,
+.cc-kpi-grid,
+.cc-dashboard-analysis-row,
+.cc-dashboard-performance-row {
+  isolation: isolate !important;
+}
+
+/* Put every visible dashboard bubble/card on the same front layer. */
+.cc-kpi-grid > article,
+.cc-dashboard-analysis-row > *,
+.cc-dashboard-performance-row > *,
+.cc-index-compact-wrapper > *,
+.cc-pressure-card,
+.cc-signal-board-card {
+  position: relative !important;
+  z-index: 20 !important;
+  opacity: 1 !important;
+  filter: none !important;
+  mix-blend-mode: normal !important;
+  transform: translateZ(0) !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+}
+
+/* Keep scrollbars/content above the card background but do not change their layout. */
+.cc-dashboard-analysis-row > * .cc-scroll-table,
+.cc-dashboard-performance-row > * .cc-scroll-table,
+.cc-signal-board-card .cc-scroll-table,
+.cc-pressure-card .cc-scroll-table {
+  position: relative !important;
+  z-index: 21 !important;
+}
+
+/* Copycat compact footer v1
+   Final visual-only footer cleanup.
+   Only affects the disclaimer/footer card containing "Market intelligence only."
+   Does not touch dashboard cards, layout rows, tables, charts, date/time, data,
+   publisher, or registry. */
+
+.copycat-disclaimer-footer-compact {
+  min-height: 72px !important;
+  padding: 12px 18px !important;
+  margin-top: 12px !important;
+  margin-bottom: 14px !important;
+  box-sizing: border-box !important;
+}
+
+.copycat-disclaimer-footer-compact,
+.copycat-disclaimer-footer-compact * {
+  line-height: 1.15 !important;
+}
+
+.copycat-disclaimer-footer-compact h1,
+.copycat-disclaimer-footer-compact h2,
+.copycat-disclaimer-footer-compact h3,
+.copycat-disclaimer-footer-compact strong,
+.copycat-disclaimer-footer-compact b {
+  font-size: 0.92rem !important;
+  margin-top: 0 !important;
+  margin-bottom: 3px !important;
+}
+
+.copycat-disclaimer-footer-compact p,
+.copycat-disclaimer-footer-compact span,
+.copycat-disclaimer-footer-compact small,
+.copycat-disclaimer-footer-compact div {
+  font-size: 0.76rem !important;
+}
+
+.copycat-disclaimer-footer-compact p,
+.copycat-disclaimer-footer-compact small {
+  margin-top: 0 !important;
+  margin-bottom: 2px !important;
+}
+
+/* Keep the data quality line compact and inside the smaller footer. */
+.copycat-disclaimer-footer-compact [class*="quality"],
+.copycat-disclaimer-footer-compact [class*="sync"],
+.copycat-disclaimer-footer-compact [class*="status"] {
+  margin-top: 2px !important;
+  margin-bottom: 0 !important;
+}
+
+/* Copycat layer + footer fix v2
+   Visual-only correction.
+   - Puts detected dashboard cards/bubbles on the same front visual layer as the Index card
+   - Removes mask/fade/blur treatment from those cards
+   - Compacts the disclaimer/footer card
+   Does not change data, chart contents, table contents, card order, or live publisher logic. */
+
+.copycat-front-layer-v2 {
+  position: relative !important;
+  z-index: 80 !important;
+  opacity: 1 !important;
+  filter: none !important;
+  mix-blend-mode: normal !important;
+  transform: translateZ(0) !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+  isolation: isolate !important;
+}
+
+.copycat-front-layer-v2,
+.copycat-front-layer-v2 * {
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+}
+
+.copycat-front-layer-v2 .cc-scroll-table,
+.copycat-front-layer-v2 [class*="scroll"],
+.copycat-front-layer-v2 table {
+  position: relative !important;
+  z-index: 81 !important;
+  opacity: 1 !important;
+  filter: none !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+}
+
+/* Compact disclaimer footer */
+.copycat-footer-compact-v2 {
+  min-height: 0 !important;
+  height: auto !important;
+  padding: 10px 18px !important;
+  margin-top: 10px !important;
+  margin-bottom: 12px !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 14px !important;
+}
+
+.copycat-footer-compact-v2,
+.copycat-footer-compact-v2 * {
+  line-height: 1.12 !important;
+}
+
+.copycat-footer-compact-v2 h1,
+.copycat-footer-compact-v2 h2,
+.copycat-footer-compact-v2 h3,
+.copycat-footer-compact-v2 strong,
+.copycat-footer-compact-v2 b {
+  font-size: 0.88rem !important;
+  margin-top: 0 !important;
+  margin-bottom: 2px !important;
+}
+
+.copycat-footer-compact-v2 p,
+.copycat-footer-compact-v2 span,
+.copycat-footer-compact-v2 small,
+.copycat-footer-compact-v2 div {
+  font-size: 0.72rem !important;
+}
+
+.copycat-footer-compact-v2 p,
+.copycat-footer-compact-v2 small {
+  margin-top: 0 !important;
+  margin-bottom: 1px !important;
+}
+
+.copycat-footer-compact-v2 > * {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.copycat-footer-compact-v2 [class*="quality"],
+.copycat-footer-compact-v2 [class*="sync"],
+.copycat-footer-compact-v2 [class*="status"] {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+/* Copycat restore index only v1
+   Fixes the Index card after the layer/footer patch.
+   Only affects the Copycat Index card.
+   Keeps footer compacting and card-layer fixes for the other cards. */
+
+/* Disable the old metric-row lift behavior if that legacy script tags the Index rows. */
+.cc-index-compact-wrapper .copycat-index-metric-row-lift,
+.cc-index-compact-wrapper .copycat-index-follow-row-lift {
+  position: static !important;
+  top: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  right: auto !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  transform: none !important;
+  z-index: auto !important;
+}
+
+/* Do not let the front-layer footer patch alter the Index internals. */
+.cc-index-compact-wrapper .copycat-front-layer-v2 {
+  z-index: auto !important;
+  transform: none !important;
+  isolation: auto !important;
+}
+
+/* Re-assert the good source-level Index layout from the working version. */
+.cc-index-dashboard-fit {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+  gap: 0 !important;
+}
+
+.cc-index-dashboard-fit .cc-index-head {
+  flex: 0 0 auto !important;
+  margin-bottom: 6px !important;
+}
+
+.cc-index-dashboard-fit .cc-index-chart {
+  flex: 0 0 118px !important;
+  height: 118px !important;
+  min-height: 118px !important;
+  max-height: 118px !important;
+  width: 100% !important;
+  margin: 4px 0 8px 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  overflow: visible !important;
+}
+
+.cc-index-dashboard-fit .cc-index-chart svg {
+  display: block !important;
+  width: 100% !important;
+  height: 118px !important;
+  max-height: 118px !important;
+  margin: 0 !important;
+}
+
+.cc-index-dashboard-fit .cc-index-metrics {
+  flex: 0 0 auto !important;
+  margin-top: 0 !important;
+  margin-bottom: 7px !important;
+  gap: 8px !important;
+  align-items: stretch !important;
+}
+
+.cc-index-dashboard-fit .cc-index-weights {
+  flex: 0 0 auto !important;
+  margin-top: 0 !important;
+  margin-bottom: 6px !important;
+  gap: 6px !important;
+}
+
+.cc-index-dashboard-fit .cc-index-note {
+  flex: 0 0 auto !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}

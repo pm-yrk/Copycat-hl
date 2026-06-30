@@ -1,0 +1,8 @@
+# Optional public pages to fetch and parse for visible wallet addresses.
+# Add one URL per line. Keep this list small to stay light/free.
+# Pages that require JavaScript/login may return no addresses.
+#
+# Defaults already tried:
+# https://hypertracker.io/
+# https://hyperdash.com/learn/best-tools-trading-hyperliquid
+# https://hyperdash.com/learn/what-is-copy-trading-how-it-works-and-what-to-watch-out-for
