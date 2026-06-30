@@ -1,0 +1,16 @@
+Copycat token icon notice
+
+Primary icon source:
+- spothq/cryptocurrency-icons
+- License: CC0-1.0
+- Source: https://github.com/spothq/cryptocurrency-icons
+
+Copycat usage:
+- Icons are stored locally in frontend/public/copycat-token-badges.
+- The browser should not hotlink third-party token-logo CDNs.
+- Missing assets use Copycat-owned local ticker badges.
+
+Trademark note:
+Token names, marks, and logos may be trademarks of their respective owners.
+Copycat is not affiliated with, sponsored by, or endorsed by any token issuer,
+exchange, icon project, or wallet provider unless explicitly stated.
