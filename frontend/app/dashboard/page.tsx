@@ -183,6 +183,17 @@ function fmtTime(ms: any) {
   return new Date(Number(ms)).toLocaleString(undefined, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', '')
 }
 function maskWallet(w: string) { return w ? `Wallet ${w.slice(0, 4)}…${w.slice(-4)}` : 'Wallet 0x…' }
+function hypurrscanAddressUrl(w: string) {
+  const wallet = String(w || '').trim()
+  return /^0x[a-fA-F0-9]{40}$/.test(wallet) ? `https://hypurrscan.io/address/${wallet}` : ''
+}
+function WalletExplorerLink({ wallet, label }: { wallet?: string; label?: string }) {
+  const url = hypurrscanAddressUrl(String(wallet || ''))
+  const text = label || maskWallet(String(wallet || ''))
+  if (!url) return <em>{text}</em>
+  return <em><a href={url} target="_blank" rel="noopener noreferrer" title="Open wallet on HypurrScan" style={{ color: 'inherit', textDecoration: 'none' }}>{text}</a></em>
+}
+
 
 function walletUniverseCaption(summary: any) {
   const scanned = Number(summary?.scanner_candidate_wallets_scored || summary?.indexed_wallets || 0)
@@ -680,7 +691,7 @@ export default function Dashboard() {
         <div className={`cc-orders-card ${showAllOrders ? 'expanded' : ''}`}>
           <h3>Most recent orders</h3>
           <div className="cc-order-list">
-            {visibleOrders.map((o: any) => <div className="cc-order-line" key={orderKey(o)}><TokenLogo coin={o.coin} icons={icons} /><AssetName coin={o.coin} details={mergedAssetDetails} row={o} compact /><span className={orderActionClass(o.side)}>{o.side}</span><em>{o.wallet_label || maskWallet(o.wallet)}</em><small>{ago(o.ts_ms)}</small></div>)}
+            {visibleOrders.map((o: any) => <div className="cc-order-line" key={orderKey(o)}><TokenLogo coin={o.coin} icons={icons} /><AssetName coin={o.coin} details={mergedAssetDetails} row={o} compact /><span className={orderActionClass(o.side)}>{o.side}</span><WalletExplorerLink wallet={o.wallet} label={o.wallet_label} /><small>{ago(o.ts_ms)}</small></div>)}
           </div>
           <a className="cc-small-action" href="/api-access#recent-activity">View all orders →</a>
         </div>
