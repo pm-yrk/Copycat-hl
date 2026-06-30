@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 Copycat local snapshot publisher.
 
@@ -211,7 +211,7 @@ def load_wallets(path: Path, max_wallets: int) -> List[str]:
 
 
 def short_wallet(wallet: str) -> str:
-    return f"{wallet[:6]}…{wallet[-4:]}" if len(wallet) >= 12 else wallet
+    return f"{wallet[:6]}â€¦{wallet[-4:]}" if len(wallet) >= 12 else wallet
 
 
 def safe_float(value: Any, default: float = 0.0) -> float:
@@ -601,6 +601,9 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
     registry_discoveries = safe_int(registry_summary.get('registry_discoveries'))
     registry_indexed = registry_wallets or scanner_scored or len(wallets)
     registry_discovered_total = registry_discoveries or scanner_discovered
+    # Copycat live dashboard registry display fields v1
+    dashboard_display_scored = registry_indexed
+    dashboard_display_discovered = registry_discovered_total
     mids = get_mids(config.request_timeout_seconds)
     meta = get_meta(config.request_timeout_seconds)
     states: List[Dict[str, Any]] = []
@@ -849,8 +852,10 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
         "qualified_wallets": len(wallets),
         "tracked_active_wallets": len(wallets),
         "selected_wallet_count": scanner_selected or len(wallets),
-        "scanner_candidate_wallets_scored": scanner_scored,
-        "wallets_discovered_from_recent_trades": scanner_discovered,
+        "scanner_candidate_wallets_scored": dashboard_display_scored,
+        "wallets_discovered_from_recent_trades": dashboard_display_discovered,
+        "latest_scanner_candidate_wallets_scored": scanner_scored,
+        "latest_recent_trade_wallets_discovered": scanner_discovered,
         "registry_wallets": registry_wallets,
         "registry_scan_history": registry_scan_history,
         "registry_discoveries": registry_discoveries,
@@ -877,7 +882,7 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
         top_signal = signals[0]
         pct = round(abs(safe_float(top_signal.get("signal"))) * 100)
         side = "Long" if safe_float(top_signal.get("signal")) >= 0 else "Short"
-        insights.append({"type": "top_signal", "label": "Top conviction asset", "coin": top_signal["coin"], "detail": f"{pct}% {side} · {top_signal.get('confidence')}", "row": top_signal})
+        insights.append({"type": "top_signal", "label": "Top conviction asset", "coin": top_signal["coin"], "detail": f"{pct}% {side} Â· {top_signal.get('confidence')}", "row": top_signal})
         largest = max(signals, key=lambda r: r.get("gross_value_usd", 0))
         insights.append({"type": "largest_exposure", "label": "Largest current exposure", "coin": largest["coin"], "detail": f"${largest.get('gross_value_usd',0):,.0f} gross exposure", "row": largest})
     if flow:
@@ -920,8 +925,10 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
         "wallets_live": live_state_count,
         "wallets_stale": stale_state_count,
         "wallets_missing": missing_state_count,
-        "scanner_candidate_wallets_scored": scanner_scored,
-        "wallets_discovered_from_recent_trades": scanner_discovered,
+        "scanner_candidate_wallets_scored": dashboard_display_scored,
+        "wallets_discovered_from_recent_trades": dashboard_display_discovered,
+        "latest_scanner_candidate_wallets_scored": scanner_scored,
+        "latest_recent_trade_wallets_discovered": scanner_discovered,
         "registry_wallets": registry_wallets,
         "registry_scan_history": registry_scan_history,
         "registry_discoveries": registry_discoveries,
@@ -966,8 +973,10 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
         "supabase_required": False,
         "historical_backfill_enabled": False,
         "message": data_msg,
-        "scanner_candidate_wallets_scored": scanner_scored,
-        "wallets_discovered_from_recent_trades": scanner_discovered,
+        "scanner_candidate_wallets_scored": dashboard_display_scored,
+        "wallets_discovered_from_recent_trades": dashboard_display_discovered,
+        "latest_scanner_candidate_wallets_scored": scanner_scored,
+        "latest_recent_trade_wallets_discovered": scanner_discovered,
         "registry_wallets": registry_wallets,
         "registry_scan_history": registry_scan_history,
         "registry_discoveries": registry_discoveries,
@@ -986,8 +995,10 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
         "wallets_live": live_state_count,
         "wallets_stale": stale_state_count,
         "wallets_missing": missing_state_count,
-        "scanner_candidate_wallets_scored": scanner_scored,
-        "wallets_discovered_from_recent_trades": scanner_discovered,
+        "scanner_candidate_wallets_scored": dashboard_display_scored,
+        "wallets_discovered_from_recent_trades": dashboard_display_discovered,
+        "latest_scanner_candidate_wallets_scored": scanner_scored,
+        "latest_recent_trade_wallets_discovered": scanner_discovered,
         "selected_wallet_count": scanner_selected or len(wallets),
         "render_required": False,
         "supabase_required": False,
@@ -1063,8 +1074,10 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
         'wallets_live': live_state_count,
         'wallets_stale': stale_state_count,
         'wallets_missing': missing_state_count,
-        'scanner_candidate_wallets_scored': scanner_scored,
-        'wallets_discovered_from_recent_trades': scanner_discovered,
+        'scanner_candidate_wallets_scored': dashboard_display_scored,
+        'wallets_discovered_from_recent_trades': dashboard_display_discovered,
+        'latest_scanner_candidate_wallets_scored': scanner_scored,
+        'latest_recent_trade_wallets_discovered': scanner_discovered,
         'registry_wallets': registry_wallets,
         'registry_scan_history': registry_scan_history,
         'registry_discoveries': registry_discoveries,
@@ -1073,8 +1086,10 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
     scanner_status = {
         'status': scanner.get('status') or ('ok' if scanner_scored else 'warming'),
         'updated_at_ms': scanner.get('updated_at_ms') or now_ms,
-        'candidate_wallets_scored': scanner_scored,
-        'wallets_discovered_from_recent_trades': scanner_discovered,
+        'candidate_wallets_scored': dashboard_display_scored,
+        'wallets_discovered_from_recent_trades': dashboard_display_discovered,
+        'latest_scanner_candidate_wallets_scored': scanner_scored,
+        'latest_recent_trade_wallets_discovered': scanner_discovered,
         'registry_wallets': registry_wallets,
         'registry_scan_history': registry_scan_history,
         'registry_discoveries': registry_discoveries,
@@ -1083,6 +1098,39 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
         'coins_scanned': scanner.get('coins_scanned') or [],
         'method_note': scanner.get('method_note') or 'Scanner results appear after run_local_scanner_update_wallets.cmd.',
     }
+    # Copycat force registry summary finalizer v1
+    # Make the already-live dashboard fields show the larger long-running registry counts.
+    try:
+        if isinstance(feed, dict) and isinstance(feed.get("summary"), dict):
+            _registry_summary = read_registry_summary_counts()
+            _registry_wallets = safe_int(_registry_summary.get("registry_wallets"))
+            _registry_scan_history = safe_int(_registry_summary.get("registry_scan_history"))
+            _registry_discoveries = safe_int(_registry_summary.get("registry_discoveries"))
+            _registry_indexed = _registry_wallets or safe_int(scanner_scored) or len(wallets)
+            _registry_discovered_total = _registry_discoveries or safe_int(scanner_discovered)
+            feed["summary"]["scanner_candidate_wallets_scored"] = _registry_indexed
+            feed["summary"]["wallets_discovered_from_recent_trades"] = _registry_discovered_total
+            feed["summary"]["latest_scanner_candidate_wallets_scored"] = safe_int(scanner_scored)
+            feed["summary"]["latest_recent_trade_wallets_discovered"] = safe_int(scanner_discovered)
+            feed["summary"]["registry_wallets"] = _registry_wallets
+            feed["summary"]["registry_scan_history"] = _registry_scan_history
+            feed["summary"]["registry_discoveries"] = _registry_discoveries
+            feed["summary"]["indexed_wallets"] = _registry_indexed
+            feed["summary"]["known_wallet_candidates"] = _registry_indexed
+            feed["summary"]["claim_label"] = f"Top {len(wallets)} Copycat-ranked wallets from {_registry_indexed:,} locally indexed Hyperliquid candidates"
+        for _obj in [tick, leaderboard, platform_health, scanner_status]:
+            if isinstance(_obj, dict):
+                _obj["scanner_candidate_wallets_scored"] = _registry_indexed
+                _obj["wallets_discovered_from_recent_trades"] = _registry_discovered_total
+                _obj["registry_wallets"] = _registry_wallets
+                _obj["registry_scan_history"] = _registry_scan_history
+                _obj["registry_discoveries"] = _registry_discoveries
+                _obj["latest_scanner_candidate_wallets_scored"] = safe_int(scanner_scored)
+                _obj["latest_recent_trade_wallets_discovered"] = safe_int(scanner_discovered)
+    except Exception as _registry_summary_error:
+        log(f"Registry summary finalizer skipped: {_registry_summary_error}")
+
+
     token_icons = {s["coin"]: None for s in signals[:100]}
 
     return {
@@ -1171,3 +1219,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
