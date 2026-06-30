@@ -5664,3 +5664,56 @@ body[data-theme="light"] .copycat-local-viewer-time,
   margin-top: 0 !important;
   margin-bottom: 0 !important;
 }
+
+/* Copycat menu layer hotfix v1
+   Fixes the top-right menu opening behind dashboard cards.
+   Only raises the site header/menu/dropdown layer above dashboard cards.
+   Does not change dashboard layout, cards, data, charts, tables, footer, publisher, or registry. */
+
+/* Keep the header and its menu above all dashboard cards. */
+header,
+nav,
+.cc-header,
+.cc-topbar,
+.copycat-header,
+.copycat-topbar,
+.site-header,
+.site-nav,
+[class*="Header"],
+[class*="Topbar"],
+[class*="topbar"],
+[class*="navbar"],
+[class*="Navbar"] {
+  position: relative !important;
+  z-index: 100000 !important;
+  isolation: isolate !important;
+}
+
+/* Common dropdown/menu/popup containers. */
+header [role="menu"],
+header [role="listbox"],
+header [aria-expanded],
+header [data-state],
+nav [role="menu"],
+nav [role="listbox"],
+nav [aria-expanded],
+nav [data-state],
+[data-radix-popper-content-wrapper],
+[data-radix-portal],
+[data-headlessui-portal],
+[class*="dropdown"],
+[class*="Dropdown"],
+[class*="menu"],
+[class*="Menu"],
+[class*="popover"],
+[class*="Popover"] {
+  z-index: 100001 !important;
+}
+
+/* The visible three-dot menu button should always sit above dashboard cards. */
+button[aria-haspopup],
+button[aria-expanded],
+.copycat-menu-layer-hotfix {
+  position: relative !important;
+  z-index: 100002 !important;
+}

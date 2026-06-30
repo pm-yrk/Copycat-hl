@@ -13,6 +13,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 <script src="/copycat_compact_footer_v1.js" defer></script>
               <script src="/copycat_layer_footer_fix_v2.js" defer></script>
               <script src="/copycat_restore_index_only_v1.js" defer></script>
+              <script src="/copycat_menu_layer_hotfix_v1.js" defer></script>
       </body>
     </html>
   )
