@@ -118,8 +118,8 @@ function AssetName({ coin, details, row }: { coin: any, details: Record<string, 
 const USDC_LOGO_DATA_URI = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxMjggMTI4Jz48Y2lyY2xlIGN4PSc2NCcgY3k9JzY0JyByPSc2NCcgZmlsbD0nIzI3NzVDQScvPjxwYXRoIGQ9J000MiAzMGE0MiA0MiAwIDAgMCAwIDY4JyBmaWxsPSdub25lJyBzdHJva2U9JyNmZmYnIHN0cm9rZS13aWR0aD0nOCcgc3Ryb2tlLWxpbmVjYXA9J3JvdW5kJy8+PHBhdGggZD0nTTg2IDMwYTQyIDQyIDAgMCAxIDAgNjgnIGZpbGw9J25vbmUnIHN0cm9rZT0nI2ZmZicgc3Ryb2tlLXdpZHRoPSc4JyBzdHJva2UtbGluZWNhcD0ncm91bmQnLz48dGV4dCB4PSc2NCcgeT0nODQnIHRleHQtYW5jaG9yPSdtaWRkbGUnIGZvbnQtZmFtaWx5PSdBcmlhbCxIZWx2ZXRpY2Esc2Fucy1zZXJpZicgZm9udC1zaXplPSc1OCcgZm9udC13ZWlnaHQ9JzgwMCcgZmlsbD0nI2ZmZic+JDwvdGV4dD48L3N2Zz4='
 const fallbackColours: Record<string, string> = { HYPE:'#43E8D0', ETH:'#627EEA', BTC:'#F7931A', SOL:'#14F195', ZEC:'#F4B728', NEAR:'#00EC97', AAVE:'#8B7DFF', TRX:'#FF4B4B', XRP:'#4B9FFF', USDC:'#2775CA', 'USDC/CASH':'#2775CA', MELANIA:'#D7A785', PUMP:'#61C685', LIT:'#35D0B4', BNB:'#F3BA2F', XLM:'#44BDEC', PENGU:'#A0D7F8', LTC:'#345D9D', SUI:'#4CA3FF', AVAX:'#E84142' }
 const staticLogoUrls: Record<string, string> = {
-  BTC:'https://cryptologos.cc/logos/bitcoin-btc-logo.svg?v=040', ETH:'https://cryptologos.cc/logos/ethereum-eth-logo.svg?v=040', SOL:'https://cryptologos.cc/logos/solana-sol-logo.svg?v=040', USDC:'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48/logo.png', USDT:'https://cryptologos.cc/logos/tether-usdt-logo.svg?v=040', DOGE:'https://cryptologos.cc/logos/dogecoin-doge-logo.svg?v=040',
-  AAVE:'https://cryptologos.cc/logos/aave-aave-logo.svg?v=040', TRX:'https://cryptologos.cc/logos/tron-trx-logo.svg?v=040', XRP:'https://cryptologos.cc/logos/xrp-xrp-logo.svg?v=040', AVAX:'https://cryptologos.cc/logos/avalanche-avax-logo.svg?v=040', BNB:'https://cryptologos.cc/logos/bnb-bnb-logo.svg?v=040', LINK:'https://cryptologos.cc/logos/chainlink-link-logo.svg?v=040', UNI:'https://cryptologos.cc/logos/uniswap-uni-logo.svg?v=040', LTC:'https://cryptologos.cc/logos/litecoin-ltc-logo.svg?v=040', DOT:'https://cryptologos.cc/logos/polkadot-new-dot-logo.svg?v=040', NEAR:'https://cryptologos.cc/logos/near-protocol-near-logo.svg?v=040', ZEC:'https://cryptologos.cc/logos/zcash-zec-logo.svg?v=040', ARB:'https://cryptologos.cc/logos/arbitrum-arb-logo.svg?v=040', SUI:'https://cryptologos.cc/logos/sui-sui-logo.svg?v=040', OP:'https://cryptologos.cc/logos/optimism-ethereum-op-logo.svg?v=040'
+  BTC:'/copycat-token-badges/btc.svg', ETH:'/copycat-token-badges/eth.svg', SOL:'/copycat-token-badges/sol.svg', USDC:'/copycat-token-badges/usdc.svg', USDT:'/copycat-token-badges/usdt.svg', DOGE:'/copycat-token-badges/doge.svg',
+  AAVE:'/copycat-token-badges/aave.svg', TRX:'/copycat-token-badges/trx.svg', XRP:'/copycat-token-badges/xrp.svg', AVAX:'/copycat-token-badges/avax.svg', BNB:'/copycat-token-badges/bnb.svg', LINK:'/copycat-token-badges/link.svg', UNI:'/copycat-token-badges/uni.svg', LTC:'/copycat-token-badges/ltc.svg', DOT:'/copycat-token-badges/generic.svg', NEAR:'/copycat-token-badges/generic.svg', ZEC:'/copycat-token-badges/generic.svg', ARB:'/copycat-token-badges/generic.svg', SUI:'/copycat-token-badges/generic.svg', OP:'/copycat-token-badges/generic.svg'
 }
 function canonicalToken(symbol: string) {
   const clean = String(symbol || '').toUpperCase().trim()
@@ -135,7 +135,7 @@ function iconSources(symbol: string, apiUrl?: string) {
   const lower = clean.toLowerCase()
   if (clean === 'USDC') return [USDC_LOGO_DATA_URI]
   const preferred = [apiUrl, staticLogoUrls[clean]]
-  return [...preferred, `https://assets.coincap.io/assets/icons/${lower}@2x.png`, `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/svg/color/${lower}.svg`, `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/128/color/${lower}.png`, `https://s3-symbol-logo.tradingview.com/crypto/XTVC${clean}.svg`].filter(Boolean) as string[]
+  return [...preferred, '/copycat-token-badges/generic.svg', '/copycat-token-badges/generic.svg', '/copycat-token-badges/generic.svg', '/copycat-token-badges/generic.svg'].filter(Boolean) as string[]
 }
 function TokenLogo({ coin, icons }: { coin: string, icons: Record<string, string> }) {
   const symbol = String(coin || '').toUpperCase()
@@ -266,7 +266,7 @@ export default function ApiAccessPage() {
       </div>
     </section>
 
-    <section className="cc-api-nansen-grid">
+    <section className="cc-api-source-grid">
       <article className="cc-card cc-api-data-card cc-api-leaderboard-card">
         <header><div><p className="eyebrow live">Ranked wallet leaderboard</p><h2>Ranked wallet selection</h2></div><span>scanner-ranked</span></header>
         <div className="cc-api-tab-row"><b>7D</b><span>30D</span><span>90D</span><span>180D</span></div>

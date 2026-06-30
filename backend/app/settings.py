@@ -35,21 +35,21 @@ class Settings(BaseSettings):
     live_state_max_workers: int = 10
     live_signal_min_coverage_ratio: float = 0.80
     hl_ws_url: str = 'wss://api.hyperliquid.xyz/ws'
-    nansen_api_key: str = ''
-    nansen_base_url: str = 'https://api.nansen.ai'
-    nansen_lookback_days: int = 30
-    nansen_max_candidates: int = 500
-    nansen_min_account_value_usd: float = 50_000
-    nansen_min_total_pnl_usd: float = 1_000
-    nansen_backtest_days: int = 400
-    nansen_backtest_rebalance_days: int = 7
-    nansen_backtest_max_candidates: int = 150
-    nansen_backtest_min_wallets: int = 10
-    nansen_backtest_min_rows: int = 26
-    nansen_backtest_replace_existing: bool = True
+    legacy_external_provider_api_key: str = ''
+    legacy_external_provider_base_url: str = ''
+    legacy_external_provider_lookback_days: int = 30
+    legacy_external_provider_max_candidates: int = 500
+    legacy_external_provider_min_account_value_usd: float = 50_000
+    legacy_external_provider_min_total_pnl_usd: float = 1_000
+    legacy_external_provider_backtest_days: int = 400
+    legacy_external_provider_backtest_rebalance_days: int = 7
+    legacy_external_provider_backtest_max_candidates: int = 150
+    legacy_external_provider_backtest_min_wallets: int = 10
+    legacy_external_provider_backtest_min_rows: int = 26
+    legacy_external_provider_backtest_replace_existing: bool = True
 
     # Long-term independence: default daily wallet refresh uses our own
-    # Hyperliquid-native wallet metrics. Nansen remains optional fallback only.
+    # Hyperliquid-native wallet metrics. LegacyExternalProvider remains optional fallback only.
     wallet_discovery_provider: str = 'owned_first'
     owned_discovery_seed_wallets: str = ''
     owned_discovery_lookback_days: int = 30

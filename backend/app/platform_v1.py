@@ -190,7 +190,7 @@ def coverage_preview() -> dict[str, Any]:
     ready = indexed >= min_indexed
     label = f"Top 50 Copycat-ranked wallets from {indexed:,} indexed / {known:,} known Hyperliquid wallets"
     return {
-        'status': 'ok', 'source': 'hyperliquid_native', 'nansen_required': False,
+        'status': 'ok', 'source': 'hyperliquid_native', 'external_paid_data_required': False,
         'known_wallet_candidates': known, 'indexed_wallets': indexed, 'qualified_wallets': qualified,
         'active_ranked_wallets': active, 'stored_fills': fills, 'stored_live_events': live_events,
         'markets_monitored': markets, 'top_claim_ready': ready, 'top_claim_min_indexed_wallets': min_indexed,

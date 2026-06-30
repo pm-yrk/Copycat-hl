@@ -49,4 +49,4 @@ The scanner processes the known candidate universe in least-recently-indexed ord
 /api/data/v1/status
 ```
 
-`/api/dashboard-consistency` checks whether the current dashboard is synced, whether recent-order assets are mapped, whether Nansen is off for the live path, and whether live wallet coverage is healthy.
+`/api/dashboard-consistency` checks whether the current dashboard is synced, whether recent-order assets are mapped, whether LegacyExternalProvider is off for the live path, and whether live wallet coverage is healthy.

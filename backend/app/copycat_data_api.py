@@ -159,7 +159,7 @@ def ensure_copycat_data_api_tables(conn) -> None:
     conn.execute(text('''
         INSERT INTO copycat_historical_sources(name, source_type, url, legal_status, coverage, limitation, metadata_json)
         VALUES
-          ('Hyperliquid official Info API', 'official_api', 'https://api.hyperliquid.xyz/info', 'official_public_api', 'Current user state, user portfolio, recent/historical user fills by time where available, funding and ledger endpoints.', 'Not a complete already-indexed Nansen-style wallet universe; Copycat must store observations permanently from collection time.', jsonb_build_object('priority', 1)),
+          ('Hyperliquid official Info API', 'official_api', 'https://api.hyperliquid.xyz/info', 'official_public_api', 'Current user state, user portfolio, recent/historical user fills by time where available, funding and ledger endpoints.', 'Not a complete already-indexed internally-indexed wallet universe; Copycat must store observations permanently from collection time.', jsonb_build_object('priority', 1)),
           ('Hyperliquid official WebSocket', 'official_websocket', 'wss://api.hyperliquid.xyz/ws', 'official_public_api', 'Streaming user fills, order updates, account state and market feeds for tracked wallets.', 'Requires one subscription per tracked wallet/feed; only becomes complete for wallets once Copycat is subscribed.', jsonb_build_object('priority', 2)),
           ('Hyperliquid official archive bucket', 'official_archive', 's3://hyperliquid-archive', 'official_public_archive', 'Official historical market data such as L2 snapshots and asset contexts.', 'Official docs state this archive may be delayed/missing and does not provide every historical dataset such as all user fills.', jsonb_build_object('priority', 3))
         ON CONFLICT(name) DO UPDATE SET
@@ -281,7 +281,7 @@ def data_api_status() -> dict[str, Any]:
         'product': 'Copycat Data API',
         'version': 'v1',
         'source': 'hyperliquid_native',
-        'nansen_required': False,
+        'external_paid_data_required': False,
         'tracked_active_wallets': int(active.get('n') or 0),
         'known_wallet_candidates': int(truth.get('known_wallet_candidates') or 0),
         'owned_wallets_indexed': int(owned.get('wallets') or 0),

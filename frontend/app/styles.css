@@ -2953,7 +2953,7 @@ html[data-theme='light'] .cc-api-endpoint-mini small { background: rgba(35,233,1
   border-right: 2px solid var(--cc-green, #23e99d);
   transform: translateY(-50%) rotate(45deg);
 }
-.cc-api-nansen-grid {
+.cc-api-source-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr);
   gap: 18px;
@@ -3182,7 +3182,7 @@ html[data-theme='light'] .cc-api-endpoints-pro {
 @media(max-width:1180px) {
   .cc-api-intel-hero,
   .cc-api-pipeline,
-  .cc-api-nansen-grid,
+  .cc-api-source-grid,
   .cc-api-endpoints-pro {
     grid-template-columns: 1fr;
   }
@@ -3242,7 +3242,7 @@ html[data-theme='light'] .cc-api-endpoints-pro {
 
 
 /* API page final trim: keep the page focused and prevent table bleed. */
-.cc-api-nansen-grid,
+.cc-api-source-grid,
 .cc-api-activity-card,
 .cc-api-endpoints-pro {
   scroll-margin-top: 90px;

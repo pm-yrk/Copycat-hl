@@ -597,7 +597,7 @@ def quality_snapshot() -> dict[str, Any]:
     result = {
         'status': status,
         'source': 'hyperliquid_native',
-        'nansen_required': False,
+        'external_paid_data_required': False,
         'known_wallet_candidates': int(known.get('n') or 0),
         'owned_wallets_indexed': int(owned.get('n') or 0),
         'owned_wallets_qualified': int(owned.get('q') or 0),

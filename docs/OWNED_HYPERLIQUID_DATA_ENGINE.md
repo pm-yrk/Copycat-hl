@@ -1,6 +1,6 @@
 # Copycat owned Hyperliquid data engine
 
-Copycat now has a Nansen-free wallet refresh path for the live product.
+Copycat now has a Hyperliquid-native wallet refresh path for the live product.
 
 ## What it does
 
@@ -21,12 +21,12 @@ It does not fabricate a 1-year backtest. Historical rows can only be produced af
 - `hwt-daily-refresh-midnight` now runs `python -m app.jobs.owned_wallet_refresh`.
 - `hwt-backtest-weekly` now runs `python -m app.jobs.owned_backtest_from_history`.
 
-Neither job needs Nansen credits.
+Neither job needs LegacyExternalProvider credits.
 
 ## Optional seed wallets
 
-Set `OWNED_DISCOVERY_SEED_WALLETS` to a comma/newline separated list of wallet addresses if you want to add wallets manually without Nansen.
+Set `OWNED_DISCOVERY_SEED_WALLETS` to a comma/newline separated list of wallet addresses if you want to add wallets manually without LegacyExternalProvider.
 
 ## Important
 
-Nansen can remain in the code as an optional emergency/manual source, but the scheduled live product path is now Hyperliquid-native.
+LegacyExternalProvider can remain in the code as an optional emergency/manual source, but the scheduled live product path is now Hyperliquid-native.

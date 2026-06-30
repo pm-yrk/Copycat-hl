@@ -27,7 +27,7 @@ Check the latest run table in the dashboard. You want recent successful rows for
 1. Check `collector_runs`.
 2. Check the hosting cron job logs.
 3. Run `python -m app.jobs.collect_once` manually.
-4. If Nansen is failing, the existing qualified-wallet list can still be collected until the daily refresh issue is fixed.
+4. If LegacyExternalProvider is failing, the existing qualified-wallet list can still be collected until the daily refresh issue is fixed.
 
 ## If alerts are too noisy
 

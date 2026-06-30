@@ -163,10 +163,10 @@ def ensure_owned_tables(conn) -> None:
 
 
 def seed_owned_candidates() -> int:
-    """Seed the independent engine without calling Nansen.
+    """Seed the independent engine without calling LegacyExternalProvider.
 
     We keep any existing wallet_candidates as the initial universe. This lets the
-    product stop depending on Nansen from today while the native engine builds
+    product stop depending on LegacyExternalProvider from today while the native engine builds
     its own ongoing metrics. New fresh wallets can be added through the
     OWNED_DISCOVERY_SEED_WALLETS env var or future Hyperliquid explorer scans.
     """
@@ -184,7 +184,7 @@ def seed_owned_candidates() -> int:
             inserted += 1
 
         # If a wallet is already active or previously discovered, keep it in the
-        # native universe. This does not call Nansen and does not require credits.
+        # native universe. This does not call LegacyExternalProvider and does not require credits.
         existing = conn.execute(text('''
             SELECT count(*) AS n
             FROM wallet_candidates
@@ -300,7 +300,7 @@ def refresh_owned_wallet(wallet: str, lookback_days: int | None = None) -> dict[
             'lookback_days': lookback_days,
             'fill_summary': fill_summary,
             'pnl_source': 'portfolio' if native_pnl30 != 0 else 'userFillsByTime',
-            'nansen_dependency': False,
+            'external_paid_data_dependency': False,
         }
         metric_row = {
             'wallet': wallet,
@@ -410,7 +410,7 @@ def owned_universe_stats() -> dict[str, Any]:
     guarded_claim = 'Top 50 most profitable wallets on Hyperliquid' if top_claim_ready else scope
     return {
         'source': 'hyperliquid_native',
-        'nansen_required': False,
+        'external_paid_data_required': False,
         'known_wallet_candidates': universe_count,
         'owned_wallets_indexed': indexed,
         'owned_wallets_qualified': qualified,
@@ -483,7 +483,7 @@ def refresh_owned_scanner_batch(limit: int | None = None, max_seconds: int | Non
         if not got_lock:
             with engine.begin() as conn:
                 insert_run(conn, 'owned_wallet_scanner', 'skipped', 'another owned scanner batch is already running')
-            return {'status': 'skipped', 'source': 'hyperliquid_native', 'nansen_used': False, 'message': 'another owned scanner batch is already running'}
+            return {'status': 'skipped', 'source': 'hyperliquid_native', 'external_paid_data_used': False, 'message': 'another owned scanner batch is already running'}
         seeded = seed_owned_candidates()
         with engine.begin() as conn:
             ensure_owned_tables(conn)
@@ -535,7 +535,7 @@ def refresh_owned_scanner_batch(limit: int | None = None, max_seconds: int | Non
         return {
             'status': status,
             'source': 'hyperliquid_native',
-            'nansen_used': False,
+            'external_paid_data_used': False,
             'seeded_or_existing_candidates': seeded,
             'metrics': metrics,
             'selected': selected,
@@ -609,7 +609,7 @@ def select_owned_qualified_wallets(limit: int | None = None) -> dict[str, Any]:
 
 
 def owned_wallet_refresh(run_collection: bool | None = None) -> dict[str, Any]:
-    """Nansen-free scheduled refresh for the live product.
+    """Hyperliquid-native scheduled refresh for the live product.
 
     This job is deliberately lightweight. Live dashboard accuracy comes from
     hwt-live-events and hwt-collector-live-10s; this cron only refreshes owned
@@ -628,7 +628,7 @@ def owned_wallet_refresh(run_collection: bool | None = None) -> dict[str, Any]:
             return {
                 'status': 'skipped',
                 'source': 'hyperliquid_native',
-                'nansen_used': False,
+                'external_paid_data_used': False,
                 'message': 'another owned wallet refresh is already running',
             }
 
@@ -645,7 +645,7 @@ def owned_wallet_refresh(run_collection: bool | None = None) -> dict[str, Any]:
         return {
             'status': status,
             'source': 'hyperliquid_native',
-            'nansen_used': False,
+            'external_paid_data_used': False,
             'seeded_or_existing_candidates': seeded,
             'metrics': metrics,
             'selected': selected,

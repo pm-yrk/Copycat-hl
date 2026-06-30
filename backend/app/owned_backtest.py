@@ -98,7 +98,7 @@ def _cohort_week_return(conn, cohort: list[dict[str, Any]], start_ms: int, end_m
 def run_owned_backtest_from_history(dry_run: bool = False) -> dict[str, Any]:
     """Build the public backtest table from Copycat's own stored Hyperliquid data.
 
-    This does not call Nansen. It only works once enough owned_wallet_metric_history
+    This does not call LegacyExternalProvider. It only works once enough owned_wallet_metric_history
     and owned_wallet_fills have accumulated.
     """
     settings = get_settings()
@@ -111,13 +111,13 @@ def run_owned_backtest_from_history(dry_run: bool = False) -> dict[str, Any]:
         ensure_owned_tables(conn)
         start, end = _available_range(conn)
         if not start or not end:
-            msg = 'No owned metric history yet. Nansen was not used.'
+            msg = 'No owned metric history yet. LegacyExternalProvider was not used.'
             insert_run(conn, 'copycat_owned_backtest', 'waiting', msg)
             return {'status': 'waiting', 'message': msg, 'rows_written': 0}
 
     windows = _ranges(start, end, rebalance_days)
     if len(windows) < min_rows:
-        msg = f'Only {len(windows)} owned history windows available; need {min_rows}. Nansen was not used.'
+        msg = f'Only {len(windows)} owned history windows available; need {min_rows}. LegacyExternalProvider was not used.'
         with engine.begin() as conn:
             insert_run(conn, 'copycat_owned_backtest', 'waiting', msg)
         return {'status': 'waiting', 'message': msg, 'rows_written': 0, 'windows_available': len(windows)}
@@ -165,7 +165,7 @@ def run_owned_backtest_from_history(dry_run: bool = False) -> dict[str, Any]:
             })
 
     if len(points) < min_rows:
-        msg = f'Only {len(points)} owned backtest rows passed validation; need {min_rows}. Nansen was not used.'
+        msg = f'Only {len(points)} owned backtest rows passed validation; need {min_rows}. LegacyExternalProvider was not used.'
         with engine.begin() as conn:
             insert_run(conn, 'copycat_owned_backtest', 'waiting', msg)
         return {'status': 'waiting', 'message': msg, 'rows_written': 0, 'points_ready': len(points), 'skipped': skipped[:20]}

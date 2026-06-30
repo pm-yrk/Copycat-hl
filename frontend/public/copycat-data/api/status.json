@@ -3,7 +3,7 @@
   "product": "Copycat Data API",
   "version": "v1",
   "source": "hyperliquid_native",
-  "nansen_required": false,
+  "external_paid_data_required": false,
   "tracked_active_wallets": 50,
   "owned_wallets_indexed": 75,
   "owned_wallets_qualified": 62,

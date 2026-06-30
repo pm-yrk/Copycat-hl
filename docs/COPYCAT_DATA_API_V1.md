@@ -1,7 +1,7 @@
 # Copycat Data API v1
 
 Copycat Data API is the start of Copycat's own Hyperliquid intelligence layer.
-It reduces Nansen to an optional fallback and turns Copycat's stored wallet data
+It reduces LegacyExternalProvider to an optional fallback and turns Copycat's stored wallet data
 into a product that can later be sold as an API.
 
 ## What v1 includes

@@ -20,4 +20,4 @@ Before selling publicly, speak to a solicitor/compliance adviser familiar with c
 
 ## Data licensing
 
-If using Nansen for candidate discovery, check your API license before selling access to products derived from the data. If needed, replace Nansen with your own indexer/discovery layer.
+If using LegacyExternalProvider for candidate discovery, check your API license before selling access to products derived from the data. If needed, replace LegacyExternalProvider with your own indexer/discovery layer.

@@ -16,5 +16,5 @@
 - Uptime/error monitoring
 - Customer onboarding flow
 - Landing page copy and conversion tests
-- Nansen license replacement with own discovery/indexer
+- LegacyExternalProvider license replacement with own discovery/indexer
 - Add more transparent venues later if desired

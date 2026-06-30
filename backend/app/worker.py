@@ -89,35 +89,35 @@ class Hyperliquid:
         return self.info({'type': 'allMids'})
 
 
-class Nansen:
+class LegacyExternalProvider:
     def __init__(self):
         self.settings = get_settings()
         self.session = requests.Session()
         self.session.headers.update({
-            'apiKey': self.settings.nansen_api_key,
+            'apiKey': self.settings.legacy_external_provider_api_key,
             'Content-Type': 'application/json',
             'Accept': 'application/json',
         })
 
     def leaderboard(self, page: int, per_page: int = 100, start: date | None = None, end: date | None = None, min_account_value_usd: float | None = None, min_total_pnl_usd: float | None = None) -> Any:
         end = end or date.today()
-        start = start or (end - timedelta(days=self.settings.nansen_lookback_days))
+        start = start or (end - timedelta(days=self.settings.legacy_external_provider_lookback_days))
         payload = {
             'date': {'from': start.isoformat(), 'to': end.isoformat()},
             'pagination': {'page': page, 'per_page': per_page},
             'filters': {
-                'account_value': {'min': self.settings.nansen_min_account_value_usd if min_account_value_usd is None else min_account_value_usd},
-                'total_pnl': {'min': self.settings.nansen_min_total_pnl_usd if min_total_pnl_usd is None else min_total_pnl_usd},
+                'account_value': {'min': self.settings.legacy_external_provider_min_account_value_usd if min_account_value_usd is None else min_account_value_usd},
+                'total_pnl': {'min': self.settings.legacy_external_provider_min_total_pnl_usd if min_total_pnl_usd is None else min_total_pnl_usd},
             },
             'order_by': [{'field': 'total_pnl', 'direction': 'DESC'}],
         }
-        url = f'{self.settings.nansen_base_url.rstrip("/")}/api/v1/perp-leaderboard'
+        raise RuntimeError('Legacy external data provider disabled; Copycat uses Hyperliquid-native data only')
         r = self.session.post(url, json=payload, timeout=40)
         if r.status_code == 422:
             payload.pop('order_by', None)
             r = self.session.post(url, json=payload, timeout=40)
         if r.status_code >= 400:
-            raise RuntimeError(f'Nansen HTTP {r.status_code}: {r.text[:500]}')
+            raise RuntimeError(f'LegacyExternalProvider HTTP {r.status_code}: {r.text[:500]}')
         return r.json()
 
 
@@ -159,14 +159,14 @@ def find_address(v: Any, depth: int = 3) -> str | None:
 
 def discover_candidates() -> int:
     settings = get_settings()
-    if not settings.nansen_api_key:
-        raise RuntimeError('NANSEN_API_KEY missing')
-    client = Nansen()
-    max_candidates = settings.nansen_max_candidates
+    if not settings.legacy_external_provider_api_key:
+        raise RuntimeError('LEGACY_EXTERNAL_PROVIDER_API_KEY missing')
+    client = LegacyExternalProvider()
+    max_candidates = settings.legacy_external_provider_max_candidates
     seen, rows = set(), []
     pages = max(1, math.ceil(max_candidates / 100))
     for page in range(1, pages + 1):
-        log.info('Fetching Nansen leaderboard page %s/%s', page, pages)
+        log.info('Fetching LegacyExternalProvider leaderboard page %s/%s', page, pages)
         data = client.leaderboard(page=page, per_page=100)
         records = extract_records(data)
         if not records:
@@ -175,7 +175,7 @@ def discover_candidates() -> int:
             wallet = find_address(rec)
             if wallet and wallet not in seen:
                 seen.add(wallet)
-                rows.append({'wallet': wallet, 'source': 'nansen_perp_leaderboard', 'label': '', 'notes': json.dumps(rec)[:1000]})
+                rows.append({'wallet': wallet, 'source': 'disabled_legacy_external_provider', 'label': '', 'notes': json.dumps(rec)[:1000]})
                 if len(rows) >= max_candidates: break
         if len(rows) >= max_candidates: break
         time.sleep(0.25)
@@ -747,8 +747,8 @@ def check_alerts() -> int:
 def daily_refresh() -> dict[str, Any]:
     """Run the daily cohort refresh without breaking the live dashboard.
 
-    Default is now Hyperliquid-native owned data. Nansen is optional fallback
-    only; the live product should not depend on paid Nansen credits.
+    Default is now Hyperliquid-native owned data. LegacyExternalProvider is optional fallback
+    only; the live product should not depend on paid LegacyExternalProvider credits.
     """
     settings = get_settings()
     provider = (settings.wallet_discovery_provider or 'owned_first').strip().lower()
@@ -759,7 +759,7 @@ def daily_refresh() -> dict[str, Any]:
             owned = owned_wallet_refresh(run_collection=True)
             if provider in ('owned', 'hyperliquid', 'hyperliquid_native') or owned.get('selected', {}).get('status') == 'ok':
                 return owned
-            log.warning('Owned refresh did not fully replace cohort; falling back to Nansen because provider=owned_first')
+            log.warning('Owned refresh did not fully replace cohort; falling back to LegacyExternalProvider because provider=owned_first')
         except Exception as exc:
             if provider in ('owned', 'hyperliquid', 'hyperliquid_native'):
                 msg = f'owned refresh failed; kept existing active cohort: {str(exc)[:300]}'
@@ -767,8 +767,8 @@ def daily_refresh() -> dict[str, Any]:
                 with engine.begin() as conn:
                     insert_run(conn, 'owned_wallet_refresh', 'warning', msg)
                 collected = collect_once()
-                return {'status': 'partial', 'source': 'hyperliquid_native', 'nansen_used': False, 'collection': collected, 'notes': [msg]}
-            log.warning('Owned refresh failed; falling back to Nansen because provider=owned_first: %s', exc)
+                return {'status': 'partial', 'source': 'hyperliquid_native', 'external_paid_data_used': False, 'collection': collected, 'notes': [msg]}
+            log.warning('Owned refresh failed; falling back to LegacyExternalProvider because provider=owned_first: %s', exc)
 
     notes: list[str] = []
     candidates = 0
@@ -807,10 +807,10 @@ def daily_refresh() -> dict[str, Any]:
 
     safe_send_telegram(
         f'✅ Daily wallet refresh {status}\n'
-        f'Source: nansen_fallback\n'
+        f'Source: disabled_legacy_external_provider\n'
         f'Candidates: {candidates}\n'
         f'Scored: {scored}\n'
         f'Wallets collected: {collected.get("wallets_ok")}\n'
         f'{message}'
     )
-    return {'status': status, 'source': 'nansen_fallback', 'nansen_used': True, 'candidates': candidates, 'scored': scored, 'collection': collected, 'notes': notes}
+    return {'status': status, 'source': 'disabled_legacy_external_provider', 'external_paid_data_used': True, 'candidates': candidates, 'scored': scored, 'collection': collected, 'notes': notes}

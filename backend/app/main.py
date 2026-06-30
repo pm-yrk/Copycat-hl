@@ -475,7 +475,7 @@ def _dashboard_truth_payload(summary_row: dict[str, Any] | None = None) -> dict[
         except Exception as exc:
             truth = {
                 'source': 'hyperliquid_native',
-                'nansen_required': False,
+                'external_paid_data_required': False,
                 'known_wallet_candidates': None,
                 'owned_wallets_indexed': None,
                 'top_claim_ready': False,
@@ -518,7 +518,7 @@ def _dashboard_consistency_payload(
     checks = []
     def add(name: str, ok: bool, detail: str, severity: str = 'error'):
         checks.append({'name': name, 'status': 'pass' if ok else 'fail', 'severity': severity, 'detail': detail})
-    add('Nansen disabled for live path', truth.get('nansen_required') is False, 'source=hyperliquid_native')
+    add('LegacyExternalProvider disabled for live path', truth.get('external_paid_data_required') is False, 'source=hyperliquid_native')
     add('Ranking label is scoped honestly', bool(truth.get('top_claim_ready')) or 'indexed' in str(truth.get('ranking_scope_label') or '').lower(), str(truth.get('ranking_scope_label') or ''))
     add('Active cohort count', active_wallets == int(settings.qualified_wallet_limit or 50), f'{active_wallets}/{settings.qualified_wallet_limit}', 'warning')
     add('Live wallet coverage', live_wallets >= min_live_wallets if active_wallets else False, f'{live_wallets}/{active_wallets} live, {snapshot_wallets} snapshot fallback, required={min_live_wallets}', 'warning')
@@ -1801,48 +1801,18 @@ def _open_json(url: str) -> dict | list | None:
     except Exception:
         return None
 
-def _coingecko_icon_for_symbol(symbol: str) -> str | None:
-    symbol = (symbol or '').upper().strip()
-    if not symbol:
-        return None
-    now = time.time()
-    cached = _ICON_CACHE.get(symbol)
-    if cached and now - cached[0] < _ICON_TTL_SECONDS:
-        return cached[1]
+def _external_icon_provider_icon_for_symbol(symbol: str) -> str | None:
+    # Legal hygiene: do not fetch third-party token logo provider data at runtime.
+    # The frontend uses local Copycat-owned token badge SVGs instead.
+    return None
 
-    image = None
-    coin_id = _CG_ID_OVERRIDES.get(symbol)
-    if coin_id:
-        # Bulk market endpoint gives a canonical current image URL for a CoinGecko ID.
-        url = 'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=' + urllib.parse.quote(coin_id)
-        payload = _open_json(url)
-        if isinstance(payload, list) and payload:
-            image = payload[0].get('image')
-
-    if not image:
-        query = _CG_QUERY_OVERRIDES.get(symbol, symbol)
-        url = 'https://api.coingecko.com/api/v3/search?query=' + urllib.parse.quote(query)
-        payload = _open_json(url)
-        if isinstance(payload, dict):
-            coins = payload.get('coins') or []
-            def rank_key(coin: dict) -> int:
-                rank = coin.get('market_cap_rank')
-                return int(rank) if isinstance(rank, int) and rank > 0 else 10_000_000
-            exact = [coin for coin in coins if str(coin.get('symbol') or '').upper() == symbol]
-            chosen_pool = exact or coins
-            chosen = sorted(chosen_pool, key=rank_key)[0] if chosen_pool else None
-            if chosen:
-                image = chosen.get('large') or chosen.get('small') or chosen.get('thumb')
-
-    _ICON_CACHE[symbol] = (now, image)
-    return image
 
 @app.get('/api/token-icons')
 def token_icons(symbols: str = '', external: bool = False, limit: int = 60):
     """Return token icon overrides without blocking the dashboard.
 
     The frontend already has fast public CDN fallbacks for token icons. Calling
-    CoinGecko live for 100+ symbols during dashboard load can keep the browser
+    ExternalIconProvider live for 100+ symbols during dashboard load can keep the browser
     and API busy for many seconds. Public dashboard calls now return immediately
     unless external=1 is explicitly requested.
     """
@@ -1855,10 +1825,10 @@ def token_icons(symbols: str = '', external: bool = False, limit: int = 60):
     requested = requested[:max_symbols]
     if not external:
         return {'icons': {}, 'external_lookup': False, 'note': 'Fast mode: frontend CDN fallbacks handle token artwork.'}
-    # Manual/API callers can still request CoinGecko enrichment, but keep the
+    # Manual/API callers can still request ExternalIconProvider enrichment, but keep the
     # limit low so one request cannot block the live dashboard service.
     requested = requested[:25]
-    return {'icons': {sym: _coingecko_icon_for_symbol(sym) for sym in requested}, 'external_lookup': True}
+    return {'icons': {sym: _external_icon_provider_icon_for_symbol(sym) for sym in requested}, 'external_lookup': True}
 
 
 

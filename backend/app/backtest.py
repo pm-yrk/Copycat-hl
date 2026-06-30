@@ -16,12 +16,12 @@ from sqlalchemy import text
 
 from .db import engine
 from .settings import get_settings
-from .worker import Nansen, extract_records, find_address, insert_run, safe_float
+from .worker import LegacyExternalProvider, extract_records, find_address, insert_run, safe_float
 
 log = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 
-_METHOD = 'copycat_backtest_v1_weekly_nansen_pnl_proxy'
+_METHOD = 'copycat_backtest_v1_weekly_legacy_external_provider_pnl_proxy'
 _FEE_SLIPPAGE_RATE = 0.0015
 
 
@@ -97,12 +97,12 @@ def _record_account_value_usd(record: dict[str, Any]) -> float | None:
     ))
 
 
-def _nansen_blocked_message(exc: Exception) -> str | None:
+def _legacy_external_provider_blocked_message(exc: Exception) -> str | None:
     msg = str(exc)
-    if 'Nansen HTTP 403' in msg or 'Insufficient credits' in msg:
-        return 'Nansen is blocked: insufficient credits. Existing backtest rows were left unchanged.'
-    if 'NANSEN_API_KEY missing' in msg:
-        return 'Nansen is blocked: NANSEN_API_KEY is missing. Existing backtest rows were left unchanged.'
+    if 'LegacyExternalProvider HTTP 403' in msg or 'Insufficient credits' in msg:
+        return 'LegacyExternalProvider is blocked: insufficient credits. Existing backtest rows were left unchanged.'
+    if 'LEGACY_EXTERNAL_PROVIDER_API_KEY missing' in msg:
+        return 'LegacyExternalProvider is blocked: LEGACY_EXTERNAL_PROVIDER_API_KEY is missing. Existing backtest rows were left unchanged.'
     return None
 
 
@@ -181,12 +181,12 @@ def _fetch_benchmarks(start: date, end: date) -> tuple[dict[date, float], dict[d
     return btc, eth, spx
 
 
-def _fetch_nansen_week(client: Nansen, start: date, end: date, max_candidates: int) -> list[dict[str, Any]]:
+def _fetch_legacy_external_provider_week(client: LegacyExternalProvider, start: date, end: date, max_candidates: int) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     seen: set[str] = set()
     pages = max(1, math.ceil(max_candidates / 100))
     for page in range(1, pages + 1):
-        log.info('Backtest Nansen leaderboard %s to %s page %s/%s', start, end, page, pages)
+        log.info('Backtest LegacyExternalProvider leaderboard %s to %s page %s/%s', start, end, page, pages)
         payload = client.leaderboard(page=page, per_page=100, start=start, end=end)
         records = extract_records(payload)
         if not records:
@@ -236,21 +236,21 @@ def _normalised_nav(price: float | None, base_price: float | None) -> float:
 
 
 def run_backtest(days: int | None = None, rebalance_days: int | None = None, dry_run: bool = False) -> dict[str, Any]:
-    """Build the public 1Y backtest table from real Nansen weekly cohort data.
+    """Build the public 1Y backtest table from real LegacyExternalProvider weekly cohort data.
 
     This is a wallet-cohort PnL proxy backtest. It is intentionally not presented
-    as live performance and it never fabricates rows. If Nansen credits are blocked,
+    as live performance and it never fabricates rows. If LegacyExternalProvider credits are blocked,
     the job exits cleanly and leaves any existing backtest rows untouched.
     """
     settings = get_settings()
-    if not settings.nansen_api_key:
-        msg = 'Nansen is blocked: NANSEN_API_KEY is missing. Existing backtest rows were left unchanged.'
+    if not settings.legacy_external_provider_api_key:
+        msg = 'LegacyExternalProvider is blocked: LEGACY_EXTERNAL_PROVIDER_API_KEY is missing. Existing backtest rows were left unchanged.'
         with engine.begin() as conn:
             insert_run(conn, 'copycat_backtest', 'blocked', msg)
         return {'status': 'blocked', 'message': msg, 'rows_written': 0}
 
-    days = int(days or settings.nansen_backtest_days)
-    rebalance_days = int(rebalance_days or settings.nansen_backtest_rebalance_days)
+    days = int(days or settings.legacy_external_provider_backtest_days)
+    rebalance_days = int(rebalance_days or settings.legacy_external_provider_backtest_rebalance_days)
     ranges = _week_ranges(days, rebalance_days)
     if len(ranges) < 4:
         return {'status': 'error', 'message': 'Not enough rebalance windows.', 'rows_written': 0}
@@ -269,7 +269,7 @@ def run_backtest(days: int | None = None, rebalance_days: int | None = None, dry
     btc_base = _price_on_or_before(btc_series, start)
     eth_base = _price_on_or_before(eth_series, start)
     spx_base = _price_on_or_before(spx_series, start)
-    client = Nansen()
+    client = LegacyExternalProvider()
     nav = 100.0
     points: list[dict[str, Any]] = [{
         'ts_ms': _ms(start),
@@ -277,14 +277,14 @@ def run_backtest(days: int | None = None, rebalance_days: int | None = None, dry
         'btc_nav': 100.0,
         'eth_nav': 100.0,
         'spx_nav': 100.0,
-        'metadata': {'event': 'baseline', 'method_note': 'Nansen weekly wallet-cohort PnL proxy backtest'},
+        'metadata': {'event': 'baseline', 'method_note': 'LegacyExternalProvider weekly wallet-cohort PnL proxy backtest'},
     }]
     skipped: list[dict[str, Any]] = []
 
     try:
         for start_d, end_d in ranges:
-            rows = _fetch_nansen_week(client, start_d, end_d, int(settings.nansen_backtest_max_candidates))
-            weekly_return, meta = _cohort_return(rows, int(settings.nansen_backtest_min_wallets))
+            rows = _fetch_legacy_external_provider_week(client, start_d, end_d, int(settings.legacy_external_provider_backtest_max_candidates))
+            weekly_return, meta = _cohort_return(rows, int(settings.legacy_external_provider_backtest_min_wallets))
             if weekly_return is None:
                 skipped.append({'from': start_d.isoformat(), 'to': end_d.isoformat(), **meta})
                 continue
@@ -302,22 +302,22 @@ def run_backtest(days: int | None = None, rebalance_days: int | None = None, dry
                     'period_from': start_d.isoformat(),
                     'period_to': end_d.isoformat(),
                     'weekly_return': weekly_return,
-                    'source': 'nansen_perp_leaderboard',
+                    'source': 'disabled_legacy_external_provider',
                     'benchmark_source': 'Hyperliquid daily candles for BTC/ETH; Stooq daily close for S&P 500',
-                    'method_note': 'Weekly Nansen wallet-cohort PnL proxy. Not live performance and not a guarantee of future results.',
+                    'method_note': 'Weekly LegacyExternalProvider wallet-cohort PnL proxy. Not live performance and not a guarantee of future results.',
                     **meta,
                 },
             })
             time.sleep(0.25)
     except Exception as exc:
-        blocked = _nansen_blocked_message(exc)
+        blocked = _legacy_external_provider_blocked_message(exc)
         status = 'blocked' if blocked else 'error'
         msg = blocked or f'Backtest failed before completion: {str(exc)[:300]}'
         with engine.begin() as conn:
             insert_run(conn, 'copycat_backtest', status, msg)
         return {'status': status, 'message': msg, 'rows_written': 0, 'points_ready': len(points), 'skipped': skipped[:10]}
 
-    min_rows = int(settings.nansen_backtest_min_rows)
+    min_rows = int(settings.legacy_external_provider_backtest_min_rows)
     if len(points) < min_rows:
         msg = f'Only {len(points)} backtest rows passed validation; need at least {min_rows}. Existing rows left unchanged.'
         with engine.begin() as conn:
@@ -329,7 +329,7 @@ def run_backtest(days: int | None = None, rebalance_days: int | None = None, dry
 
     with engine.begin() as conn:
         _ensure_backtest_table(conn)
-        if settings.nansen_backtest_replace_existing:
+        if settings.legacy_external_provider_backtest_replace_existing:
             conn.execute(text('DELETE FROM strategy_backtest_points'))
         for p in points:
             copycat_nav = float(p['copycat_nav'])
@@ -379,7 +379,7 @@ def import_backtest_csv(path: str) -> dict[str, Any]:
     """Import externally validated backtest rows.
 
     Required CSV columns: date, copycat_nav, btc_nav, eth_nav, spx_nav.
-    This gives a safe manual route if Nansen API credits are unavailable but a
+    This gives a safe manual route if LegacyExternalProvider API credits are unavailable but a
     validated export has been prepared elsewhere.
     """
     rows: list[dict[str, Any]] = []
