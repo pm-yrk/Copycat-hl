@@ -540,12 +540,67 @@ def build_performance_index_snapshot(now_ms: int, mids: Dict[str, float], signal
         "snapshot_mode": True,
     }
 
+# Copycat registry summary counts v1
+def read_registry_summary_counts() -> Dict[str, int]:
+    # Read long-running local registry counts for public dashboard summary fields.
+    # This does not change wallet selection. The live publisher still tracks the
+    # selected top wallet list, but dashboard summary counts can reflect the larger
+    # local registry/scout universe.
+    import os
+    import sqlite3
+    from pathlib import Path as _Path
+
+    candidates = []
+    env_path = os.environ.get("COPYCAT_WALLET_REGISTRY_DB", "").strip()
+    if env_path:
+        candidates.append(_Path(env_path))
+
+    candidates.extend([
+        _Path(r"C:\dev\hyper_wallet_tracker_saas_v1\copycat_wallet_registry\copycat_wallet_registry.sqlite"),
+        _Path(__file__).resolve().parent / "copycat_wallet_registry" / "copycat_wallet_registry.sqlite",
+        _Path(__file__).resolve().parents[1] / "copycat_wallet_registry" / "copycat_wallet_registry.sqlite" if len(_Path(__file__).resolve().parents) > 1 else _Path("__missing__"),
+    ])
+
+    db_path = next((p for p in candidates if p.exists()), None)
+    if not db_path:
+        return {"registry_wallets": 0, "registry_scan_history": 0, "registry_discoveries": 0}
+
+    def _count_table(cur, table: str) -> int:
+        try:
+            return int(cur.execute(f"select count(*) from {table}").fetchone()[0] or 0)
+        except Exception:
+            return 0
+
+    con = None
+    try:
+        con = sqlite3.connect(str(db_path))
+        cur = con.cursor()
+        return {
+            "registry_wallets": _count_table(cur, "wallets"),
+            "registry_scan_history": _count_table(cur, "scan_history"),
+            "registry_discoveries": _count_table(cur, "discoveries"),
+        }
+    except Exception:
+        return {"registry_wallets": 0, "registry_scan_history": 0, "registry_discoveries": 0}
+    finally:
+        try:
+            if con is not None:
+                con.close()
+        except Exception:
+            pass
+
 def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, Dict[str, Any]]]:
     now_ms = int(time.time() * 1000)
     scanner = read_scanner_results()
     scanner_scored = safe_int(scanner.get('candidate_wallets_scored'))
     scanner_discovered = safe_int(scanner.get('wallets_discovered_from_recent_trades'))
     scanner_selected = safe_int(scanner.get('selected_wallet_count'))
+    registry_summary = read_registry_summary_counts()
+    registry_wallets = safe_int(registry_summary.get('registry_wallets'))
+    registry_scan_history = safe_int(registry_summary.get('registry_scan_history'))
+    registry_discoveries = safe_int(registry_summary.get('registry_discoveries'))
+    registry_indexed = registry_wallets or scanner_scored or len(wallets)
+    registry_discovered_total = registry_discoveries or scanner_discovered
     mids = get_mids(config.request_timeout_seconds)
     meta = get_meta(config.request_timeout_seconds)
     states: List[Dict[str, Any]] = []
@@ -796,8 +851,11 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
         "selected_wallet_count": scanner_selected or len(wallets),
         "scanner_candidate_wallets_scored": scanner_scored,
         "wallets_discovered_from_recent_trades": scanner_discovered,
-        "indexed_wallets": scanner_scored,
-        "known_wallet_candidates": scanner_scored,
+        "registry_wallets": registry_wallets,
+        "registry_scan_history": registry_scan_history,
+        "registry_discoveries": registry_discoveries,
+        "indexed_wallets": registry_indexed,
+        "known_wallet_candidates": registry_indexed,
         "tracked_account_value_usd": round(tracked_account_value, 2),
         "largest_account_value_usd": round(largest_account_value, 2),
         "tracked_open_position_value_usd": round(open_value_total, 2),
@@ -811,7 +869,7 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
         "snapshot_source": "local_hyperliquid_to_r2",
         "top_claim_ready": False,
         "top_claim_min_indexed_wallets": 10000,
-        "claim_label": f"Top {len(wallets)} Copycat-ranked wallets from {scanner_scored or len(wallets):,} locally indexed Hyperliquid candidates",
+        "claim_label": f"Top {len(wallets)} Copycat-ranked wallets from {registry_indexed:,} locally indexed Hyperliquid candidates",
     }
 
     insights: List[Dict[str, Any]] = []
@@ -864,6 +922,9 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
         "wallets_missing": missing_state_count,
         "scanner_candidate_wallets_scored": scanner_scored,
         "wallets_discovered_from_recent_trades": scanner_discovered,
+        "registry_wallets": registry_wallets,
+        "registry_scan_history": registry_scan_history,
+        "registry_discoveries": registry_discoveries,
         "selected_wallet_count": scanner_selected or len(wallet_rows),
         "rows": sorted(wallet_rows, key=lambda r: (r.get("account_value_usd", 0), r.get("open_position_value_usd", 0)), reverse=True)[:50],
     }
@@ -907,9 +968,12 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
         "message": data_msg,
         "scanner_candidate_wallets_scored": scanner_scored,
         "wallets_discovered_from_recent_trades": scanner_discovered,
+        "registry_wallets": registry_wallets,
+        "registry_scan_history": registry_scan_history,
+        "registry_discoveries": registry_discoveries,
         "selected_wallet_count": scanner_selected or len(wallets),
         "top_claim_ready": False,
-        "claim_label": f"Top {len(wallets)} Copycat-ranked wallets from {scanner_scored or len(wallets):,} locally indexed Hyperliquid candidates",
+        "claim_label": f"Top {len(wallets)} Copycat-ranked wallets from {registry_indexed:,} locally indexed Hyperliquid candidates",
     }
     platform_health = {
         "status": "ok" if states else "degraded",
@@ -962,8 +1026,11 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
         'status': 'ok' if ranking_wallets else 'degraded',
         'source': 'local_scanner_v1_snapshot',
         'updated_at_ms': now_ms,
-        'wallets_scanned': scanner_scored,
+        'wallets_scanned': registry_indexed,
         'wallets_discovered_from_recent_trades': scanner_discovered,
+        'registry_wallets': registry_wallets,
+        'registry_scan_history': registry_scan_history,
+        'registry_discoveries': registry_discoveries,
         'selected_wallet_count': scanner_selected or len(ranking_wallets),
         'method_note': scanner.get('method_note') or 'Local scanner v1 ranking from visible Hyperliquid live state, not a full historical profit audit.',
         'wallets': ranking_wallets,
@@ -998,6 +1065,9 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
         'wallets_missing': missing_state_count,
         'scanner_candidate_wallets_scored': scanner_scored,
         'wallets_discovered_from_recent_trades': scanner_discovered,
+        'registry_wallets': registry_wallets,
+        'registry_scan_history': registry_scan_history,
+        'registry_discoveries': registry_discoveries,
         'disabled_until_paid_backend': ['login_auth', 'private_api_keys', 'dynamic_database_queries', 'full_historical_backtests'],
     }
     scanner_status = {
@@ -1005,6 +1075,10 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
         'updated_at_ms': scanner.get('updated_at_ms') or now_ms,
         'candidate_wallets_scored': scanner_scored,
         'wallets_discovered_from_recent_trades': scanner_discovered,
+        'registry_wallets': registry_wallets,
+        'registry_scan_history': registry_scan_history,
+        'registry_discoveries': registry_discoveries,
+        'wallets_scanned': registry_indexed,
         'selected_wallet_count': scanner_selected or len(wallets),
         'coins_scanned': scanner.get('coins_scanned') or [],
         'method_note': scanner.get('method_note') or 'Scanner results appear after run_local_scanner_update_wallets.cmd.',
