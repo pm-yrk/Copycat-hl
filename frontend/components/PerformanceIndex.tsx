@@ -37,6 +37,17 @@ type PerfData = {
 
 type SeriesKey = 'copycat_nav' | 'btc_nav' | 'eth_nav' | 'spx_nav'
 
+const INDEX_COLOURS = {
+  copycat: '#23E99D',
+  btc: '#FFB020',
+  eth: '#6EA8FF',
+  spx: '#4169E1',
+} as const
+
+function LegendDot({ color }: { color: string }) {
+  return <span aria-hidden="true" style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 999, background: color, marginRight: 6, boxShadow: `0 0 10px ${color}` }} />
+}
+
 function nav(n: any) { return Number(n || 100).toFixed(2) }
 function ret(n: any) { const v = Number(n || 0); return `${v >= 0 ? '+' : ''}${v.toFixed(2)}%` }
 function cls(n: any) { return Number(n || 0) >= 0 ? 'positive' : 'negative' }
@@ -95,11 +106,6 @@ function makePath(points: Point[], key: SeriesKey, domain: { min: number; span: 
   }).join(' ')
 }
 
-function seriesY(points: Point[], key: SeriesKey, domain: { min: number; span: number }, height = 190) {
-  const p: any = points[points.length - 1] || {}
-  const y = height - ((Number(p[key] || 100) - domain.min) / domain.span) * height
-  return Math.min(height - 6, Math.max(6, y))
-}
 
 function PerformanceChart({ data, compact = false }: { data: PerfData; compact?: boolean }) {
   const points = (data.points || []).filter((p: any) => Number.isFinite(Number(p.copycat_nav)))
@@ -108,8 +114,6 @@ function PerformanceChart({ data, compact = false }: { data: PerfData; compact?:
   const btc = makePath(points, 'btc_nav', domain)
   const eth = makePath(points, 'eth_nav', domain)
   const spx = makePath(points, 'spx_nav', domain)
-  const spxY = seriesY(points, 'spx_nav', domain)
-  const spxLabelY = Math.min(176, Math.max(14, spxY - 8))
   return <div className={`cc-index-chart ${compact ? 'compact' : ''}`}>
     <svg viewBox="0 0 640 190" preserveAspectRatio="none" aria-label="Copycat Index versus BTC, ETH and S&P 500">
       <defs>
@@ -117,13 +121,9 @@ function PerformanceChart({ data, compact = false }: { data: PerfData; compact?:
         <filter id="indexGlow"><feGaussianBlur stdDeviation="4" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
       </defs>
       {copycat ? <path d={`${copycat} L 640 190 L 0 190 Z`} fill="url(#copycatIndexFill)" opacity=".75" /> : null}
-      {btc ? <path d={btc} className="btc" /> : null}
-      {eth ? <path d={eth} className="eth" /> : null}
-      {spx ? <g className="spx-marker">
-        <path d={spx} className="spx" fill="none" stroke="#F8FAFC" strokeWidth={3.5} strokeLinecap="round" vectorEffect="non-scaling-stroke"><title>S&P 500 benchmark</title></path>
-        <circle cx="636" cy={spxY} r="4" fill="#F8FAFC" opacity=".95" />
-        <text x="626" y={spxLabelY} textAnchor="end" fill="#F8FAFC" fontSize="12" fontWeight="800" letterSpacing=".5">S&P 500</text>
-      </g> : null}
+      {btc ? <path d={btc} className="btc" fill="none" stroke={INDEX_COLOURS.btc} strokeWidth={2.4} strokeLinecap="round" vectorEffect="non-scaling-stroke" /> : null}
+      {eth ? <path d={eth} className="eth" fill="none" stroke={INDEX_COLOURS.eth} strokeWidth={2.4} strokeLinecap="round" vectorEffect="non-scaling-stroke" /> : null}
+      {spx ? <path d={spx} className="spx" fill="none" stroke={INDEX_COLOURS.spx} strokeWidth={2.6} strokeLinecap="round" vectorEffect="non-scaling-stroke" /> : null}
       {copycat ? <path d={copycat} className="copycat" filter="url(#indexGlow)" /> : null}
       {points.length ? <circle cx="640" cy="95" r="0" /> : null}
     </svg>
@@ -185,10 +185,10 @@ export default function PerformanceIndex({ variant = 'dashboard' }: { variant?: 
     </div>
     <PerformanceChart data={data} compact={compact} />
     <div className="cc-index-metrics">
-      <div><small>Copycat</small><b>{nav(data.copycat_nav)}</b><em className={cls(data.copycat_return_pct)}>{ret(data.copycat_return_pct)}</em></div>
-      <div><small>BTC</small><b>{nav(data.btc_nav)}</b><em className={cls(data.btc_return_pct)}>{ret(data.btc_return_pct)}</em></div>
-      <div><small>ETH</small><b>{nav(data.eth_nav)}</b><em className={cls(data.eth_return_pct)}>{ret(data.eth_return_pct)}</em></div>
-      <div><small>S&P 500</small><b>{nav(data.spx_nav)}</b><em className={cls(data.spx_return_pct)}>{ret(data.spx_return_pct)}</em></div>
+      <div><small><LegendDot color={INDEX_COLOURS.copycat} />Copycat</small><b>{nav(data.copycat_nav)}</b><em className={cls(data.copycat_return_pct)}>{ret(data.copycat_return_pct)}</em></div>
+      <div><small><LegendDot color={INDEX_COLOURS.btc} />BTC</small><b>{nav(data.btc_nav)}</b><em className={cls(data.btc_return_pct)}>{ret(data.btc_return_pct)}</em></div>
+      <div><small><LegendDot color={INDEX_COLOURS.eth} />ETH</small><b>{nav(data.eth_nav)}</b><em className={cls(data.eth_return_pct)}>{ret(data.eth_return_pct)}</em></div>
+      <div><small><LegendDot color={INDEX_COLOURS.spx} />S&P 500</small><b>{nav(data.spx_nav)}</b><em className={cls(data.spx_return_pct)}>{ret(data.spx_return_pct)}</em></div>
       {!compact ? <div><small>Max drawdown</small><b>{ret(data.max_drawdown_pct)}</b><em>live model</em></div> : null}
     </div>
     {!compact ? <div className="cc-index-weights"><span>Current model weights</span>{weights.map((w: any) => <i key={w.coin} className={w.direction === 'short' ? 'negative' : 'positive'}>{w.direction === 'short' ? 'SHORT ' : 'LONG '}{w.coin} {(Number(w.weight || 0) * 100).toFixed(0)}%</i>)}</div> : null}
