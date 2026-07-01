@@ -456,6 +456,12 @@ def build_performance_index_snapshot(now_ms: int, mids: Dict[str, float], signal
     copycat_nav = safe_float(state.get("copycat_nav"), 100.0)
     btc_nav = safe_float(state.get("btc_nav"), 100.0)
     eth_nav = safe_float(state.get("eth_nav"), 100.0)
+    spx_nav = safe_float(state.get("spx_nav"), 100.0)
+    spx_symbol = "xyz:SP500"
+    for candidate in ("xyz:SP500", "XYZ:SP500", "SP500"):
+        if safe_float(mids.get(candidate)) > 0 or safe_float(last_mids.get(candidate)) > 0:
+            spx_symbol = candidate
+            break
     movement = 0.0
     for w in current_weights:
         coin = str(w.get("coin"))
@@ -475,6 +481,7 @@ def build_performance_index_snapshot(now_ms: int, mids: Dict[str, float], signal
 
     btc_nav = update_benchmark("BTC", btc_nav)
     eth_nav = update_benchmark("ETH", eth_nav)
+    spx_nav = update_benchmark(spx_symbol, spx_nav)
     start_ts = int(state.get("start_ts_ms") or now_ms)
     points = state.get("points") if isinstance(state.get("points"), list) else []
     point = {
@@ -482,11 +489,11 @@ def build_performance_index_snapshot(now_ms: int, mids: Dict[str, float], signal
         "copycat_nav": round(copycat_nav, 6),
         "btc_nav": round(btc_nav, 6),
         "eth_nav": round(eth_nav, 6),
-        "spx_nav": 100.0,
+        "spx_nav": round(spx_nav, 6),
         "copycat_return_pct": round(copycat_nav - 100.0, 6),
         "btc_return_pct": round(btc_nav - 100.0, 6),
         "eth_return_pct": round(eth_nav - 100.0, 6),
-        "spx_return_pct": 0.0,
+        "spx_return_pct": round(spx_nav - 100.0, 6),
         "live": True,
     }
     if not points or int(points[-1].get("ts_ms", 0)) < now_ms - 20_000:
@@ -508,8 +515,9 @@ def build_performance_index_snapshot(now_ms: int, mids: Dict[str, float], signal
         "copycat_nav": copycat_nav,
         "btc_nav": btc_nav,
         "eth_nav": eth_nav,
+        "spx_nav": spx_nav,
         "points": points,
-        "last_mids": {k: v for k, v in mids.items() if k in {"BTC", "ETH"} or any(w.get("coin") == k for w in current_weights)},
+        "last_mids": {k: v for k, v in mids.items() if k in {"BTC", "ETH", spx_symbol} or any(w.get("coin") == k for w in current_weights)},
     }
     try:
         path.write_text(json.dumps(next_state, separators=(",", ":")), encoding="utf-8")
@@ -519,6 +527,7 @@ def build_performance_index_snapshot(now_ms: int, mids: Dict[str, float], signal
     return {
         "status": "ok",
         "source": "local_snapshot_index_v1",
+        "spx_benchmark_symbol": spx_symbol,
         "method": "copycat_free_mode_live_signed_exposure_from_publish_time",
         "method_note": "Free-mode index starts when the local publisher runs. It uses current value-weighted signed exposure from the locally tracked wallets and is not a historical profit backfill.",
         "start_ts_ms": start_ts,
@@ -526,11 +535,11 @@ def build_performance_index_snapshot(now_ms: int, mids: Dict[str, float], signal
         "copycat_nav": round(copycat_nav, 6),
         "btc_nav": round(btc_nav, 6),
         "eth_nav": round(eth_nav, 6),
-        "spx_nav": 100.0,
+        "spx_nav": round(spx_nav, 6),
         "copycat_return_pct": round(copycat_nav - 100.0, 6),
         "btc_return_pct": round(btc_nav - 100.0, 6),
         "eth_return_pct": round(eth_nav - 100.0, 6),
-        "spx_return_pct": 0.0,
+        "spx_return_pct": round(spx_nav - 100.0, 6),
         "max_drawdown_pct": round(max_dd, 6),
         "points_count": len(points),
         "points": points,
