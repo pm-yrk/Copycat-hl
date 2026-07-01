@@ -457,8 +457,11 @@ def build_performance_index_snapshot(now_ms: int, mids: Dict[str, float], signal
     btc_nav = safe_float(state.get("btc_nav"), 100.0)
     eth_nav = safe_float(state.get("eth_nav"), 100.0)
     spx_nav = safe_float(state.get("spx_nav"), 100.0)
-    spx_symbol = "xyz:SP500"
-    for candidate in ("xyz:SP500", "XYZ:SP500", "SP500"):
+    # Hyperliquid/Trade[XYZ] SP500 is shown publicly as S&P 500 on the dashboard,
+    # but the Hyperliquid allMids feed currently exposes the live mid under SPX
+    # with @500 also present as an alternate key.
+    spx_symbol = "SPX"
+    for candidate in ("SPX", "@500", "xyz:SP500", "XYZ:SP500", "SP500"):
         if safe_float(mids.get(candidate)) > 0 or safe_float(last_mids.get(candidate)) > 0:
             spx_symbol = candidate
             break
