@@ -121,10 +121,10 @@ function PerformanceChart({ data, compact = false }: { data: PerfData; compact?:
         <filter id="indexGlow"><feGaussianBlur stdDeviation="4" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
       </defs>
       {copycat ? <path d={`${copycat} L 640 190 L 0 190 Z`} fill="url(#copycatIndexFill)" opacity=".75" /> : null}
-      {btc ? <path d={btc} className="btc" fill="none" stroke={INDEX_COLOURS.btc} strokeWidth={2.4} strokeLinecap="round" vectorEffect="non-scaling-stroke" /> : null}
-      {eth ? <path d={eth} className="eth" fill="none" stroke={INDEX_COLOURS.eth} strokeWidth={2.4} strokeLinecap="round" vectorEffect="non-scaling-stroke" /> : null}
-      {spx ? <path d={spx} className="spx" fill="none" stroke={INDEX_COLOURS.spx} strokeWidth={2.6} strokeLinecap="round" vectorEffect="non-scaling-stroke" /> : null}
-      {copycat ? <path d={copycat} className="copycat" filter="url(#indexGlow)" /> : null}
+      {btc ? <path d={btc} className="btc" style={{ fill: 'none', stroke: INDEX_COLOURS.btc, strokeWidth: 3, strokeLinecap: 'round', strokeLinejoin: 'round', vectorEffect: 'non-scaling-stroke', opacity: 1, filter: 'drop-shadow(0 0 7px rgba(255,176,32,.72))' }} /> : null}
+      {eth ? <path d={eth} className="eth" style={{ fill: 'none', stroke: INDEX_COLOURS.eth, strokeWidth: 3, strokeLinecap: 'round', strokeLinejoin: 'round', vectorEffect: 'non-scaling-stroke', opacity: 1, filter: 'drop-shadow(0 0 7px rgba(110,168,255,.72))' }} /> : null}
+      {copycat ? <path d={copycat} className="copycat" style={{ fill: 'none', stroke: INDEX_COLOURS.copycat, strokeWidth: 4, strokeLinecap: 'round', strokeLinejoin: 'round', vectorEffect: 'non-scaling-stroke', opacity: 1, filter: 'drop-shadow(0 0 10px rgba(35,233,157,.82))' }} /> : null}
+      {spx ? <path d={spx} className="spx" style={{ fill: 'none', stroke: INDEX_COLOURS.spx, strokeWidth: 3, strokeLinecap: 'round', strokeLinejoin: 'round', vectorEffect: 'non-scaling-stroke', opacity: 1, filter: 'drop-shadow(0 0 8px rgba(65,105,225,.78))' }} /> : null}
       {points.length ? <circle cx="640" cy="95" r="0" /> : null}
     </svg>
   </div>
