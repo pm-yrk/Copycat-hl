@@ -95,6 +95,12 @@ function makePath(points: Point[], key: SeriesKey, domain: { min: number; span: 
   }).join(' ')
 }
 
+function seriesY(points: Point[], key: SeriesKey, domain: { min: number; span: number }, height = 190) {
+  const p: any = points[points.length - 1] || {}
+  const y = height - ((Number(p[key] || 100) - domain.min) / domain.span) * height
+  return Math.min(height - 6, Math.max(6, y))
+}
+
 function PerformanceChart({ data, compact = false }: { data: PerfData; compact?: boolean }) {
   const points = (data.points || []).filter((p: any) => Number.isFinite(Number(p.copycat_nav)))
   const domain = chartDomain(points)
@@ -102,6 +108,8 @@ function PerformanceChart({ data, compact = false }: { data: PerfData; compact?:
   const btc = makePath(points, 'btc_nav', domain)
   const eth = makePath(points, 'eth_nav', domain)
   const spx = makePath(points, 'spx_nav', domain)
+  const spxY = seriesY(points, 'spx_nav', domain)
+  const spxLabelY = Math.min(176, Math.max(14, spxY - 8))
   return <div className={`cc-index-chart ${compact ? 'compact' : ''}`}>
     <svg viewBox="0 0 640 190" preserveAspectRatio="none" aria-label="Copycat Index versus BTC, ETH and S&P 500">
       <defs>
@@ -111,7 +119,11 @@ function PerformanceChart({ data, compact = false }: { data: PerfData; compact?:
       {copycat ? <path d={`${copycat} L 640 190 L 0 190 Z`} fill="url(#copycatIndexFill)" opacity=".75" /> : null}
       {btc ? <path d={btc} className="btc" /> : null}
       {eth ? <path d={eth} className="eth" /> : null}
-      {spx ? <path d={spx} className="spx" fill="none" stroke="rgba(255,255,255,.72)" strokeWidth={2.2} strokeLinecap="round" strokeDasharray="7 6" vectorEffect="non-scaling-stroke"><title>S&P 500 benchmark</title></path> : null}
+      {spx ? <g className="spx-marker">
+        <path d={spx} className="spx" fill="none" stroke="#F8FAFC" strokeWidth={3.5} strokeLinecap="round" vectorEffect="non-scaling-stroke"><title>S&P 500 benchmark</title></path>
+        <circle cx="636" cy={spxY} r="4" fill="#F8FAFC" opacity=".95" />
+        <text x="626" y={spxLabelY} textAnchor="end" fill="#F8FAFC" fontSize="12" fontWeight="800" letterSpacing=".5">S&P 500</text>
+      </g> : null}
       {copycat ? <path d={copycat} className="copycat" filter="url(#indexGlow)" /> : null}
       {points.length ? <circle cx="640" cy="95" r="0" /> : null}
     </svg>
