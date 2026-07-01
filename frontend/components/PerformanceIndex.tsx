@@ -111,7 +111,7 @@ function PerformanceChart({ data, compact = false }: { data: PerfData; compact?:
       {copycat ? <path d={`${copycat} L 640 190 L 0 190 Z`} fill="url(#copycatIndexFill)" opacity=".75" /> : null}
       {btc ? <path d={btc} className="btc" /> : null}
       {eth ? <path d={eth} className="eth" /> : null}
-      {spx ? <path d={spx} className="spx" /> : null}
+      {spx ? <path d={spx} className="spx" fill="none" stroke="rgba(255,255,255,.72)" strokeWidth={2.2} strokeLinecap="round" strokeDasharray="7 6" vectorEffect="non-scaling-stroke"><title>S&P 500 benchmark</title></path> : null}
       {copycat ? <path d={copycat} className="copycat" filter="url(#indexGlow)" /> : null}
       {points.length ? <circle cx="640" cy="95" r="0" /> : null}
     </svg>
