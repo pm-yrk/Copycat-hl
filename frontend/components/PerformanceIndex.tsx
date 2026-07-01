@@ -49,6 +49,7 @@ function normalisePerfPoint(p: any): Point {
     copycat_nav: Number(p?.copycat_nav ?? p?.copycat ?? 100),
     btc_nav: Number(p?.btc_nav ?? p?.btc ?? 100),
     eth_nav: Number(p?.eth_nav ?? p?.eth ?? 100),
+    spx_nav: Number(p?.spx_nav ?? p?.spx ?? 100),
   }
 }
 function normalisePerfData(raw: any): PerfData {
@@ -62,9 +63,11 @@ function normalisePerfData(raw: any): PerfData {
     copycat_nav: Number(raw?.copycat_nav ?? last?.copycat_nav ?? 100),
     btc_nav: Number(raw?.btc_nav ?? last?.btc_nav ?? 100),
     eth_nav: Number(raw?.eth_nav ?? last?.eth_nav ?? 100),
+    spx_nav: Number(raw?.spx_nav ?? last?.spx_nav ?? 100),
     copycat_return_pct: Number(raw?.copycat_return_pct ?? (Number(raw?.copycat_nav ?? last?.copycat_nav ?? 100) - 100)),
     btc_return_pct: Number(raw?.btc_return_pct ?? (Number(raw?.btc_nav ?? last?.btc_nav ?? 100) - 100)),
     eth_return_pct: Number(raw?.eth_return_pct ?? (Number(raw?.eth_nav ?? last?.eth_nav ?? 100) - 100)),
+    spx_return_pct: Number(raw?.spx_return_pct ?? (Number(raw?.spx_nav ?? last?.spx_nav ?? 100) - 100)),
   }
 }
 
