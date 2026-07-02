@@ -94,7 +94,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     gap:8px 12px !important; max-width:100% !important; line-height:1.4 !important;
     white-space:normal !important; overflow-wrap:anywhere !important; text-align:center !important;
   }
-}` } />{children}        <script defer src="/copycat_local_viewer_time.js"></script>
+}` }} />{children}        <script defer src="/copycat_local_viewer_time.js"></script>
               <script src="/copycat_top_metrics_tight_asset_flush_v1.js" defer></script>
 <script src="/copycat_compact_footer_v1.js" defer></script>
               <script src="/copycat_layer_footer_fix_v2.js" defer></script>
