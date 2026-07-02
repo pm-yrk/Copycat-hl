@@ -588,3 +588,130 @@
   }
 }
 /* COPYCAT_MOBILE_FINAL_POLISH_V4_END */
+
+/* COPYCAT_MOBILE_STICKY_ICON_HERO_V5_START
+   Desktop locked: mobile-only final polish. */
+@media (max-width: 820px) {
+  /* Bring hero content up; mobile already has a tall OS/header area. */
+  .cc-dashboard-top {
+    min-height: auto !important;
+    padding-top: 76px !important;
+    padding-bottom: 28px !important;
+    margin-top: 0 !important;
+    gap: 24px !important;
+  }
+
+  .cc-dashboard-copy {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+  }
+
+  /* Compact sticky table identity columns: token icon stays locked, text/data gets more room. */
+  .cc-signal-table th:nth-child(1),
+  .cc-signal-table td:nth-child(1) {
+    left: 0 !important;
+    min-width: 34px !important;
+    width: 34px !important;
+    max-width: 34px !important;
+    padding-left: 8px !important;
+    padding-right: 4px !important;
+  }
+
+  .cc-signal-table th:nth-child(2),
+  .cc-signal-table td:nth-child(2) {
+    left: 34px !important;
+    min-width: 72px !important;
+    width: 72px !important;
+    max-width: 72px !important;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+
+  .cc-flow-table th:nth-child(1),
+  .cc-flow-table td:nth-child(1) {
+    left: 0 !important;
+    min-width: 84px !important;
+    width: 84px !important;
+    max-width: 84px !important;
+    padding-left: 10px !important;
+    padding-right: 8px !important;
+  }
+
+  /* In sticky asset cells, keep the token logo/icon only. */
+  .cc-signal-table td:nth-child(2) .cc-asset-cell,
+  .cc-flow-table td:nth-child(1) .cc-asset-cell {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0 !important;
+    width: 100% !important;
+  }
+
+  .cc-signal-table td:nth-child(2) .cc-asset-cell > *:not(:first-child),
+  .cc-flow-table td:nth-child(1) .cc-asset-cell > *:not(:first-child) {
+    display: none !important;
+  }
+
+  .cc-signal-table td:nth-child(2) img,
+  .cc-flow-table td:nth-child(1) img,
+  .cc-signal-table td:nth-child(2) svg,
+  .cc-flow-table td:nth-child(1) svg {
+    margin: 0 auto !important;
+  }
+
+  .cc-flow-table th:nth-child(1) {
+    font-size: 0 !important;
+  }
+
+  .cc-flow-table th:nth-child(1)::after {
+    content: "Asset";
+    font-size: 15px;
+  }
+
+  .cc-signal-table th:nth-child(2) {
+    font-size: 0 !important;
+  }
+
+  .cc-signal-table th:nth-child(2)::after {
+    content: "Asset";
+    font-size: 15px;
+  }
+
+  /* Make sticky strip feel like the card, not a separate lock overlay. */
+  :root[data-theme="dark"] .cc-signal-table th:nth-child(1),
+  :root[data-theme="dark"] .cc-signal-table td:nth-child(1),
+  :root[data-theme="dark"] .cc-signal-table th:nth-child(2),
+  :root[data-theme="dark"] .cc-signal-table td:nth-child(2),
+  :root[data-theme="dark"] .cc-flow-table th:nth-child(1),
+  :root[data-theme="dark"] .cc-flow-table td:nth-child(1) {
+    background: rgba(8, 20, 31, .98) !important;
+    box-shadow: 6px 0 10px rgba(0, 0, 0, .14) !important;
+  }
+
+  :root:not([data-theme="dark"]) .cc-signal-table th:nth-child(1),
+  :root:not([data-theme="dark"]) .cc-signal-table td:nth-child(1),
+  :root:not([data-theme="dark"]) .cc-signal-table th:nth-child(2),
+  :root:not([data-theme="dark"]) .cc-signal-table td:nth-child(2),
+  :root:not([data-theme="dark"]) .cc-flow-table th:nth-child(1),
+  :root:not([data-theme="dark"]) .cc-flow-table td:nth-child(1) {
+    background: rgba(255, 250, 239, .98) !important;
+    box-shadow: 6px 0 10px rgba(111, 87, 50, .08) !important;
+  }
+
+  /* Shift all non-sticky columns closer now the locked identity area is smaller. */
+  .cc-signal-table th,
+  .cc-signal-table td,
+  .cc-flow-table th,
+  .cc-flow-table td {
+    min-width: 94px !important;
+  }
+
+  .cc-signal-table {
+    min-width: 980px !important;
+  }
+
+  .cc-flow-table {
+    min-width: 880px !important;
+  }
+}
+/* COPYCAT_MOBILE_STICKY_ICON_HERO_V5_END */
