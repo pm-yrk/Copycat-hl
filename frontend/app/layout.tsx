@@ -9,7 +9,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" data-theme="dark">
       <body>
-        <style id="copycat-mobile-layout-lock" dangerouslySetInnerHTML={ __html: `@media (max-width: 820px) {
+        <style id="copycat-mobile-layout-lock" dangerouslySetInnerHTML={{ __html: `@media (max-width: 820px) {
   html, body { width:100% !important; max-width:100% !important; overflow-x:hidden !important; }
   *, *::before, *::after { box-sizing:border-box; }
   body { -webkit-text-size-adjust:100%; }
