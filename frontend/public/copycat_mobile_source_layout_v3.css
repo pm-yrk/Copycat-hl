@@ -715,3 +715,181 @@
   }
 }
 /* COPYCAT_MOBILE_STICKY_ICON_HERO_V5_END */
+
+/* COPYCAT_MOBILE_HERO_TABLE_RESTORE_V6_START
+   Desktop locked: mobile-only restore/polish. */
+@media (max-width: 820px) {
+  /* Restore the original strong mobile hero typography, but move the block closer to the header. */
+  .cc-dashboard-top {
+    padding-top: 38px !important;
+    padding-bottom: 28px !important;
+    min-height: auto !important;
+    gap: 28px !important;
+  }
+
+  .cc-dashboard-copy {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+  }
+
+  .cc-dashboard-copy h1 {
+    font-size: clamp(52px, 12.8vw, 76px) !important;
+    line-height: .9 !important;
+    letter-spacing: -0.055em !important;
+    margin: 18px 0 22px !important;
+  }
+
+  .cc-dashboard-copy h1 em {
+    display: block !important;
+    font-size: inherit !important;
+    line-height: .9 !important;
+  }
+
+  .cc-dashboard-copy > p:not(.eyebrow) {
+    font-size: clamp(21px, 5vw, 30px) !important;
+    line-height: 1.24 !important;
+  }
+
+  /* Tables: only the small row-number/icon area stays sticky.
+     The full asset name comes back and scrolls normally with the data. */
+  .cc-signal-board-card .cc-scroll-table,
+  .cc-pressure-card .cc-scroll-table {
+    overflow-x: auto !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-x pan-y !important;
+    max-width: 100% !important;
+  }
+
+  .cc-signal-table,
+  .cc-flow-table {
+    table-layout: auto !important;
+    width: max-content !important;
+    max-width: none !important;
+    border-collapse: collapse !important;
+    border-spacing: 0 !important;
+  }
+
+  .cc-signal-table {
+    min-width: 1120px !important;
+  }
+
+  .cc-flow-table {
+    min-width: 980px !important;
+  }
+
+  .cc-signal-table th,
+  .cc-signal-table td,
+  .cc-flow-table th,
+  .cc-flow-table td {
+    min-width: 94px !important;
+    max-width: none !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: nowrap !important;
+  }
+
+  /* Reset the previous icon-only hiding. */
+  .cc-signal-table td:nth-child(2) .cc-asset-cell > *,
+  .cc-flow-table td:nth-child(1) .cc-asset-cell > * {
+    display: inline-flex !important;
+  }
+
+  .cc-signal-table td:nth-child(2) .cc-asset-cell,
+  .cc-flow-table td:nth-child(1) .cc-asset-cell {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 10px !important;
+    width: auto !important;
+  }
+
+  .cc-signal-table th:nth-child(2),
+  .cc-flow-table th:nth-child(1) {
+    font-size: inherit !important;
+  }
+
+  .cc-signal-table th:nth-child(2)::after,
+  .cc-flow-table th:nth-child(1)::after {
+    content: none !important;
+  }
+
+  /* Asset Signal Board: sticky # column only. Asset name is visible and scrolls normally. */
+  .cc-signal-table th:nth-child(1),
+  .cc-signal-table td:nth-child(1) {
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 6 !important;
+    min-width: 46px !important;
+    width: 46px !important;
+    max-width: 46px !important;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+
+  .cc-signal-table th:nth-child(2),
+  .cc-signal-table td:nth-child(2) {
+    position: static !important;
+    left: auto !important;
+    z-index: auto !important;
+    min-width: 190px !important;
+    width: auto !important;
+    max-width: none !important;
+    padding-left: 14px !important;
+    padding-right: 16px !important;
+  }
+
+  /* Buyer/Seller Pressure: sticky compact icon strip only. Asset name remains visible in the same row but not locked. */
+  .cc-flow-table th:nth-child(1),
+  .cc-flow-table td:nth-child(1) {
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 6 !important;
+    min-width: 118px !important;
+    width: 118px !important;
+    max-width: 118px !important;
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+  }
+
+  .cc-flow-table td:nth-child(1) .cc-asset-cell {
+    min-width: 0 !important;
+    max-width: 98px !important;
+    overflow: hidden !important;
+  }
+
+  .cc-flow-table td:nth-child(1) .cc-asset-cell > *:first-child {
+    flex: 0 0 auto !important;
+  }
+
+  .cc-flow-table td:nth-child(1) .cc-asset-cell > *:not(:first-child) {
+    display: none !important;
+  }
+
+  .cc-flow-table th:nth-child(1) {
+    font-size: 0 !important;
+  }
+
+  .cc-flow-table th:nth-child(1)::after {
+    content: "Asset";
+    font-size: 15px;
+  }
+
+  /* Softer sticky background so the lock does not look like a harsh overlay. */
+  :root[data-theme="dark"] .cc-signal-table th:nth-child(1),
+  :root[data-theme="dark"] .cc-signal-table td:nth-child(1),
+  :root[data-theme="dark"] .cc-flow-table th:nth-child(1),
+  :root[data-theme="dark"] .cc-flow-table td:nth-child(1) {
+    background: rgba(8, 20, 31, .96) !important;
+    box-shadow: 5px 0 9px rgba(0, 0, 0, .12) !important;
+  }
+
+  :root:not([data-theme="dark"]) .cc-signal-table th:nth-child(1),
+  :root:not([data-theme="dark"]) .cc-signal-table td:nth-child(1),
+  :root:not([data-theme="dark"]) .cc-flow-table th:nth-child(1),
+  :root:not([data-theme="dark"]) .cc-flow-table td:nth-child(1) {
+    background: rgba(255, 250, 239, .94) !important;
+    box-shadow: 5px 0 9px rgba(111, 87, 50, .07) !important;
+  }
+}
+/* COPYCAT_MOBILE_HERO_TABLE_RESTORE_V6_END */
