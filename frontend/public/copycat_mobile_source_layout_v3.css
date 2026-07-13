@@ -1134,3 +1134,175 @@
   }
 }
 /* COPYCAT_MOBILE_COMPACT_FRONT_LAYER_V7_END */
+
+/* COPYCAT_MOBILE_ASSET_NAMES_V8D_START
+   The added logo cells are hidden at desktop widths, so the desktop table
+   remains visually unchanged. */
+.cc-mobile-asset-logo-head,
+.cc-mobile-asset-logo-cell {
+  display: none !important;
+}
+
+@media (max-width: 820px) {
+  .cc-mobile-asset-logo-head,
+  .cc-mobile-asset-logo-cell {
+    display: table-cell !important;
+    box-sizing: border-box !important;
+    vertical-align: middle !important;
+  }
+
+  /* Asset Signal Board: lock only # and a narrow logo strip. */
+  .cc-signal-table th:nth-child(1),
+  .cc-signal-table td:nth-child(1) {
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 42 !important;
+    min-width: 34px !important;
+    width: 34px !important;
+    max-width: 34px !important;
+    padding-left: 5px !important;
+    padding-right: 4px !important;
+    background: color-mix(in srgb, var(--panel) 98%, transparent) !important;
+    box-shadow: none !important;
+  }
+
+  .cc-signal-table th:nth-child(2),
+  .cc-signal-table td:nth-child(2) {
+    position: sticky !important;
+    left: 34px !important;
+    z-index: 42 !important;
+    min-width: 50px !important;
+    width: 50px !important;
+    max-width: 50px !important;
+    padding-left: 5px !important;
+    padding-right: 5px !important;
+    text-align: center !important;
+    background: color-mix(in srgb, var(--panel) 98%, transparent) !important;
+    box-shadow: 4px 0 7px rgba(0, 0, 0, .09) !important;
+  }
+
+  .cc-signal-table thead th:nth-child(1),
+  .cc-signal-table thead th:nth-child(2) {
+    z-index: 44 !important;
+  }
+
+  .cc-signal-table th:nth-child(2) {
+    font-size: 0 !important;
+  }
+
+  .cc-signal-table th:nth-child(2)::after {
+    content: none !important;
+  }
+
+  .cc-signal-table td:nth-child(2) .cc-token-logo {
+    display: inline-flex !important;
+    margin: 0 auto !important;
+  }
+
+  /* Column 3 is the real Asset name and scrolls normally. */
+  .cc-signal-table th:nth-child(3),
+  .cc-signal-table td:nth-child(3) {
+    position: static !important;
+    left: auto !important;
+    z-index: auto !important;
+    min-width: 116px !important;
+    width: auto !important;
+    max-width: none !important;
+    padding-left: 12px !important;
+    padding-right: 14px !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .cc-signal-table th:nth-child(3) {
+    font-size: inherit !important;
+  }
+
+  .cc-signal-table th:nth-child(3)::after {
+    content: none !important;
+  }
+
+  .cc-signal-table td:nth-child(3) .cc-token-logo {
+    display: none !important;
+  }
+
+  .cc-signal-table td:nth-child(3) .cc-asset-cell,
+  .cc-signal-table td:nth-child(3) .cc-asset-hover,
+  .cc-signal-table td:nth-child(3) .cc-asset-hover b {
+    display: inline-flex !important;
+    width: auto !important;
+    max-width: none !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: nowrap !important;
+  }
+
+  /* Buyer/Seller Pressure: lock only a narrow logo strip. */
+  .cc-flow-table th:nth-child(1),
+  .cc-flow-table td:nth-child(1) {
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 42 !important;
+    min-width: 52px !important;
+    width: 52px !important;
+    max-width: 52px !important;
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+    text-align: center !important;
+    background: color-mix(in srgb, var(--panel) 98%, transparent) !important;
+    box-shadow: 4px 0 7px rgba(0, 0, 0, .09) !important;
+  }
+
+  .cc-flow-table thead th:nth-child(1) {
+    z-index: 44 !important;
+    font-size: 0 !important;
+  }
+
+  .cc-flow-table th:nth-child(1)::after {
+    content: none !important;
+  }
+
+  .cc-flow-table td:nth-child(1) .cc-token-logo {
+    display: inline-flex !important;
+    margin: 0 auto !important;
+  }
+
+  /* Column 2 is the real Asset name and scrolls normally. */
+  .cc-flow-table th:nth-child(2),
+  .cc-flow-table td:nth-child(2) {
+    position: static !important;
+    left: auto !important;
+    z-index: auto !important;
+    min-width: 108px !important;
+    width: auto !important;
+    max-width: none !important;
+    padding-left: 12px !important;
+    padding-right: 14px !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .cc-flow-table th:nth-child(2) {
+    font-size: inherit !important;
+  }
+
+  .cc-flow-table th:nth-child(2)::after {
+    content: none !important;
+  }
+
+  .cc-flow-table td:nth-child(2) .cc-token-logo {
+    display: none !important;
+  }
+
+  .cc-flow-table td:nth-child(2) .cc-asset-cell,
+  .cc-flow-table td:nth-child(2) .cc-asset-hover,
+  .cc-flow-table td:nth-child(2) .cc-asset-hover b {
+    display: inline-flex !important;
+    width: auto !important;
+    max-width: none !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: nowrap !important;
+  }
+}
+/* COPYCAT_MOBILE_ASSET_NAMES_V8D_END */

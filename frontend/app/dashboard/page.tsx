@@ -182,18 +182,24 @@ function fmtTime(ms: any) {
   if (!ms) return 'Awaiting first refresh'
   return new Date(Number(ms)).toLocaleString(undefined, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', '')
 }
-function maskWallet(w: string) { return w ? `Wallet ${w.slice(0, 4)}…${w.slice(-4)}` : 'Wallet 0x…' }
+function maskWallet(w: string) {
+  const wallet = String(w || '').trim()
+  if (!wallet) return 'Wallet'
+  if (wallet.length <= 14) return wallet
+  return `${wallet.slice(0, 6)}â€¦${wallet.slice(-4)}`
+}
+
 function hypurrscanAddressUrl(w: string) {
   const wallet = String(w || '').trim()
   return /^0x[a-fA-F0-9]{40}$/.test(wallet) ? `https://hypurrscan.io/address/${wallet}` : ''
 }
 function WalletExplorerLink({ wallet, label }: { wallet?: string; label?: string }) {
-  const url = hypurrscanAddressUrl(String(wallet || ''))
-  const text = label || maskWallet(String(wallet || ''))
+  const rawWallet = String(wallet || '').trim()
+  const url = hypurrscanAddressUrl(rawWallet)
+  const text = rawWallet ? maskWallet(rawWallet) : (String(label || '').trim() || 'Wallet')
   if (!url) return <em>{text}</em>
   return <em><a href={url} target="_blank" rel="noopener noreferrer" title="Open wallet on HypurrScan" style={{ color: 'inherit', textDecoration: 'none' }}>{text}</a></em>
 }
-
 
 function walletUniverseCaption(summary: any) {
   const scanned = Number(summary?.scanner_candidate_wallets_scored || summary?.indexed_wallets || 0)
@@ -629,7 +635,13 @@ export default function Dashboard() {
   const isLong = longValue >= shortValue
   const dataHealthy = summary.data_quality_status === 'healthy'
   const claimReady = Boolean(summary.top_claim_ready)
-  const rankingScope = summary.ranking_scope_label || `Top ${summary.qualified_wallets || 0} Copycat-ranked wallets from ${summary.owned_wallets_indexed || 0} indexed wallets`
+  const indexedWallets = Number(summary.scanner_candidate_wallets_scored || summary.indexed_wallets || summary.known_wallet_candidates || summary.registry_wallets || summary.owned_wallets_indexed || 0)
+  const suppliedRankingScope = String(summary.claim_label || summary.ranking_scope_label || '').trim()
+  const rankingScope = indexedWallets > 0
+    ? `Top ${summary.qualified_wallets || 0} Copycat-ranked wallets from ${indexedWallets.toLocaleString()} locally indexed Hyperliquid candidates`
+    : suppliedRankingScope && !/\b0 indexed wallets\b/i.test(suppliedRankingScope)
+      ? suppliedRankingScope
+      : `Top ${summary.qualified_wallets || 0} Copycat-ranked wallets from our locally indexed Hyperliquid candidate universe`
   const liveCoverageText = `${summary.live_wallets || 0}/${summary.qualified_wallets || 0} live wallets`
   const auditStatus = audit?.status || 'checking'
   const grossLeverageValue = grossLeverage(summary.tracked_open_position_value_usd, summary.tracked_account_value_usd)
@@ -725,8 +737,8 @@ export default function Dashboard() {
         <div className="cc-panel-title"><h3>Asset signal board</h3><span>clearest long/short conviction first</span></div>
         <div className="cc-scroll-table cc-scroll-y">
           <table className="cc-signal-table">
-            <thead><tr><th>#</th><SortTh label="Asset" sortKey="asset" sort={signalSort} setSort={setSignalSort} /><SortTh label="Signal" sortKey="conviction" sort={signalSort} setSort={setSignalSort} /><SortTh label="Confidence" sortKey="confidence" sort={signalSort} setSort={setSignalSort} /><SortTh label="Wallets" sortKey="wallets" sort={signalSort} setSort={setSignalSort} /><SortTh label="Value L/S" sortKey="value_ls" sort={signalSort} setSort={setSignalSort} /><SortTh label="Net value" sortKey="net_value_usd" sort={signalSort} setSort={setSignalSort} /><SortTh label="% total value" sortKey="pct_total" sort={signalSort} setSort={setSignalSort} /></tr></thead>
-            <tbody>{sortedSignals.map((r, i) => <tr key={`${r.coin}-${i}`}><td>{i + 1}</td><td><span className="cc-asset-cell"><TokenLogo coin={r.coin} icons={icons} /><AssetName coin={r.coin} details={mergedAssetDetails} row={r} /></span></td><td className={cls(displaySignalValue(r))}><span className={`cc-signal-pill ${signalDirectionClass(r)}`}>{displaySignalMagnitudePct(r)} {displaySignalDirection(r)}</span></td><td><span className={`cc-confidence ${String(r.confidence).toLowerCase()}`}>{r.confidence}</span></td><td>{r.wallets_long} long / {r.wallets_short} short</td><td>{money(r.value_long_usd)} / {money(r.value_short_usd)}</td><td className={cls(r.net_value_usd)}>{money(r.net_value_usd)}</td><td>{pct(r.value_long_pct_total)} long / {pct(r.value_short_pct_total)} short</td></tr>)}</tbody>
+            <thead><tr><th>#</th><th className="cc-mobile-asset-logo-head" aria-label="Asset logo" /><SortTh label="Asset" sortKey="asset" sort={signalSort} setSort={setSignalSort} /><SortTh label="Signal" sortKey="conviction" sort={signalSort} setSort={setSignalSort} /><SortTh label="Confidence" sortKey="confidence" sort={signalSort} setSort={setSignalSort} /><SortTh label="Wallets" sortKey="wallets" sort={signalSort} setSort={setSignalSort} /><SortTh label="Value L/S" sortKey="value_ls" sort={signalSort} setSort={setSignalSort} /><SortTh label="Net value" sortKey="net_value_usd" sort={signalSort} setSort={setSignalSort} /><SortTh label="% total value" sortKey="pct_total" sort={signalSort} setSort={setSignalSort} /></tr></thead>
+            <tbody>{sortedSignals.map((r, i) => <tr key={`${r.coin}-${i}`}><td>{i + 1}</td><td className="cc-mobile-asset-logo-cell" aria-hidden="true"><TokenLogo coin={r.coin} icons={icons} /></td><td><span className="cc-asset-cell"><TokenLogo coin={r.coin} icons={icons} /><AssetName coin={r.coin} details={mergedAssetDetails} row={r} /></span></td><td className={cls(displaySignalValue(r))}><span className={`cc-signal-pill ${signalDirectionClass(r)}`}>{displaySignalMagnitudePct(r)} {displaySignalDirection(r)}</span></td><td><span className={`cc-confidence ${String(r.confidence).toLowerCase()}`}>{r.confidence}</span></td><td>{r.wallets_long} long / {r.wallets_short} short</td><td>{money(r.value_long_usd)} / {money(r.value_short_usd)}</td><td className={cls(r.net_value_usd)}>{money(r.net_value_usd)}</td><td>{pct(r.value_long_pct_total)} long / {pct(r.value_short_pct_total)} short</td></tr>)}</tbody>
           </table>
         </div>
       </div>
@@ -738,8 +750,8 @@ export default function Dashboard() {
         <div className="cc-panel-title"><h3>Recent buyer / seller pressure</h3><span>{flowContextText}</span></div>
         <div className="cc-scroll-table cc-scroll-y">
           <table className="cc-flow-table">
-            <thead><tr><SortTh label="Asset" sortKey="asset" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Net buyers" sortKey="net_buyers" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Bullish flow" sortKey="bullish" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Bearish flow" sortKey="bearish" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Net value flow" sortKey="net_value_flow_usd" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Read" sortKey="pressure" sort={flowSortState} setSort={setFlowSortState} /></tr></thead>
-            <tbody>{sortedFlow.map((r, i) => { const read = flowRead(r.net_value_flow_usd); return <tr key={`${r.coin}-${i}`}><td><span className="cc-asset-cell"><TokenLogo coin={r.coin} icons={icons} /><AssetName coin={r.coin} details={mergedAssetDetails} row={r} /></span></td><td className={cls(r.net_buyer_count)}>{r.net_buyer_count}</td><td>{money(r.bullish_flow_usd)}</td><td>{money(r.bearish_flow_usd)}</td><td className={cls(r.net_value_flow_usd)}>{money(r.net_value_flow_usd)}</td><td><span className={`cc-read ${read.toLowerCase()}`}>{read}</span></td></tr> })}</tbody>
+            <thead><tr><th className="cc-mobile-asset-logo-head" aria-label="Asset logo" /><SortTh label="Asset" sortKey="asset" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Net buyers" sortKey="net_buyers" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Bullish flow" sortKey="bullish" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Bearish flow" sortKey="bearish" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Net value flow" sortKey="net_value_flow_usd" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Read" sortKey="pressure" sort={flowSortState} setSort={setFlowSortState} /></tr></thead>
+            <tbody>{sortedFlow.map((r, i) => { const read = flowRead(r.net_value_flow_usd); return <tr key={`${r.coin}-${i}`}><td className="cc-mobile-asset-logo-cell" aria-hidden="true"><TokenLogo coin={r.coin} icons={icons} /></td><td><span className="cc-asset-cell"><TokenLogo coin={r.coin} icons={icons} /><AssetName coin={r.coin} details={mergedAssetDetails} row={r} /></span></td><td className={cls(r.net_buyer_count)}>{r.net_buyer_count}</td><td>{money(r.bullish_flow_usd)}</td><td>{money(r.bearish_flow_usd)}</td><td className={cls(r.net_value_flow_usd)}>{money(r.net_value_flow_usd)}</td><td><span className={`cc-read ${read.toLowerCase()}`}>{read}</span></td></tr> })}</tbody>
           </table>
         </div>
       </div>
