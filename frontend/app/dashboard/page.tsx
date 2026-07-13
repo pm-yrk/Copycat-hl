@@ -186,9 +186,8 @@ function maskWallet(w: string) {
   const wallet = String(w || '').trim()
   if (!wallet) return 'Wallet'
   if (wallet.length <= 14) return wallet
-  return `${wallet.slice(0, 6)}â€¦${wallet.slice(-4)}`
+  return `${wallet.slice(0, 6)}...${wallet.slice(-4)}`
 }
-
 function hypurrscanAddressUrl(w: string) {
   const wallet = String(w || '').trim()
   return /^0x[a-fA-F0-9]{40}$/.test(wallet) ? `https://hypurrscan.io/address/${wallet}` : ''
