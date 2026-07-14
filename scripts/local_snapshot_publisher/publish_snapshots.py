@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 Copycat local snapshot publisher.
 
@@ -18,6 +18,12 @@ import traceback
 from copy import deepcopy
 import urllib.request
 import urllib.error
+import concurrent.futures
+import html
+import re
+import xml.etree.ElementTree as ET
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
@@ -601,6 +607,348 @@ def read_registry_summary_counts() -> Dict[str, int]:
         except Exception:
             pass
 
+
+# COPYCAT_MARKET_NARRATIVE_V1_START
+MARKET_NEWS_REFRESH_MS = 5 * 60 * 1000
+MARKET_NEWS_MAX_AGE_MS = 72 * 60 * 60 * 1000
+MARKET_NEWS_CACHE = SCRIPT_DIR / "scanner_state" / "market_narrative_cache.json"
+
+# Public RSS/Atom sources only. Copycat stores and displays the source name,
+# headline, publication time and original link; it does not republish article bodies.
+MARKET_NEWS_SOURCES = [
+    {"name": "CoinDesk", "badge": "CD", "url": "https://www.coindesk.com/arc/outboundfeeds/rss/", "weight": 9, "always_relevant": True},
+    {"name": "Cointelegraph", "badge": "CT", "url": "https://cointelegraph.com/rss", "weight": 8, "always_relevant": True},
+    {"name": "Decrypt", "badge": "D", "url": "https://decrypt.co/feed", "weight": 8, "always_relevant": True},
+    {"name": "CryptoSlate", "badge": "CS", "url": "https://cryptoslate.com/feed/", "weight": 7, "always_relevant": True},
+    {"name": "SEC", "badge": "SEC", "url": "https://www.sec.gov/news/pressreleases.rss", "weight": 10},
+    {"name": "SEC", "badge": "SEC", "url": "https://www.sec.gov/news/speeches-statements.rss", "weight": 8},
+    {"name": "Federal Reserve", "badge": "FED", "url": "https://www.federalreserve.gov/feeds/press_all.xml", "weight": 9},
+    {"name": "Federal Reserve", "badge": "FED", "url": "https://www.federalreserve.gov/feeds/press_monetary.xml", "weight": 10},
+    {"name": "CFTC", "badge": "CFTC", "url": "https://www.cftc.gov/RSS/RSSGP/rssgp.xml", "weight": 10},
+    {"name": "CFTC", "badge": "CFTC", "url": "https://www.cftc.gov/RSS/RSSENF/rssenf.xml", "weight": 9},
+    {"name": "ECB", "badge": "ECB", "url": "https://www.ecb.europa.eu/rss/press.html", "weight": 9},
+    {"name": "ECB", "badge": "ECB", "url": "https://www.ecb.europa.eu/rss/blog.html", "weight": 7},
+    {"name": "BIS", "badge": "BIS", "url": "https://www.bis.org/doclist/all_pressrels.rss", "weight": 8},
+    {"name": "FCA", "badge": "FCA", "url": "https://www.fca.org.uk/news/rss.xml", "weight": 9},
+    {"name": "Ethereum Foundation", "badge": "ETH", "url": "https://blog.ethereum.org/feed.xml", "weight": 7, "always_relevant": True},
+    {"name": "Kraken", "badge": "K", "url": "https://blog.kraken.com/feed", "weight": 6, "always_relevant": True},
+]
+
+MARKET_RELEVANCE_TERMS = {
+    "bitcoin": 8, "btc": 7, "ethereum": 8, "ether": 7, "eth": 6,
+    "crypto": 8, "cryptocurrency": 8, "digital asset": 8, "blockchain": 7,
+    "stablecoin": 8, "token": 5, "defi": 7, "web3": 5, "wallet": 5,
+    "exchange": 4, "custody": 6, "spot etf": 8, "etf": 6, "mining": 5,
+    "hyperliquid": 9, "solana": 7, "xrp": 6, "dogecoin": 5,
+    "interest rate": 6, "rate cut": 7, "rate hike": 7, "inflation": 6,
+    "federal reserve": 6, "fed": 4, "monetary policy": 6, "liquidity": 6,
+    "treasury": 4, "bond yield": 5, "dollar": 4, "sanction": 4,
+    "market volatility": 5, "risk asset": 5, "financial stability": 5,
+}
+
+BULLISH_HEADLINE_TERMS = [
+    "approve", "approval", "approved", "inflow", "inflows", "rally", "surge",
+    "surges", "rise", "rises", "gain", "gains", "record high", "all-time high",
+    "adoption", "launch", "launches", "partnership", "accumulation", "upgrade",
+    "expansion", "milestone", "rebound", "recovers", "recovery", "resumes",
+    "rate cut", "cuts rates", "easing", "regulatory clarity", "green light",
+]
+
+BEARISH_HEADLINE_TERMS = [
+    "hack", "exploit", "breach", "stolen", "liquidation", "liquidations",
+    "outflow", "outflows", "decline", "falls", "fall", "drops", "drop",
+    "plunge", "ban", "lawsuit", "charges", "charged", "enforcement",
+    "investigation", "delay", "delays", "reject", "rejected", "denied",
+    "rate hike", "hikes rates", "hawkish", "sanctions", "war", "attack",
+    "default", "bankrupt", "insolvency", "depeg", "outage", "halt",
+    "suspend", "crackdown", "fraud", "scam", "warning",
+]
+
+
+def _market_text(value: Any) -> str:
+    text = html.unescape(str(value or ""))
+    text = re.sub(r"<[^>]+>", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def _market_tag_name(tag: str) -> str:
+    return str(tag or "").split("}")[-1].lower()
+
+
+def _market_child_text(node: Any, names: Iterable[str]) -> str:
+    wanted = {str(name).lower() for name in names}
+    for child in list(node):
+        if _market_tag_name(getattr(child, "tag", "")) in wanted:
+            value = "".join(child.itertext()) if hasattr(child, "itertext") else (child.text or "")
+            return _market_text(value)
+    return ""
+
+
+def _market_item_link(node: Any) -> str:
+    for child in list(node):
+        if _market_tag_name(getattr(child, "tag", "")) != "link":
+            continue
+        href = _market_text(getattr(child, "attrib", {}).get("href"))
+        rel = _market_text(getattr(child, "attrib", {}).get("rel")).lower()
+        if href and rel in {"", "alternate"}:
+            return href
+        text = _market_text(getattr(child, "text", ""))
+        if text:
+            return text
+    return _market_child_text(node, {"guid"})
+
+
+def _market_parse_date_ms(value: str, fallback_ms: int) -> int:
+    text = _market_text(value)
+    if not text:
+        return fallback_ms
+    try:
+        parsed = parsedate_to_datetime(text)
+        if parsed is not None:
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            return int(parsed.timestamp() * 1000)
+    except Exception:
+        pass
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return int(parsed.timestamp() * 1000)
+    except Exception:
+        return fallback_ms
+
+
+def _market_normal_title(value: str) -> str:
+    text = _market_text(value).lower()
+    text = re.sub(r"\s*[-|:]\s*(coindesk|cointelegraph|decrypt|cryptoslate)\s*$", "", text)
+    return re.sub(r"[^a-z0-9]+", " ", text).strip()
+
+
+def _market_title_is_duplicate(title: str, accepted: List[Dict[str, Any]]) -> bool:
+    normal = _market_normal_title(title)
+    if not normal:
+        return True
+    words = set(normal.split())
+    for row in accepted:
+        other = _market_normal_title(row.get("title", ""))
+        if normal == other:
+            return True
+        other_words = set(other.split())
+        if words and other_words:
+            overlap = len(words & other_words) / max(1, min(len(words), len(other_words)))
+            if overlap >= 0.82:
+                return True
+    return False
+
+
+def _market_sentiment(title: str) -> Tuple[str, int]:
+    text = _market_normal_title(title)
+    positive = sum(1 for term in BULLISH_HEADLINE_TERMS if term in text)
+    negative = sum(1 for term in BEARISH_HEADLINE_TERMS if term in text)
+    score = positive - negative
+    if score > 0:
+        return "bullish", score
+    if score < 0:
+        return "bearish", score
+    return "neutral", 0
+
+
+def _market_relevance(title: str, source: Dict[str, Any], asset_terms: Iterable[str], now_ms: int, published_ms: int) -> float:
+    text = _market_normal_title(title)
+    score = float(source.get("weight") or 0)
+    if source.get("always_relevant"):
+        score += 8.0
+    for term, weight in MARKET_RELEVANCE_TERMS.items():
+        if term in text:
+            score += float(weight)
+    for term in asset_terms:
+        clean = _market_normal_title(term)
+        if clean and re.search(rf"\b{re.escape(clean)}\b", text):
+            score += 5.0
+    age_hours = max(0.0, (now_ms - published_ms) / 3_600_000.0)
+    score += max(0.0, 18.0 - age_hours) * 0.45
+    return score
+
+
+def _market_fetch_source(source: Dict[str, Any], timeout: int, now_ms: int) -> Tuple[str, List[Dict[str, Any]], str]:
+    request = urllib.request.Request(
+        str(source["url"]),
+        headers={
+            "User-Agent": "CopycatMarketNarrative/1.0 paulmurrin13@gmail.com",
+            "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.6",
+        },
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=max(4, min(timeout, 9))) as response:
+            data = response.read(2_000_000)
+        root = ET.fromstring(data)
+        nodes = [
+            node for node in root.iter()
+            if _market_tag_name(getattr(node, "tag", "")) in {"item", "entry"}
+        ][:25]
+        stories: List[Dict[str, Any]] = []
+        for node in nodes:
+            title = _market_child_text(node, {"title"})
+            url = _market_item_link(node)
+            if not title or not re.match(r"^https?://", url or "", re.I):
+                continue
+            published_text = _market_child_text(
+                node,
+                {"pubdate", "published", "updated", "date", "created"},
+            )
+            published_ms = _market_parse_date_ms(published_text, now_ms)
+            stories.append({
+                "source": source["name"],
+                "badge": source["badge"],
+                "title": title[:300],
+                "url": url,
+                "published_at_ms": published_ms,
+                "_source_weight": source.get("weight") or 0,
+                "_always_relevant": bool(source.get("always_relevant")),
+            })
+        return str(source["name"]), stories, ""
+    except Exception as exc:
+        return str(source["name"]), [], str(exc)
+
+
+def _market_load_cache() -> Dict[str, Any]:
+    try:
+        if MARKET_NEWS_CACHE.exists():
+            raw = json.loads(MARKET_NEWS_CACHE.read_text(encoding="utf-8"))
+            return raw if isinstance(raw, dict) else {}
+    except Exception:
+        pass
+    return {}
+
+
+def _market_save_cache(payload: Dict[str, Any]) -> None:
+    try:
+        MARKET_NEWS_CACHE.parent.mkdir(parents=True, exist_ok=True)
+        MARKET_NEWS_CACHE.write_text(
+            json.dumps(payload, separators=(",", ":"), ensure_ascii=False),
+            encoding="utf-8",
+        )
+    except Exception as exc:
+        log(f"Warning: could not save market narrative cache: {exc}")
+
+
+def market_narrative_from_cache(now_ms: int) -> Dict[str, Any]:
+    cached = _market_load_cache()
+    stories = cached.get("stories") if isinstance(cached.get("stories"), list) else []
+    return {
+        "status": "cached" if stories else "warming",
+        "updated_at_ms": safe_int(cached.get("updated_at_ms")) or now_ms,
+        "refresh_seconds": 300,
+        "source_count": safe_int(cached.get("source_count")),
+        "sources_attempted": safe_int(cached.get("sources_attempted")) or len(MARKET_NEWS_SOURCES),
+        "stories": stories[:5],
+        "note": "Automated headline classification; informational only. Headlines link to the original publishers.",
+    }
+
+
+def build_market_narrative(now_ms: int, timeout: int, signals: List[Dict[str, Any]]) -> Dict[str, Any]:
+    cached = _market_load_cache()
+    cached_at = safe_int(cached.get("updated_at_ms"))
+    cached_stories = cached.get("stories") if isinstance(cached.get("stories"), list) else []
+    if cached_stories and cached_at and (now_ms - cached_at) < MARKET_NEWS_REFRESH_MS:
+        return market_narrative_from_cache(now_ms)
+
+    asset_terms = set()
+    for row in (signals or [])[:40]:
+        coin = _market_text(row.get("coin")).upper()
+        if coin:
+            asset_terms.add(coin)
+            full_name = TOKEN_NAMES.get(coin)
+            if full_name:
+                asset_terms.add(full_name)
+
+    all_rows: List[Dict[str, Any]] = []
+    successful_sources = set()
+    failures: List[str] = []
+    worker_count = min(8, len(MARKET_NEWS_SOURCES))
+    with concurrent.futures.ThreadPoolExecutor(max_workers=worker_count) as executor:
+        futures = [
+            executor.submit(_market_fetch_source, source, timeout, now_ms)
+            for source in MARKET_NEWS_SOURCES
+        ]
+        for future in concurrent.futures.as_completed(futures):
+            source_name, rows, error = future.result()
+            if rows:
+                successful_sources.add(source_name)
+                all_rows.extend(rows)
+            elif error:
+                failures.append(f"{source_name}: {error}")
+
+    ranked: List[Dict[str, Any]] = []
+    for row in all_rows:
+        published_ms = safe_int(row.get("published_at_ms")) or now_ms
+        if published_ms > now_ms + 10 * 60 * 1000:
+            published_ms = now_ms
+        if now_ms - published_ms > MARKET_NEWS_MAX_AGE_MS:
+            continue
+        source = {
+            "weight": row.pop("_source_weight", 0),
+            "always_relevant": row.pop("_always_relevant", False),
+        }
+        relevance = _market_relevance(
+            str(row.get("title") or ""),
+            source,
+            asset_terms,
+            now_ms,
+            published_ms,
+        )
+        if not source.get("always_relevant") and relevance < 18:
+            continue
+        sentiment, sentiment_score = _market_sentiment(str(row.get("title") or ""))
+        row["published_at_ms"] = published_ms
+        row["sentiment"] = sentiment
+        row["sentiment_score"] = sentiment_score
+        row["relevance_score"] = round(relevance, 2)
+        ranked.append(row)
+
+    ranked.sort(
+        key=lambda row: (
+            safe_float(row.get("relevance_score")),
+            safe_int(row.get("published_at_ms")),
+        ),
+        reverse=True,
+    )
+
+    selected: List[Dict[str, Any]] = []
+    source_counts: Dict[str, int] = {}
+    for row in ranked:
+        source_name = str(row.get("source") or "")
+        if source_counts.get(source_name, 0) >= 2:
+            continue
+        if _market_title_is_duplicate(str(row.get("title") or ""), selected):
+            continue
+        selected.append(row)
+        source_counts[source_name] = source_counts.get(source_name, 0) + 1
+        if len(selected) >= 5:
+            break
+
+    if not selected and cached_stories:
+        log("Market narrative refresh returned no usable stories; keeping last-good cache")
+        return market_narrative_from_cache(now_ms)
+
+    payload = {
+        "status": "ok" if selected else "warming",
+        "updated_at_ms": now_ms,
+        "refresh_seconds": 300,
+        "source_count": len(successful_sources),
+        "sources_attempted": len(MARKET_NEWS_SOURCES),
+        "stories": selected,
+        "note": "Automated headline classification; informational only. Headlines link to the original publishers.",
+    }
+    _market_save_cache(payload)
+    if failures:
+        log(f"Market narrative: {len(successful_sources)}/{len(MARKET_NEWS_SOURCES)} sources active; {len(failures)} unavailable")
+    else:
+        log(f"Market narrative: all {len(MARKET_NEWS_SOURCES)} sources active")
+    return payload
+# COPYCAT_MARKET_NARRATIVE_V1_END
+
 def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, Dict[str, Any]]]:
     now_ms = int(time.time() * 1000)
     scanner = read_scanner_results()
@@ -1143,6 +1491,16 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
         log(f"Registry summary finalizer skipped: {_registry_summary_error}")
 
 
+    try:
+        market_narrative = build_market_narrative(
+            now_ms,
+            config.request_timeout_seconds,
+            signals,
+        )
+    except Exception as exc:
+        log(f"Market narrative warning: {exc}")
+        market_narrative = market_narrative_from_cache(now_ms)
+    feed["market_narrative"] = market_narrative
     token_icons = {s["coin"]: None for s in signals[:100]}
 
     return {

@@ -471,6 +471,68 @@ function SortTh({ label, sortKey, sort, setSort }: { label: string, sortKey: str
   return <th><button className="cc-sort-head" onClick={() => setSort(nextSort(sort, sortKey))}>{label}<span>{sortArrow(sort, sortKey)}</span></button></th>
 }
 
+// COPYCAT_MARKET_NARRATIVE_CARD_V1_START
+type MarketNarrativeStory = {
+  source?: string
+  badge?: string
+  title?: string
+  url?: string
+  published_at_ms?: number
+  sentiment?: 'bullish' | 'bearish' | 'neutral' | string
+}
+
+function marketNarrativeAge(value: any) {
+  const timestamp = Number(value || 0)
+  if (!timestamp) return 'recently'
+  const seconds = Math.max(0, Math.floor((Date.now() - timestamp) / 1000))
+  if (seconds < 60) return 'just now'
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  return `${Math.floor(hours / 24)}d ago`
+}
+
+function MarketNarrativeCard({ narrative }: { narrative?: any }) {
+  const stories: MarketNarrativeStory[] = Array.isArray(narrative?.stories)
+    ? narrative.stories.slice(0, 5)
+    : []
+
+  if (!stories.length) return null
+
+  return <section className="cc-card cc-market-narrative-card" aria-labelledby="cc-market-narrative-title">
+    <div className="cc-market-narrative-head">
+      <div>
+        <p className="eyebrow live">Live market context</p>
+        <h3 id="cc-market-narrative-title">Market narrative</h3>
+      </div>
+      <span>Updated {marketNarrativeAge(narrative?.updated_at_ms)}</span>
+    </div>
+    <div className="cc-market-news-list">
+      {stories.map((story, index) => {
+        const sentiment = String(story?.sentiment || 'neutral').toLowerCase()
+        const source = String(story?.source || 'Source')
+        const badge = String(story?.badge || source.slice(0, 2)).slice(0, 4).toUpperCase()
+        return <a
+          className="cc-market-news-row"
+          href={String(story?.url || '#')}
+          target="_blank"
+          rel="noopener noreferrer"
+          key={`${story?.url || story?.title || index}-${index}`}
+          title={String(story?.title || '')}
+        >
+          <span className="cc-market-news-badge" aria-hidden>{badge}</span>
+          <span className="cc-market-news-source">{source}</span>
+          <span className="cc-market-news-title">{story?.title || 'Market update'}</span>
+          <span className={`cc-market-news-sentiment ${sentiment}`}>{sentiment}</span>
+        </a>
+      })}
+    </div>
+    <small className="cc-market-narrative-note">{narrative?.note || 'Automated headline classification; informational only.'}</small>
+  </section>
+}
+// COPYCAT_MARKET_NARRATIVE_CARD_V1_END
+
 export default function Dashboard() {
   const [summary, setSummary] = useState<any>({})
   const [signals, setSignals] = useState<any[]>([])
@@ -500,6 +562,7 @@ export default function Dashboard() {
     if (Array.isArray(feed.orders)) setOrders(feed.orders)
   }
 
+  const [marketNarrative, setMarketNarrative] = useState<any>(null)
   async function loadFull() {
     // The full payload contains the large tables and chart inputs. It should
     // load on first paint and then refresh in the background, not every second.
@@ -517,6 +580,7 @@ export default function Dashboard() {
       setOrders(feed.orders || [])
       setInsights(feed.insights || [])
       setAudit(feed.audit || null)
+      setMarketNarrative(feed.market_narrative || null)
     } catch (e: any) {
       failureCount.current += 1
       if (!hasLoaded.current && failureCount.current >= 3) {
@@ -743,6 +807,7 @@ export default function Dashboard() {
       </div>
     </section>
 
+    <MarketNarrativeCard narrative={marketNarrative} />
     <section className="cc-dashboard-performance-row">
       <div className="cc-index-compact-wrapper"><PerformanceIndex variant="dashboard" /></div>
       <div className="cc-card cc-table-card cc-pressure-card">
