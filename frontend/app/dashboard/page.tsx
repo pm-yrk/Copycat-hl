@@ -471,7 +471,7 @@ function SortTh({ label, sortKey, sort, setSort }: { label: string, sortKey: str
   return <th><button className="cc-sort-head" onClick={() => setSort(nextSort(sort, sortKey))}>{label}<span>{sortArrow(sort, sortKey)}</span></button></th>
 }
 
-// COPYCAT_MARKET_NARRATIVE_CARD_V1_START
+// COPYCAT_MARKET_NARRATIVE_CARD_V2_START
 type MarketNarrativeStory = {
   source?: string
   badge?: string
@@ -479,6 +479,21 @@ type MarketNarrativeStory = {
   url?: string
   published_at_ms?: number
   sentiment?: 'bullish' | 'bearish' | 'neutral' | string
+}
+
+const MARKET_NARRATIVE_SOURCE_LOGOS: Record<string, string> = {
+  'CoinDesk': 'https://www.coindesk.com/favicon.ico',
+  'Cointelegraph': 'https://cointelegraph.com/favicon.ico',
+  'Decrypt': 'https://decrypt.co/favicon.ico',
+  'CryptoSlate': 'https://cryptoslate.com/favicon.ico',
+  'SEC': 'https://www.sec.gov/favicon.ico',
+  'Federal Reserve': 'https://www.federalreserve.gov/favicon.ico',
+  'CFTC': 'https://www.cftc.gov/favicon.ico',
+  'ECB': 'https://www.ecb.europa.eu/favicon.ico',
+  'BIS': 'https://www.bis.org/favicon.ico',
+  'FCA': 'https://www.fca.org.uk/favicon.ico',
+  'Ethereum Foundation': 'https://blog.ethereum.org/favicon.ico',
+  'Kraken': 'https://www.kraken.com/favicon.ico',
 }
 
 function marketNarrativeAge(value: any) {
@@ -491,6 +506,26 @@ function marketNarrativeAge(value: any) {
   const hours = Math.floor(minutes / 60)
   if (hours < 24) return `${hours}h ago`
   return `${Math.floor(hours / 24)}d ago`
+}
+
+function MarketNarrativeSourceMark({ source, badge }: { source: string; badge: string }) {
+  const logoUrl = MARKET_NARRATIVE_SOURCE_LOGOS[source] || ''
+  const [failed, setFailed] = useState(false)
+
+  if (!logoUrl || failed) {
+    return <span className="cc-market-news-badge" aria-hidden>{badge}</span>
+  }
+
+  return <span className="cc-market-news-logo-shell" aria-hidden>
+    <img
+      src={logoUrl}
+      alt=""
+      className="cc-market-news-logo"
+      loading="lazy"
+      referrerPolicy="no-referrer"
+      onError={() => setFailed(true)}
+    />
+  </span>
 }
 
 function MarketNarrativeCard({ narrative }: { narrative?: any }) {
@@ -521,7 +556,7 @@ function MarketNarrativeCard({ narrative }: { narrative?: any }) {
           key={`${story?.url || story?.title || index}-${index}`}
           title={String(story?.title || '')}
         >
-          <span className="cc-market-news-badge" aria-hidden>{badge}</span>
+          <MarketNarrativeSourceMark source={source} badge={badge} />
           <span className="cc-market-news-source">{source}</span>
           <span className="cc-market-news-title">{story?.title || 'Market update'}</span>
           <span className={`cc-market-news-sentiment ${sentiment}`}>{sentiment}</span>
@@ -531,7 +566,7 @@ function MarketNarrativeCard({ narrative }: { narrative?: any }) {
     <small className="cc-market-narrative-note">{narrative?.note || 'Automated headline classification; informational only.'}</small>
   </section>
 }
-// COPYCAT_MARKET_NARRATIVE_CARD_V1_END
+// COPYCAT_MARKET_NARRATIVE_CARD_V2_END
 
 export default function Dashboard() {
   const [summary, setSummary] = useState<any>({})
