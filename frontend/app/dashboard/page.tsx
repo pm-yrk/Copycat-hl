@@ -505,6 +505,102 @@ const MARKET_NARRATIVE_SOURCE_LOGOS: Record<string, string> = {
   'Solana Status': 'https://status.solana.com/favicon.ico',
 }
 
+// COPYCAT_SOURCE_LOGOS_V3_START
+const COPYCAT_SOURCE_LOGO_DOMAINS: Array<[string, string]> = [
+  ['coindesk', 'coindesk.com'],
+  ['cointelegraph', 'cointelegraph.com'],
+  ['decrypt', 'decrypt.co'],
+  ['cryptoslate', 'cryptoslate.com'],
+  ['aave governance', 'governance.aave.com'],
+  ['uniswap governance', 'gov.uniswap.org'],
+  ['arbitrum governance', 'forum.arbitrum.foundation'],
+  ['optimism governance', 'gov.optimism.io'],
+  ['lido research', 'research.lido.fi'],
+  ['lido governance', 'snapshot.org'],
+  ['coinbase status', 'status.coinbase.com'],
+  ['coinbase', 'coinbase.com'],
+  ['kraken status', 'status.kraken.com'],
+  ['kraken', 'kraken.com'],
+  ['solana status', 'status.solana.com'],
+  ['solana', 'solana.com'],
+  ['ethereum foundation', 'ethereum.org'],
+  ['federal reserve', 'federalreserve.gov'],
+  ['u.s. bureau of labor statistics', 'bls.gov'],
+  ['bureau of labor statistics', 'bls.gov'],
+  ['sec', 'sec.gov'],
+  ['cftc', 'cftc.gov'],
+  ['ecb', 'ecb.europa.eu'],
+  ['bis', 'bis.org'],
+  ['fca', 'fca.org.uk'],
+  ['ens governance', 'ens.domains'],
+  ['balancer governance', 'balancer.fi'],
+  ['safe governance', 'safe.global'],
+  ['stargate governance', 'stargate.finance'],
+  ['frax governance', 'frax.finance'],
+  ['curve governance', 'curve.finance'],
+  ['compound governance', 'compound.finance'],
+  ['rocket pool governance', 'rocketpool.net'],
+  ['sushi governance', 'sushi.com'],
+  ['pancakeswap governance', 'pancakeswap.finance'],
+  ['apecoin governance', 'apecoin.com'],
+  ['gitcoin governance', 'gitcoin.co'],
+  ['hop governance', 'hop.exchange'],
+]
+
+function copycatSourceLogoDomain(source: string) {
+  const normalised = String(source || '').trim().toLowerCase()
+  const match = COPYCAT_SOURCE_LOGO_DOMAINS.find(([needle]) => normalised.includes(needle))
+  return match?.[1] || ''
+}
+
+function copycatSourceLogoCandidates(source: string) {
+  const domain = copycatSourceLogoDomain(source)
+  if (!domain) return [] as string[]
+  return [
+    `https://${domain}/favicon.ico`,
+    `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`,
+  ]
+}
+
+function CopycatSourceMark({
+  source,
+  badge,
+  variant,
+}: {
+  source: string
+  badge: string
+  variant: 'market' | 'catalyst'
+}) {
+  const candidates = copycatSourceLogoCandidates(source)
+  const [candidateIndex, setCandidateIndex] = useState(0)
+  const logoUrl = candidates[candidateIndex] || ''
+  const shellClass = variant === 'catalyst'
+    ? 'cc-catalyst-source-logo-shell'
+    : 'cc-market-news-logo-shell'
+  const imageClass = variant === 'catalyst'
+    ? 'cc-catalyst-source-logo'
+    : 'cc-market-news-logo'
+  const fallbackClass = variant === 'catalyst'
+    ? 'cc-catalyst-badge'
+    : 'cc-market-news-badge'
+
+  if (!logoUrl) {
+    return <span className={fallbackClass} aria-hidden>{badge}</span>
+  }
+
+  return <span className={shellClass} aria-hidden>
+    <img
+      src={logoUrl}
+      alt=""
+      className={imageClass}
+      loading="lazy"
+      referrerPolicy="no-referrer"
+      onError={() => setCandidateIndex((current) => current + 1)}
+    />
+  </span>
+}
+// COPYCAT_SOURCE_LOGOS_V3_END
+
 function marketNarrativeAge(value: any) {
   const timestamp = Number(value || 0)
   if (!timestamp) return 'recently'
@@ -565,7 +661,7 @@ function MarketNarrativeCard({ narrative }: { narrative?: any }) {
           key={`${story?.url || story?.title || index}-${index}`}
           title={String(story?.title || '')}
         >
-          <MarketNarrativeSourceMark source={source} badge={badge} />
+          <CopycatSourceMark source={source} badge={badge} variant="market" />
           <span className="cc-market-news-source">{source}</span>
           <span className="cc-market-news-title">{story?.title || 'Market update'}</span>
           <span className={`cc-market-news-sentiment ${sentiment}`}>{sentiment}</span>
@@ -630,7 +726,7 @@ function CatalystWatchCard({ watch }: { watch?: any }) {
           <time dateTime={new Date(Number(event?.event_at_ms || 0)).toISOString()}>
             {catalystWatchDate(event?.event_at_ms)}
           </time>
-          <span className="cc-catalyst-badge">{badge}</span>
+          <CopycatSourceMark source={String(event?.source || event?.asset || "")} badge={badge} variant="catalyst" />
           <span className="cc-catalyst-title">{event?.title || 'Upcoming market event'}</span>
           <span className={`cc-catalyst-impact ${impact}`}>{impact}</span>
         </a>
