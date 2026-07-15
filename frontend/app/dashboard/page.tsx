@@ -568,6 +568,72 @@ function MarketNarrativeCard({ narrative }: { narrative?: any }) {
 }
 // COPYCAT_MARKET_NARRATIVE_CARD_V2_END
 
+// COPYCAT_CATALYST_WATCH_V1_START
+type CatalystWatchEvent = {
+  source?: string
+  badge?: string
+  asset?: string
+  title?: string
+  url?: string
+  event_at_ms?: number
+  impact?: 'HIGH' | 'MEDIUM' | 'LOW' | string
+}
+
+function catalystWatchDate(value: any) {
+  const timestamp = Number(value || 0)
+  if (!timestamp) return 'TBC'
+  try {
+    return new Intl.DateTimeFormat(undefined, {
+      day: '2-digit',
+      month: 'short',
+      timeZone: 'UTC',
+    }).format(new Date(timestamp)).toUpperCase()
+  } catch {
+    return 'TBC'
+  }
+}
+
+function CatalystWatchCard({ watch }: { watch?: any }) {
+  const events: CatalystWatchEvent[] = Array.isArray(watch?.events)
+    ? watch.events.slice(0, 3)
+    : []
+
+  return <section className="cc-card cc-catalyst-watch-card" aria-labelledby="cc-catalyst-watch-title">
+    <div className="cc-catalyst-watch-head">
+      <div>
+        <p className="eyebrow live">Upcoming events</p>
+        <h3 id="cc-catalyst-watch-title">Catalyst watch</h3>
+      </div>
+      <span>{watch?.updated_at_ms ? `Updated ${marketNarrativeAge(watch.updated_at_ms)}` : 'Official sources'}</span>
+    </div>
+    <div className="cc-catalyst-list">
+      {events.length ? events.map((event, index) => {
+        const impact = String(event?.impact || 'MEDIUM').toLowerCase()
+        const badge = String(event?.badge || event?.asset || 'EVENT').slice(0, 5).toUpperCase()
+        return <a
+          className="cc-catalyst-row"
+          href={String(event?.url || '#')}
+          target="_blank"
+          rel="noopener noreferrer"
+          key={`${event?.url || event?.title || index}-${index}`}
+          title={`${event?.source || 'Official source'} â€” ${event?.title || 'Upcoming event'}`}
+        >
+          <time dateTime={new Date(Number(event?.event_at_ms || 0)).toISOString()}>
+            {catalystWatchDate(event?.event_at_ms)}
+          </time>
+          <span className="cc-catalyst-badge">{badge}</span>
+          <span className="cc-catalyst-title">{event?.title || 'Upcoming market event'}</span>
+          <span className={`cc-catalyst-impact ${impact}`}>{impact}</span>
+        </a>
+      }) : <div className="cc-catalyst-empty">Collecting verified upcoming datesâ€¦</div>}
+    </div>
+    <small className="cc-catalyst-note">{watch?.note || 'Official-source dates; schedules can change.'}</small>
+  </section>
+}
+// COPYCAT_CATALYST_WATCH_V1_END
+
+
+
 export default function Dashboard() {
   const [summary, setSummary] = useState<any>({})
   const [signals, setSignals] = useState<any[]>([])
@@ -598,6 +664,7 @@ export default function Dashboard() {
   }
 
   const [marketNarrative, setMarketNarrative] = useState<any>(null)
+  const [catalystWatch, setCatalystWatch] = useState<any>(null)
   async function loadFull() {
     // The full payload contains the large tables and chart inputs. It should
     // load on first paint and then refresh in the background, not every second.
@@ -616,6 +683,7 @@ export default function Dashboard() {
       setInsights(feed.insights || [])
       setAudit(feed.audit || null)
       setMarketNarrative(feed.market_narrative || null)
+      setCatalystWatch(feed.catalyst_watch || null)
     } catch (e: any) {
       failureCount.current += 1
       if (!hasLoaded.current && failureCount.current >= 3) {
@@ -842,7 +910,10 @@ export default function Dashboard() {
       </div>
     </section>
 
-    <MarketNarrativeCard narrative={marketNarrative} />
+    <section className="cc-dashboard-context-row">
+      <MarketNarrativeCard narrative={marketNarrative} />
+      <CatalystWatchCard watch={catalystWatch} />
+    </section>
     <section className="cc-dashboard-performance-row">
       <div className="cc-index-compact-wrapper"><PerformanceIndex variant="dashboard" /></div>
       <div className="cc-card cc-table-card cc-pressure-card">

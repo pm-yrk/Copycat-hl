@@ -949,6 +949,493 @@ def build_market_narrative(now_ms: int, timeout: int, signals: List[Dict[str, An
     return payload
 # COPYCAT_MARKET_NARRATIVE_V1_END
 
+# COPYCAT_CATALYST_WATCH_V1_START
+CATALYST_WATCH_REFRESH_MS = 30 * 60 * 1000
+CATALYST_WATCH_MAX_AHEAD_MS = 90 * 24 * 60 * 60 * 1000
+CATALYST_WATCH_CACHE = SCRIPT_DIR / "scanner_state" / "catalyst_watch_cache.json"
+CATALYST_FOMC_URL = "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm"
+CATALYST_BLS_ICS_URL = "https://www.bls.gov/schedule/news_release/bls.ics"
+CATALYST_SNAPSHOT_URL = "https://hub.snapshot.org/graphql"
+
+# Curated first-party governance spaces. Unknown/unverified community spaces are
+# deliberately excluded so the public card does not surface spam proposals.
+CATALYST_SNAPSHOT_SPACES = {
+    "aave.eth": ("AAVE", "Aave"),
+    "uniswapgovernance.eth": ("UNI", "Uniswap"),
+    "arbitrumfoundation.eth": ("ARB", "Arbitrum"),
+    "opcollective.eth": ("OP", "Optimism"),
+    "ens.eth": ("ENS", "ENS"),
+    "lido-snapshot.eth": ("LDO", "Lido"),
+    "balancer.eth": ("BAL", "Balancer"),
+    "safe.eth": ("SAFE", "Safe"),
+    "stgdao.eth": ("STG", "Stargate"),
+    "frax.eth": ("FXS", "Frax"),
+    "curve.eth": ("CRV", "Curve"),
+    "compound-governance.eth": ("COMP", "Compound"),
+    "rocketpool-dao.eth": ("RPL", "Rocket Pool"),
+    "sushi.eth": ("SUSHI", "Sushi"),
+    "pancake.eth": ("CAKE", "PancakeSwap"),
+    "apecoin.eth": ("APE", "ApeCoin"),
+    "gitcoindao.eth": ("GTC", "Gitcoin"),
+    "hop.eth": ("HOP", "Hop"),
+}
+
+CATALYST_MONTHS = {
+    "january": 1,
+    "february": 2,
+    "march": 3,
+    "april": 4,
+    "may": 5,
+    "june": 6,
+    "july": 7,
+    "august": 8,
+    "september": 9,
+    "october": 10,
+    "november": 11,
+    "december": 12,
+}
+
+
+def _catalyst_http_text(
+    url: str,
+    timeout: int,
+    method: str = "GET",
+    payload: Optional[Dict[str, Any]] = None,
+) -> str:
+    body = None
+    headers = {
+        "User-Agent": "CopycatCatalystWatch/1.0",
+        "Accept": "text/html, text/calendar, application/json, */*;q=0.5",
+    }
+    if payload is not None:
+        body = json.dumps(payload).encode("utf-8")
+        headers["Content-Type"] = "application/json"
+    request = urllib.request.Request(
+        url,
+        data=body,
+        headers=headers,
+        method=method,
+    )
+    with urllib.request.urlopen(
+        request,
+        timeout=max(4, min(int(timeout or 8), 10)),
+    ) as response:
+        return response.read(2_000_000).decode("utf-8", errors="replace")
+
+
+def _catalyst_date_ms(year: int, month: int, day: int) -> int:
+    return int(
+        datetime(
+            int(year),
+            int(month),
+            int(day),
+            12,
+            0,
+            0,
+            tzinfo=timezone.utc,
+        ).timestamp()
+        * 1000
+    )
+
+
+def _catalyst_in_window(event_at_ms: int, now_ms: int) -> bool:
+    # A small six-hour grace period keeps today's event visible throughout the day.
+    return (
+        event_at_ms >= now_ms - (6 * 60 * 60 * 1000)
+        and event_at_ms <= now_ms + CATALYST_WATCH_MAX_AHEAD_MS
+    )
+
+
+def _catalyst_parse_bls_ics(text: str, now_ms: int) -> List[Dict[str, Any]]:
+    unfolded: List[str] = []
+    for raw in str(text or "").replace("\r\n", "\n").replace("\r", "\n").split("\n"):
+        if raw.startswith((" ", "\t")) and unfolded:
+            unfolded[-1] += raw[1:]
+        else:
+            unfolded.append(raw.strip())
+
+    events: List[Dict[str, Any]] = []
+    current: Dict[str, str] = {}
+    inside = False
+    for line in unfolded:
+        if line == "BEGIN:VEVENT":
+            current = {}
+            inside = True
+            continue
+        if line == "END:VEVENT":
+            if inside:
+                summary = _market_text(current.get("SUMMARY", ""))
+                dt_value = current.get("DTSTART", "")
+                date_match = re.search(r"(\d{4})(\d{2})(\d{2})", dt_value)
+                if summary and date_match:
+                    event_at_ms = _catalyst_date_ms(
+                        safe_int(date_match.group(1)),
+                        safe_int(date_match.group(2)),
+                        safe_int(date_match.group(3)),
+                    )
+                    lower = summary.lower()
+                    mapped = None
+                    if "consumer price index" in lower:
+                        mapped = ("CPI", "US CPI release", "HIGH")
+                    elif "employment situation" in lower:
+                        mapped = ("JOBS", "US jobs report", "HIGH")
+                    elif "producer price index" in lower:
+                        mapped = ("PPI", "US PPI release", "MEDIUM")
+                    if mapped and _catalyst_in_window(event_at_ms, now_ms):
+                        badge, title, impact = mapped
+                        events.append({
+                            "source": "U.S. Bureau of Labor Statistics",
+                            "badge": badge,
+                            "asset": "MACRO",
+                            "title": title,
+                            "url": current.get(
+                                "URL",
+                                "https://www.bls.gov/schedule/",
+                            ),
+                            "event_at_ms": event_at_ms,
+                            "impact": impact,
+                            "category": "macro",
+                            "relevance_score": 12 if impact == "HIGH" else 8,
+                        })
+            current = {}
+            inside = False
+            continue
+        if not inside or ":" not in line:
+            continue
+        key_part, value = line.split(":", 1)
+        key = key_part.split(";", 1)[0].upper()
+        if key in {"SUMMARY", "DTSTART", "URL"}:
+            current[key] = value.replace("\\,", ",").replace("\\n", " ").strip()
+
+    return events
+
+
+def _catalyst_parse_fomc(text: str, now_ms: int) -> List[Dict[str, Any]]:
+    clean = _market_text(text)
+    headings = list(re.finditer(r"\b(20\d{2}) FOMC Meetings\b", clean))
+    events: List[Dict[str, Any]] = []
+    month_pattern = "|".join(
+        name.title() for name in CATALYST_MONTHS.keys()
+    )
+
+    for index, heading in enumerate(headings):
+        year = safe_int(heading.group(1))
+        if year < datetime.now(timezone.utc).year:
+            continue
+        section_end = headings[index + 1].start() if index + 1 < len(headings) else len(clean)
+        section = clean[heading.end():section_end]
+
+        for match in re.finditer(
+            rf"\b({month_pattern})\s+(\d{{1,2}})(?:\s*-\s*(\d{{1,2}}))?\*?\b",
+            section,
+            flags=re.I,
+        ):
+            prefix = section[max(0, match.start() - 18):match.start()].lower()
+            if "released" in prefix:
+                continue
+            month = CATALYST_MONTHS.get(match.group(1).lower())
+            decision_day = safe_int(match.group(3) or match.group(2))
+            if not month or not decision_day:
+                continue
+            try:
+                event_at_ms = _catalyst_date_ms(year, month, decision_day)
+            except Exception:
+                continue
+            if not _catalyst_in_window(event_at_ms, now_ms):
+                continue
+            events.append({
+                "source": "Federal Reserve",
+                "badge": "FED",
+                "asset": "MACRO",
+                "title": "FOMC rate decision",
+                "url": CATALYST_FOMC_URL,
+                "event_at_ms": event_at_ms,
+                "impact": "HIGH",
+                "category": "macro",
+                "relevance_score": 14,
+            })
+
+    return events
+
+
+def _catalyst_fetch_snapshot(now_ms: int, timeout: int) -> List[Dict[str, Any]]:
+    space_ids = json.dumps(list(CATALYST_SNAPSHOT_SPACES.keys()))
+    query = f"""
+    query {{
+      proposals(
+        first: 80,
+        skip: 0,
+        where: {{
+          space_in: {space_ids},
+          state: "active"
+        }},
+        orderBy: "end",
+        orderDirection: asc
+      ) {{
+        id
+        title
+        end
+        state
+        space {{
+          id
+          name
+        }}
+      }}
+    }}
+    """
+    raw = _catalyst_http_text(
+        CATALYST_SNAPSHOT_URL,
+        timeout,
+        method="POST",
+        payload={"query": query},
+    )
+    decoded = json.loads(raw)
+    rows = (
+        decoded.get("data", {}).get("proposals", [])
+        if isinstance(decoded, dict)
+        else []
+    )
+    events: List[Dict[str, Any]] = []
+    for row in rows if isinstance(rows, list) else []:
+        if not isinstance(row, dict):
+            continue
+        space = row.get("space") if isinstance(row.get("space"), dict) else {}
+        space_id = str(space.get("id") or "").lower()
+        mapped = CATALYST_SNAPSHOT_SPACES.get(space_id)
+        if not mapped:
+            continue
+        asset, label = mapped
+        event_at_ms = safe_int(row.get("end")) * 1000
+        if not _catalyst_in_window(event_at_ms, now_ms):
+            continue
+        proposal_id = str(row.get("id") or "")
+        title = _market_text(row.get("title"))[:180]
+        if not proposal_id or not title:
+            continue
+        events.append({
+            "source": f"{label} governance",
+            "badge": asset[:5],
+            "asset": asset,
+            "title": title,
+            "url": f"https://snapshot.org/#/{space_id}/proposal/{proposal_id}",
+            "event_at_ms": event_at_ms,
+            "impact": "MEDIUM",
+            "category": "governance",
+            "relevance_score": 10,
+        })
+    return events
+
+
+def _catalyst_load_cache() -> Dict[str, Any]:
+    try:
+        if CATALYST_WATCH_CACHE.exists():
+            raw = json.loads(CATALYST_WATCH_CACHE.read_text(encoding="utf-8"))
+            return raw if isinstance(raw, dict) else {}
+    except Exception:
+        pass
+    return {}
+
+
+def _catalyst_save_cache(payload: Dict[str, Any]) -> None:
+    try:
+        CATALYST_WATCH_CACHE.parent.mkdir(parents=True, exist_ok=True)
+        CATALYST_WATCH_CACHE.write_text(
+            json.dumps(payload, separators=(",", ":"), ensure_ascii=False),
+            encoding="utf-8",
+        )
+    except Exception as exc:
+        log(f"Warning: could not save catalyst cache: {exc}")
+
+
+def catalyst_watch_from_cache(now_ms: int) -> Dict[str, Any]:
+    cached = _catalyst_load_cache()
+    events = cached.get("events") if isinstance(cached.get("events"), list) else []
+    current_events = [
+        row for row in events
+        if isinstance(row, dict)
+        and _catalyst_in_window(safe_int(row.get("event_at_ms")), now_ms)
+    ]
+    return {
+        "status": "cached" if current_events else "warming",
+        "updated_at_ms": safe_int(cached.get("updated_at_ms")) or now_ms,
+        "refresh_seconds": 1800,
+        "source_count": safe_int(cached.get("source_count")),
+        "events": current_events[:3],
+        "note": "Official-source dates; schedules and governance deadlines can change.",
+    }
+
+
+def _catalyst_select_events(
+    candidates: List[Dict[str, Any]],
+    signals: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    signal_assets = {
+        _market_text(row.get("coin")).upper()
+        for row in (signals or [])[:80]
+        if isinstance(row, dict) and _market_text(row.get("coin"))
+    }
+    unique: List[Dict[str, Any]] = []
+    seen = set()
+    for row in candidates:
+        key = (
+            str(row.get("source") or ""),
+            str(row.get("title") or "").lower(),
+            safe_int(row.get("event_at_ms")),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        item = dict(row)
+        if str(item.get("asset") or "").upper() in signal_assets:
+            item["relevance_score"] = safe_float(item.get("relevance_score")) + 12
+        unique.append(item)
+
+    governance = sorted(
+        [row for row in unique if row.get("category") == "governance"],
+        key=lambda row: (
+            -safe_float(row.get("relevance_score")),
+            safe_int(row.get("event_at_ms")),
+        ),
+    )
+    macro = sorted(
+        [row for row in unique if row.get("category") == "macro"],
+        key=lambda row: safe_int(row.get("event_at_ms")),
+    )
+
+    selected: List[Dict[str, Any]] = []
+    if governance:
+        selected.append(governance[0])
+    for row in macro:
+        if len(selected) >= 3:
+            break
+        selected.append(row)
+    for row in governance[1:]:
+        if len(selected) >= 3:
+            break
+        selected.append(row)
+
+    selected.sort(key=lambda row: safe_int(row.get("event_at_ms")))
+    return selected[:3]
+
+
+def build_catalyst_watch(
+    now_ms: int,
+    timeout: int,
+    signals: List[Dict[str, Any]],
+) -> Dict[str, Any]:
+    cached = _catalyst_load_cache()
+    cached_at = safe_int(cached.get("updated_at_ms"))
+    cached_events = cached.get("events") if isinstance(cached.get("events"), list) else []
+    if cached_events and cached_at and now_ms - cached_at < CATALYST_WATCH_REFRESH_MS:
+        return catalyst_watch_from_cache(now_ms)
+
+    candidates: List[Dict[str, Any]] = []
+    active_sources = set()
+    failures: List[str] = []
+
+    def fetch_bls() -> Tuple[str, List[Dict[str, Any]]]:
+        text = _catalyst_http_text(CATALYST_BLS_ICS_URL, timeout)
+        return "BLS", _catalyst_parse_bls_ics(text, now_ms)
+
+    def fetch_fomc() -> Tuple[str, List[Dict[str, Any]]]:
+        text = _catalyst_http_text(CATALYST_FOMC_URL, timeout)
+        return "Federal Reserve", _catalyst_parse_fomc(text, now_ms)
+
+    def fetch_snapshot() -> Tuple[str, List[Dict[str, Any]]]:
+        return "Snapshot", _catalyst_fetch_snapshot(now_ms, timeout)
+
+    jobs = [fetch_bls, fetch_fomc, fetch_snapshot]
+    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+        future_map = {executor.submit(job): job.__name__ for job in jobs}
+        for future in concurrent.futures.as_completed(future_map):
+            try:
+                source_name, rows = future.result()
+                if rows:
+                    active_sources.add(source_name)
+                    candidates.extend(rows)
+            except Exception as exc:
+                failures.append(f"{future_map[future]}: {exc}")
+
+    selected = _catalyst_select_events(candidates, signals)
+    if not selected and cached_events:
+        log("Catalyst watch refresh returned no usable events; keeping last-good cache")
+        return catalyst_watch_from_cache(now_ms)
+
+    payload = {
+        "status": "ok" if selected else "warming",
+        "updated_at_ms": now_ms,
+        "refresh_seconds": 1800,
+        "source_count": len(active_sources),
+        "events": selected,
+        "note": "Official-source dates; schedules and governance deadlines can change.",
+    }
+    _catalyst_save_cache(payload)
+    log(
+        f"Catalyst watch: {len(selected)} event(s), "
+        f"{len(active_sources)}/3 sources active"
+        + (f"; {len(failures)} unavailable" if failures else "")
+    )
+    return payload
+
+
+def _catalyst_watch_self_test() -> List[str]:
+    failures: List[str] = []
+    fixed_now = _catalyst_date_ms(2026, 1, 1)
+
+    sample_ics = """BEGIN:VCALENDAR
+BEGIN:VEVENT
+DTSTART:20260110T083000
+SUMMARY:Consumer Price Index
+URL:https://www.bls.gov/cpi/
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20260115T083000
+SUMMARY:Producer Price Index
+END:VEVENT
+END:VCALENDAR"""
+    bls_rows = _catalyst_parse_bls_ics(sample_ics, fixed_now)
+    if [row.get("badge") for row in bls_rows] != ["CPI", "PPI"]:
+        failures.append("BLS iCalendar parser did not identify CPI and PPI")
+
+    sample_fomc = (
+        "2026 FOMC Meetings January 27-28 Statement: PDF "
+        "Minutes: PDF (Released February 18, 2026) "
+        "March 17-18* Statement: PDF 2025 FOMC Meetings"
+    )
+    fomc_rows = _catalyst_parse_fomc(sample_fomc, fixed_now)
+    fomc_dates = [safe_int(row.get("event_at_ms")) for row in fomc_rows]
+    if _catalyst_date_ms(2026, 1, 28) not in fomc_dates:
+        failures.append("FOMC parser did not identify the decision day")
+    if _catalyst_date_ms(2026, 2, 18) in fomc_dates:
+        failures.append("FOMC parser incorrectly treated a minutes release as a meeting")
+
+    sample_candidates = [
+        {
+            "source": "Federal Reserve",
+            "title": "FOMC rate decision",
+            "asset": "MACRO",
+            "event_at_ms": _catalyst_date_ms(2026, 1, 28),
+            "category": "macro",
+            "relevance_score": 14,
+        },
+        {
+            "source": "Aave governance",
+            "title": "Risk parameter vote",
+            "asset": "AAVE",
+            "event_at_ms": _catalyst_date_ms(2026, 1, 20),
+            "category": "governance",
+            "relevance_score": 10,
+        },
+    ]
+    selected = _catalyst_select_events(sample_candidates, [{"coin": "AAVE"}])
+    if not selected or selected[0].get("asset") != "AAVE":
+        failures.append("Tracked-asset governance relevance was not preserved")
+
+    return failures
+# COPYCAT_CATALYST_WATCH_V1_END
+
+
+
 def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, Dict[str, Any]]]:
     now_ms = int(time.time() * 1000)
     scanner = read_scanner_results()
@@ -1501,6 +1988,17 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
         log(f"Market narrative warning: {exc}")
         market_narrative = market_narrative_from_cache(now_ms)
     feed["market_narrative"] = market_narrative
+    try:
+        catalyst_watch = build_catalyst_watch(
+            now_ms,
+            config.request_timeout_seconds,
+            signals,
+        )
+    except Exception as exc:
+        log(f"Catalyst watch warning: {exc}")
+        catalyst_watch = catalyst_watch_from_cache(now_ms)
+    feed["catalyst_watch"] = catalyst_watch
+
     token_icons = {s["coin"]: None for s in signals[:100]}
 
     return {
