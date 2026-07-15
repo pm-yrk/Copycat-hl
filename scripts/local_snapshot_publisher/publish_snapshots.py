@@ -632,6 +632,15 @@ MARKET_NEWS_SOURCES = [
     {"name": "FCA", "badge": "FCA", "url": "https://www.fca.org.uk/news/rss.xml", "weight": 9},
     {"name": "Ethereum Foundation", "badge": "ETH", "url": "https://blog.ethereum.org/feed.xml", "weight": 7, "always_relevant": True},
     {"name": "Kraken", "badge": "K", "url": "https://blog.kraken.com/feed", "weight": 6, "always_relevant": True},
+
+    {"name": "Aave Governance", "badge": "AAVE", "url": "https://governance.aave.com/latest.rss", "weight": 8},
+    {"name": "Uniswap Governance", "badge": "UNI", "url": "https://gov.uniswap.org/latest.rss", "weight": 8},
+    {"name": "Arbitrum Governance", "badge": "ARB", "url": "https://forum.arbitrum.foundation/latest.rss", "weight": 8},
+    {"name": "Optimism Governance", "badge": "OP", "url": "https://gov.optimism.io/latest.rss", "weight": 8},
+    {"name": "Lido Research", "badge": "LDO", "url": "https://research.lido.fi/latest.rss", "weight": 7},
+    {"name": "Coinbase Status", "badge": "CB", "url": "https://status.coinbase.com/history.atom", "weight": 9, "always_relevant": True},
+    {"name": "Kraken Status", "badge": "K", "url": "https://status.kraken.com/history.atom", "weight": 9, "always_relevant": True},
+    {"name": "Solana Status", "badge": "SOL", "url": "https://status.solana.com/history.atom", "weight": 9, "always_relevant": True},
 ]
 
 MARKET_RELEVANCE_TERMS = {
@@ -640,6 +649,9 @@ MARKET_RELEVANCE_TERMS = {
     "stablecoin": 8, "token": 5, "defi": 7, "web3": 5, "wallet": 5,
     "exchange": 4, "custody": 6, "spot etf": 8, "etf": 6, "mining": 5,
     "hyperliquid": 9, "solana": 7, "xrp": 6, "dogecoin": 5,
+    "governance": 7, "proposal": 6, "vote": 6, "mainnet": 7,
+    "maintenance": 6, "outage": 9, "incident": 8, "degraded": 7,
+    "upgrade": 6, "deployment": 5, "listing": 5, "delisting": 6,
     "interest rate": 6, "rate cut": 7, "rate hike": 7, "inflation": 6,
     "federal reserve": 6, "fed": 4, "monetary policy": 6, "liquidity": 6,
     "treasury": 4, "bond yield": 5, "dollar": 4, "sanction": 4,
@@ -957,6 +969,30 @@ CATALYST_FOMC_URL = "https://www.federalreserve.gov/monetarypolicy/fomccalendars
 CATALYST_BLS_ICS_URL = "https://www.bls.gov/schedule/news_release/bls.ics"
 CATALYST_SNAPSHOT_URL = "https://hub.snapshot.org/graphql"
 
+CATALYST_STATUSPAGE_SOURCES = [
+    {
+        "name": "Coinbase",
+        "badge": "CB",
+        "asset": "COINBASE",
+        "page_url": "https://status.coinbase.com/",
+        "api_url": "https://status.coinbase.com/api/v2/scheduled-maintenances/upcoming.json",
+    },
+    {
+        "name": "Kraken",
+        "badge": "K",
+        "asset": "KRAKEN",
+        "page_url": "https://status.kraken.com/",
+        "api_url": "https://status.kraken.com/api/v2/scheduled-maintenances/upcoming.json",
+    },
+    {
+        "name": "Solana",
+        "badge": "SOL",
+        "asset": "SOL",
+        "page_url": "https://status.solana.com/",
+        "api_url": "https://status.solana.com/api/v2/scheduled-maintenances/upcoming.json",
+    },
+]
+
 # Curated first-party governance spaces. Unknown/unverified community spaces are
 # deliberately excluded so the public card does not surface spam proposals.
 CATALYST_SNAPSHOT_SPACES = {
@@ -1226,6 +1262,68 @@ def _catalyst_fetch_snapshot(now_ms: int, timeout: int) -> List[Dict[str, Any]]:
     return events
 
 
+
+
+def _catalyst_parse_statuspage(
+    text: str,
+    source: Dict[str, Any],
+    now_ms: int,
+) -> List[Dict[str, Any]]:
+    decoded = json.loads(text)
+    rows = (
+        decoded.get("scheduled_maintenances", [])
+        if isinstance(decoded, dict)
+        else []
+    )
+    events: List[Dict[str, Any]] = []
+    for row in rows if isinstance(rows, list) else []:
+        if not isinstance(row, dict):
+            continue
+        title = _market_text(row.get("name"))[:180]
+        event_at_ms = _market_parse_date_ms(
+            str(row.get("scheduled_for") or ""),
+            0,
+        )
+        if not title or not event_at_ms or not _catalyst_in_window(event_at_ms, now_ms):
+            continue
+
+        raw_impact = str(row.get("impact") or "").lower()
+        if raw_impact in {"critical", "major"}:
+            impact = "HIGH"
+            relevance = 15
+        elif raw_impact == "minor":
+            impact = "MEDIUM"
+            relevance = 12
+        else:
+            impact = "MEDIUM"
+            relevance = 10
+
+        events.append({
+            "source": f"{source['name']} status",
+            "badge": source["badge"],
+            "asset": source["asset"],
+            "title": title,
+            "url": str(row.get("shortlink") or source["page_url"]),
+            "event_at_ms": event_at_ms,
+            "event_end_ms": _market_parse_date_ms(
+                str(row.get("scheduled_until") or ""),
+                0,
+            ),
+            "impact": impact,
+            "category": "crypto",
+            "relevance_score": relevance,
+        })
+    return events
+
+
+def _catalyst_fetch_statuspage(
+    source: Dict[str, Any],
+    now_ms: int,
+    timeout: int,
+) -> Tuple[str, List[Dict[str, Any]]]:
+    text = _catalyst_http_text(str(source["api_url"]), timeout)
+    return str(source["name"]), _catalyst_parse_statuspage(text, source, now_ms)
+
 def _catalyst_load_cache() -> Dict[str, Any]:
     try:
         if CATALYST_WATCH_CACHE.exists():
@@ -1268,12 +1366,15 @@ def catalyst_watch_from_cache(now_ms: int) -> Dict[str, Any]:
 def _catalyst_select_events(
     candidates: List[Dict[str, Any]],
     signals: List[Dict[str, Any]],
+    now_ms: Optional[int] = None,
 ) -> List[Dict[str, Any]]:
+    current_ms = safe_int(now_ms) or int(time.time() * 1000)
     signal_assets = {
         _market_text(row.get("coin")).upper()
         for row in (signals or [])[:80]
         if isinstance(row, dict) and _market_text(row.get("coin"))
     }
+
     unique: List[Dict[str, Any]] = []
     seen = set()
     for row in candidates:
@@ -1285,14 +1386,28 @@ def _catalyst_select_events(
         if key in seen:
             continue
         seen.add(key)
+
         item = dict(row)
-        if str(item.get("asset") or "").upper() in signal_assets:
-            item["relevance_score"] = safe_float(item.get("relevance_score")) + 12
+        asset = str(item.get("asset") or "").upper()
+        tracked = bool(asset and asset in signal_assets)
+        item["tracked_asset"] = tracked
+
+        score = safe_float(item.get("relevance_score"))
+        if item.get("category") != "macro":
+            score += 8
+        if item.get("category") == "governance":
+            score += 4
+        if tracked:
+            score += 20
+        if str(item.get("impact") or "").upper() == "HIGH":
+            score += 4
+        item["relevance_score"] = score
         unique.append(item)
 
-    governance = sorted(
-        [row for row in unique if row.get("category") == "governance"],
+    crypto = sorted(
+        [row for row in unique if row.get("category") != "macro"],
         key=lambda row: (
+            0 if row.get("tracked_asset") else 1,
             -safe_float(row.get("relevance_score")),
             safe_int(row.get("event_at_ms")),
         ),
@@ -1303,20 +1418,40 @@ def _catalyst_select_events(
     )
 
     selected: List[Dict[str, Any]] = []
-    if governance:
-        selected.append(governance[0])
-    for row in macro:
-        if len(selected) >= 3:
-            break
-        selected.append(row)
-    for row in governance[1:]:
-        if len(selected) >= 3:
-            break
-        selected.append(row)
+
+    # Crypto-first contract: take up to two crypto-specific events before
+    # considering any macro date. A maximum of one macro event can appear.
+    selected.extend(crypto[:2])
+    remaining_crypto = crypto[2:]
+    macro_choice = macro[0] if macro else None
+    crypto_choice = remaining_crypto[0] if remaining_crypto else None
+
+    if len(selected) < 3:
+        if crypto_choice and macro_choice:
+            macro_soon = (
+                safe_int(macro_choice.get("event_at_ms"))
+                <= current_ms + (14 * 24 * 60 * 60 * 1000)
+            )
+            crypto_far = (
+                safe_int(crypto_choice.get("event_at_ms"))
+                > current_ms + (30 * 24 * 60 * 60 * 1000)
+            )
+            selected.append(macro_choice if macro_soon and crypto_far else crypto_choice)
+        elif crypto_choice:
+            selected.append(crypto_choice)
+        elif macro_choice:
+            selected.append(macro_choice)
+
+    if len(selected) < 3:
+        for row in macro[1:]:
+            if len(selected) >= 3:
+                break
+            if any(item.get("category") == "macro" for item in selected):
+                break
+            selected.append(row)
 
     selected.sort(key=lambda row: safe_int(row.get("event_at_ms")))
     return selected[:3]
-
 
 def build_catalyst_watch(
     now_ms: int,
@@ -1344,19 +1479,39 @@ def build_catalyst_watch(
     def fetch_snapshot() -> Tuple[str, List[Dict[str, Any]]]:
         return "Snapshot", _catalyst_fetch_snapshot(now_ms, timeout)
 
-    jobs = [fetch_bls, fetch_fomc, fetch_snapshot]
-    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-        future_map = {executor.submit(job): job.__name__ for job in jobs}
+    jobs: List[Tuple[str, Any]] = [
+        ("BLS", fetch_bls),
+        ("Federal Reserve", fetch_fomc),
+        ("Snapshot", fetch_snapshot),
+    ]
+    for status_source in CATALYST_STATUSPAGE_SOURCES:
+        jobs.append((
+            str(status_source["name"]),
+            lambda source=status_source: _catalyst_fetch_statuspage(
+                source,
+                now_ms,
+                timeout,
+            ),
+        ))
+
+    with concurrent.futures.ThreadPoolExecutor(
+        max_workers=min(6, len(jobs)),
+    ) as executor:
+        future_map = {
+            executor.submit(job): source_name
+            for source_name, job in jobs
+        }
         for future in concurrent.futures.as_completed(future_map):
+            source_name = future_map[future]
             try:
-                source_name, rows = future.result()
+                returned_name, rows = future.result()
                 if rows:
-                    active_sources.add(source_name)
+                    active_sources.add(returned_name or source_name)
                     candidates.extend(rows)
             except Exception as exc:
-                failures.append(f"{future_map[future]}: {exc}")
+                failures.append(f"{source_name}: {exc}")
 
-    selected = _catalyst_select_events(candidates, signals)
+    selected = _catalyst_select_events(candidates, signals, now_ms)
     if not selected and cached_events:
         log("Catalyst watch refresh returned no usable events; keeping last-good cache")
         return catalyst_watch_from_cache(now_ms)
@@ -1366,17 +1521,18 @@ def build_catalyst_watch(
         "updated_at_ms": now_ms,
         "refresh_seconds": 1800,
         "source_count": len(active_sources),
+        "sources_attempted": len(jobs),
+        "crypto_first": True,
         "events": selected,
-        "note": "Official-source dates; schedules and governance deadlines can change.",
+        "note": "Crypto-first official dates; maximum one macro event. Schedules and governance deadlines can change.",
     }
     _catalyst_save_cache(payload)
     log(
         f"Catalyst watch: {len(selected)} event(s), "
-        f"{len(active_sources)}/3 sources active"
+        f"{len(active_sources)}/{len(jobs)} sources active"
         + (f"; {len(failures)} unavailable" if failures else "")
     )
     return payload
-
 
 def _catalyst_watch_self_test() -> List[str]:
     failures: List[str] = []
@@ -1409,6 +1565,23 @@ END:VCALENDAR"""
     if _catalyst_date_ms(2026, 2, 18) in fomc_dates:
         failures.append("FOMC parser incorrectly treated a minutes release as a meeting")
 
+    sample_status = json.dumps({
+        "scheduled_maintenances": [{
+            "name": "Planned validator maintenance",
+            "scheduled_for": "2026-01-12T10:00:00Z",
+            "scheduled_until": "2026-01-12T11:00:00Z",
+            "impact": "minor",
+            "shortlink": "https://example.com/status",
+        }]
+    })
+    status_rows = _catalyst_parse_statuspage(
+        sample_status,
+        CATALYST_STATUSPAGE_SOURCES[2],
+        fixed_now,
+    )
+    if not status_rows or status_rows[0].get("asset") != "SOL":
+        failures.append("Statuspage parser did not identify the Solana maintenance")
+
     sample_candidates = [
         {
             "source": "Federal Reserve",
@@ -1416,6 +1589,7 @@ END:VCALENDAR"""
             "asset": "MACRO",
             "event_at_ms": _catalyst_date_ms(2026, 1, 28),
             "category": "macro",
+            "impact": "HIGH",
             "relevance_score": 14,
         },
         {
@@ -1424,15 +1598,50 @@ END:VCALENDAR"""
             "asset": "AAVE",
             "event_at_ms": _catalyst_date_ms(2026, 1, 20),
             "category": "governance",
+            "impact": "MEDIUM",
+            "relevance_score": 10,
+        },
+        {
+            "source": "Solana status",
+            "title": "Validator maintenance",
+            "asset": "SOL",
+            "event_at_ms": _catalyst_date_ms(2026, 1, 22),
+            "category": "crypto",
+            "impact": "MEDIUM",
+            "relevance_score": 10,
+        },
+        {
+            "source": "Uniswap governance",
+            "title": "Treasury proposal vote",
+            "asset": "UNI",
+            "event_at_ms": _catalyst_date_ms(2026, 1, 25),
+            "category": "governance",
+            "impact": "MEDIUM",
             "relevance_score": 10,
         },
     ]
-    selected = _catalyst_select_events(sample_candidates, [{"coin": "AAVE"}])
-    if not selected or selected[0].get("asset") != "AAVE":
+    selected = _catalyst_select_events(
+        sample_candidates,
+        [{"coin": "AAVE"}, {"coin": "SOL"}],
+        fixed_now,
+    )
+    crypto_count = sum(
+        1 for row in selected if row.get("category") != "macro"
+    )
+    macro_count = sum(
+        1 for row in selected if row.get("category") == "macro"
+    )
+    if crypto_count < 2:
+        failures.append("Crypto-first selection did not retain two crypto events")
+    if macro_count > 1:
+        failures.append("Crypto-first selection included more than one macro event")
+    if not any(row.get("asset") == "AAVE" for row in selected):
         failures.append("Tracked-asset governance relevance was not preserved")
 
     return failures
 # COPYCAT_CATALYST_WATCH_V1_END
+# COPYCAT_CRYPTO_SOURCES_V2_START
+# COPYCAT_CRYPTO_SOURCES_V2_END
 
 
 

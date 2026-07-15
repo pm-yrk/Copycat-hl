@@ -494,6 +494,15 @@ const MARKET_NARRATIVE_SOURCE_LOGOS: Record<string, string> = {
   'FCA': 'https://www.fca.org.uk/favicon.ico',
   'Ethereum Foundation': 'https://blog.ethereum.org/favicon.ico',
   'Kraken': 'https://www.kraken.com/favicon.ico',
+
+  'Aave Governance': 'https://aave.com/favicon.ico',
+  'Uniswap Governance': 'https://uniswap.org/favicon.ico',
+  'Arbitrum Governance': 'https://arbitrum.io/favicon.ico',
+  'Optimism Governance': 'https://www.optimism.io/favicon.ico',
+  'Lido Research': 'https://lido.fi/favicon.ico',
+  'Coinbase Status': 'https://status.coinbase.com/favicon.ico',
+  'Kraken Status': 'https://status.kraken.com/favicon.ico',
+  'Solana Status': 'https://status.solana.com/favicon.ico',
 }
 
 function marketNarrativeAge(value: any) {
@@ -601,7 +610,7 @@ function CatalystWatchCard({ watch }: { watch?: any }) {
   return <section className="cc-card cc-catalyst-watch-card" aria-labelledby="cc-catalyst-watch-title">
     <div className="cc-catalyst-watch-head">
       <div>
-        <p className="eyebrow live">Upcoming events</p>
+        <p className="eyebrow live">Crypto-first events</p>
         <h3 id="cc-catalyst-watch-title">Catalyst watch</h3>
       </div>
       <span>{watch?.updated_at_ms ? `Updated ${marketNarrativeAge(watch.updated_at_ms)}` : 'Official sources'}</span>
@@ -627,7 +636,7 @@ function CatalystWatchCard({ watch }: { watch?: any }) {
         </a>
       }) : <div className="cc-catalyst-empty">Collecting verified upcoming datesâ€¦</div>}
     </div>
-    <small className="cc-catalyst-note">{watch?.note || 'Official-source dates; schedules can change.'}</small>
+    <small className="cc-catalyst-note">{watch?.note || 'Crypto-first official dates; maximum one macro event.'}</small>
   </section>
 }
 // COPYCAT_CATALYST_WATCH_V1_END
