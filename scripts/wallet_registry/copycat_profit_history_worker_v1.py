@@ -17,7 +17,8 @@ INFO_URL = "https://api.hyperliquid.xyz/info"
 ADDRESS_RE = re.compile(r"^0x[0-9a-f]{40}$")
 ZERO_ADDRESS = "0x" + ("0" * 40)
 LOOKBACK_DAYS = 90
-MAX_FILL_PAGES = 4
+MAX_FILL_PAGES = 5
+MAX_API_FILLS = 10_000
 NORMAL_RESCAN_HOURS = 7 * 24
 LIVE_RESCAN_HOURS = 24
 
@@ -130,6 +131,8 @@ def connect_db(repo: Path) -> sqlite3.Connection:
             position_value REAL NOT NULL DEFAULT 0,
             open_positions INTEGER NOT NULL DEFAULT 0,
             score_ready INTEGER NOT NULL DEFAULT 0,
+            fill_history_capped INTEGER NOT NULL DEFAULT 0,
+            history_complete INTEGER NOT NULL DEFAULT 0,
             error TEXT NOT NULL DEFAULT ''
         );
         CREATE INDEX IF NOT EXISTS idx_wallet_profit_metrics_ready
@@ -144,9 +147,49 @@ def connect_db(repo: Path) -> sqlite3.Connection:
             ON wallet_profit_history(address, observed_at_utc DESC);
         """
     )
+
+    existing_columns = {
+        str(row[1])
+        for row in con.execute("PRAGMA table_info(wallet_profit_metrics)").fetchall()
+    }
+    migrated = False
+    if "fill_history_capped" not in existing_columns:
+        con.execute(
+            "ALTER TABLE wallet_profit_metrics "
+            "ADD COLUMN fill_history_capped INTEGER NOT NULL DEFAULT 0"
+        )
+        migrated = True
+    if "history_complete" not in existing_columns:
+        con.execute(
+            "ALTER TABLE wallet_profit_metrics "
+            "ADD COLUMN history_complete INTEGER NOT NULL DEFAULT 0"
+        )
+        migrated = True
+
+    if migrated:
+        # The old worker stopped at four 2,000-fill pages. Rows below 8,000
+        # exhausted pagination and are complete. Exact 8,000 rows must be
+        # rescanned using the official 10,000-fill maximum.
+        con.execute(
+            """
+            UPDATE wallet_profit_metrics
+            SET history_complete=CASE
+                    WHEN score_ready=1 AND fill_count>0 AND fill_count<8000 THEN 1
+                    ELSE 0
+                END,
+                fill_history_capped=CASE WHEN fill_count>=8000 THEN 1 ELSE 0 END
+            """
+        )
+        con.execute(
+            """
+            UPDATE wallet_profit_metrics
+            SET observed_at_utc='1970-01-01T00:00:00+00:00'
+            WHERE score_ready=1 AND fill_count>=8000
+            """
+        )
+
     con.commit()
     return con
-
 
 def read_live_wallets(active_publisher: Path) -> list[str]:
     path = active_publisher / "wallets.txt"
@@ -293,6 +336,7 @@ def calculate_metrics(
     fills: list[dict[str, Any]],
     funding_rows: list[dict[str, Any]],
     state: dict[str, Any],
+    requested_start_ms: int,
 ) -> dict[str, Any]:
     daily: dict[str, float] = {}
     weekly: dict[str, float] = {}
@@ -368,6 +412,9 @@ def calculate_metrics(
             position_value += value
             open_positions += 1
 
+    fill_history_capped = 1 if len(fills) >= MAX_API_FILLS else 0
+    history_complete = 1 if fills and not fill_history_capped else 0
+
     return {
         "address": address,
         "observed_at_utc": utc_text(),
@@ -395,9 +442,11 @@ def calculate_metrics(
         "position_value": position_value,
         "open_positions": open_positions,
         "score_ready": 1 if fills else 0,
+        "fill_history_capped": fill_history_capped,
+        "history_complete": history_complete,
+        "requested_start_ms": requested_start_ms,
         "error": "",
     }
-
 
 def store_metrics(con: sqlite3.Connection, metrics: dict[str, Any]) -> None:
     columns = [
@@ -407,7 +456,8 @@ def store_metrics(con: sqlite3.Connection, metrics: dict[str, Any]) -> None:
         "winning_fills", "losing_fills", "win_rate", "gross_profit",
         "gross_loss", "closed_pnl", "fees", "funding", "net_pnl",
         "largest_win_share", "worst_day_loss", "account_value",
-        "position_value", "open_positions", "score_ready", "error",
+        "position_value", "open_positions", "score_ready",
+        "fill_history_capped", "history_complete", "error",
     ]
     placeholders = ",".join("?" for _ in columns)
     updates = ",".join(f"{name}=excluded.{name}" for name in columns if name != "address")
@@ -475,7 +525,6 @@ def store_metrics(con: sqlite3.Connection, metrics: dict[str, Any]) -> None:
                 raise
             time.sleep(0.5 * (attempt + 1))
 
-
 def scan_one(con: sqlite3.Connection, address: str) -> dict[str, Any]:
     now_ms = int(time.time() * 1000)
     start_ms = now_ms - LOOKBACK_DAYS * 86_400_000
@@ -485,17 +534,17 @@ def scan_one(con: sqlite3.Connection, address: str) -> dict[str, Any]:
     funding = fetch_funding(address, start_ms, now_ms)
     time.sleep(1.0)
     state = fetch_state(address)
-    metrics = calculate_metrics(address, fills, funding, state)
+    metrics = calculate_metrics(address, fills, funding, state, start_ms)
     store_metrics(con, metrics)
+    completeness = "complete" if metrics["history_complete"] else "API-capped"
     print(
-        f"Profit history: {metrics['fill_count']} fills | "
+        f"Profit history: {metrics['fill_count']} fills ({completeness}) | "
         f"{metrics['active_days']} active days | "
         f"{metrics['profitable_weeks']}/{metrics['observed_weeks']} profitable weeks | "
         f"net ${metrics['net_pnl']:,.2f}",
         flush=True,
     )
     return metrics
-
 
 def error_metrics(address: str, error: str) -> dict[str, Any]:
     return {
@@ -525,9 +574,10 @@ def error_metrics(address: str, error: str) -> dict[str, Any]:
         "position_value": 0.0,
         "open_positions": 0,
         "score_ready": 0,
+        "fill_history_capped": 0,
+        "history_complete": 0,
         "error": error[:500],
     }
-
 
 def self_test() -> None:
     address = "0x" + "1" * 40
@@ -551,11 +601,12 @@ def self_test() -> None:
             {"position": {"positionValue": "5000", "szi": "1"}},
         ],
     }
-    metrics = calculate_metrics(address, fills, funding, state)
+    metrics = calculate_metrics(address, fills, funding, state, base)
     assert metrics["fill_count"] == 120
     assert metrics["active_days"] > 20
     assert metrics["account_value"] == 25000
     assert metrics["net_pnl"] > 0
+    assert metrics["history_complete"] == 1
     assert 0 <= metrics["largest_win_share"] <= 1
     print("Profit-history worker self-test passed.")
 

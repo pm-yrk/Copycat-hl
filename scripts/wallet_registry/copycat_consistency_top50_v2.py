@@ -15,14 +15,11 @@ import time
 from pathlib import Path
 from typing import Any
 
-METHOD = "copycat_consistency_top50_v2"
+METHOD = "copycat_consistency_top50_v3"
 ADDRESS_RE = re.compile(r"^0x[0-9a-f]{40}$")
 ZERO_ADDRESS = "0x" + ("0" * 40)
 
 TARGET = 50
-ENTRY_CORE = 45
-RETENTION_RANK = 60
-
 MIN_ACCOUNT_VALUE = 5_000.0
 MIN_FILLS = 100
 MIN_SPAN_DAYS = 30.0
@@ -31,7 +28,7 @@ MIN_OBSERVED_WEEKS = 5
 MIN_PROFITABLE_WEEKS = 4
 MIN_PROFITABLE_WEEK_RATIO = 0.65
 SOFT_CONCENTRATION_REFERENCE = 0.50
-MAX_METRIC_AGE_HOURS = 48
+MAX_METRIC_AGE_HOURS = 7 * 24
 
 
 def utc_now() -> dt.datetime:
@@ -119,9 +116,45 @@ def connect_db(repo: Path) -> sqlite3.Connection:
         );
         """
     )
+
+    columns = {
+        str(row[1])
+        for row in con.execute("PRAGMA table_info(wallet_profit_metrics)").fetchall()
+    }
+    migrated = False
+    if "fill_history_capped" not in columns:
+        con.execute(
+            "ALTER TABLE wallet_profit_metrics "
+            "ADD COLUMN fill_history_capped INTEGER NOT NULL DEFAULT 0"
+        )
+        migrated = True
+    if "history_complete" not in columns:
+        con.execute(
+            "ALTER TABLE wallet_profit_metrics "
+            "ADD COLUMN history_complete INTEGER NOT NULL DEFAULT 0"
+        )
+        migrated = True
+    if migrated:
+        con.execute(
+            """
+            UPDATE wallet_profit_metrics
+            SET history_complete=CASE
+                    WHEN score_ready=1 AND fill_count>0 AND fill_count<8000 THEN 1
+                    ELSE 0
+                END,
+                fill_history_capped=CASE WHEN fill_count>=8000 THEN 1 ELSE 0 END
+            """
+        )
+        con.execute(
+            """
+            UPDATE wallet_profit_metrics
+            SET observed_at_utc='1970-01-01T00:00:00+00:00'
+            WHERE score_ready=1 AND fill_count>=8000
+            """
+        )
+
     con.commit()
     return con
-
 
 def load_rows(con: sqlite3.Connection) -> tuple[list[dict[str, Any]], dict[str, int]]:
     rows = [
@@ -131,15 +164,31 @@ def load_rows(con: sqlite3.Connection) -> tuple[list[dict[str, Any]], dict[str, 
             SELECT *
             FROM wallet_profit_metrics
             WHERE score_ready=1
+              AND history_complete=1
             """
         ).fetchall()
     ]
+    analysed_total = int(
+        con.execute(
+            "SELECT COUNT(*) FROM wallet_profit_metrics WHERE score_ready=1"
+        ).fetchone()[0]
+    )
+    incomplete = int(
+        con.execute(
+            """
+            SELECT COUNT(*)
+            FROM wallet_profit_metrics
+            WHERE score_ready=1 AND history_complete=0
+            """
+        ).fetchone()[0]
+    )
     counts = {
         "indexed_wallets": int(con.execute("SELECT COUNT(*) FROM wallets").fetchone()[0]),
+        "analysed_wallets_total": analysed_total,
         "deeply_scored_wallets": len(rows),
+        "incomplete_history_wallets": incomplete,
     }
     return rows, counts
-
 
 def qualify(rows: list[dict[str, Any]], now: dt.datetime) -> tuple[list[dict[str, Any]], dict[str, int]]:
     qualified: list[dict[str, Any]] = []
@@ -271,41 +320,11 @@ def read_wallets(path: Path) -> list[str]:
 
 
 def select(ranked: list[dict[str, Any]], current: list[str]) -> list[dict[str, Any]]:
-    by_address = {row["address"]: row for row in ranked}
-    chosen: list[dict[str, Any]] = []
-    used: set[str] = set()
-
-    for row in ranked[:ENTRY_CORE]:
-        chosen.append(row)
-        used.add(row["address"])
-
-    for address in current:
-        row = by_address.get(address)
-        if row and row["address"] not in used and safe_int(row.get("universe_rank")) <= RETENTION_RANK:
-            chosen.append(row)
-            used.add(row["address"])
-            if len(chosen) >= TARGET:
-                break
-
-    for row in ranked:
-        if len(chosen) >= TARGET:
-            break
-        if row["address"] in used:
-            continue
-        chosen.append(row)
-        used.add(row["address"])
-
-    chosen.sort(
-        key=lambda row: (
-            -safe_float(row.get("consistency_score")),
-            -safe_float(row.get("net_pnl")),
-            row["address"],
-        )
-    )
+    # Exact ranking: no retention band and no legacy-wallet preference.
+    chosen = [dict(row) for row in ranked[:TARGET]]
     for index, row in enumerate(chosen, start=1):
         row["selected_rank"] = index
-    return chosen[:TARGET]
-
+    return chosen
 
 def atomic_text(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -379,12 +398,14 @@ def write_report(
             "fill_win_rate_is_a_soft_metric": True,
             "largest_win_concentration_is_a_soft_penalty": True,
             "maximum_metric_age_hours": MAX_METRIC_AGE_HOURS,
+            "requires_complete_fill_history": True,
+            "selection_mode": "exact_top_50_no_retention_band",
         },
         "excluded": excluded,
         "selected": [compact_member(row) for row in selected],
         "note": (
-            "Strict consistency ranking from Copycat's indexed universe. "
-            "The live cohort is held unchanged until at least 50 wallets pass every rule."
+            "Exact strict consistency ranking from Copycat's indexed universe. "
+            "Only complete histories can qualify; the live cohort changes only when 50 pass."
         ),
     }
     for path in [
@@ -435,6 +456,8 @@ def update_scanner_results(active: Path, report: dict[str, Any]) -> None:
         "updated_at_ms": report.get("generated_at_ms"),
         "candidate_wallets_scored": report.get("deeply_scored_wallets"),
         "deeply_scored_wallets": report.get("deeply_scored_wallets"),
+        "analysed_wallets_total": report.get("analysed_wallets_total"),
+        "incomplete_history_wallets": report.get("incomplete_history_wallets"),
         "strict_qualified_wallets": report.get("qualified_wallets"),
         "indexed_wallets": report.get("indexed_wallets"),
         "wallets_discovered_from_recent_trades": report.get("indexed_wallets"),
@@ -444,8 +467,8 @@ def update_scanner_results(active: Path, report: dict[str, Any]) -> None:
         "method_note": (
             "Strict Copycat consistency ranking: 100+ fills, 30+ days, "
             "15+ active days, at least 4 profitable weeks, 65% profitable-week ratio, "
-            "positive net profit after fees and funding. Fill win rate and single-win "
-            "concentration affect the score but do not automatically reject a wallet."
+            "positive net profit after fees and funding, and complete available fill history. "
+            "The selected cohort is the exact top 50 with no legacy retention band."
         ),
     }
     atomic_text(path, json.dumps(payload, indent=2, ensure_ascii=False) + "\n")
@@ -511,6 +534,7 @@ def self_test() -> None:
                 "largest_win_share": 0.12,
                 "worst_day_loss": 100,
                 "gross_profit": 3000,
+                "history_complete": 1,
             }
         )
     qualified, excluded = qualify(rows, now)
@@ -520,6 +544,7 @@ def self_test() -> None:
     assert len(chosen) == 50
     assert len({row["address"] for row in chosen}) == 50
     assert chosen[0]["consistency_score"] >= chosen[-1]["consistency_score"]
+    assert [row["address"] for row in chosen] == [row["address"] for row in ranked[:50]]
     print("Consistency Top-50 V2 self-test passed.")
 
 
