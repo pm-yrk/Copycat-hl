@@ -203,7 +203,7 @@ function WalletExplorerLink({ wallet, label }: { wallet?: string; label?: string
 function walletUniverseCaption(summary: any) {
   const indexed = Number(summary?.indexed_wallets || summary?.known_wallet_candidates || summary?.registry_wallets || 0)
   const analysed = Number(summary?.latest_scanner_candidate_wallets_scored || 0)
-  if (indexed > 0 && analysed > 0) return `${indexed.toLocaleString()} indexed Â· ${analysed.toLocaleString()} fully analysed`
+  if (indexed > 0 && analysed > 0) return `${indexed.toLocaleString()} indexed  |  ${analysed.toLocaleString()} fully analysed`
   if (indexed > 0) return `${indexed.toLocaleString()} wallets indexed locally`
   if (summary?.live_coverage_mode === 'local_snapshot') return 'local scanner universe'
   return 'ranked daily'
@@ -211,8 +211,8 @@ function walletUniverseCaption(summary: any) {
 function footerUniverseCaption(summary: any) {
   const live = Number(summary?.live_wallets || summary?.tracked_active_wallets || 0)
   const indexed = Number(summary?.indexed_wallets || summary?.known_wallet_candidates || summary?.registry_wallets || 0)
-  if (live && indexed) return ` Â· ${live} live wallets Â· ${indexed} indexed`
-  if (live) return ` · ${live} live wallets`
+  if (live && indexed) return `  |  ${live} live wallets  |  ${indexed} indexed`
+  if (live) return `  |  ${live} live wallets`
   return ''
 }
 
@@ -311,7 +311,7 @@ function AssetName({ coin, details, row, compact = false }: { coin: any, details
   }
   const show = (e: any) => place(e.currentTarget as HTMLElement)
   const hide = () => setAnchor(null)
-  const tooltip = anchor && mounted ? createPortal(<div className="cc-asset-tooltip-portal" style={{ left: anchor.left, top: anchor.top }}><strong>{meta?.name || tokenFullName(symbol)}</strong><em>{symbol} on Hyperliquid</em><dl><dt>Mark price</dt><dd>{priceText(markPrice)}</dd><dt>Tracked tilt</dt><dd className={tilt.toLowerCase().includes('short') ? 'negative' : tilt.toLowerCase().includes('long') ? 'positive' : ''}>{tilt}{conviction ? ` · ${Math.round(conviction)}%` : ''}</dd><dt>Open exposure</dt><dd>{gross ? compactMoney(gross) : '—'}</dd>{meta?.max_leverage ? <><dt>Max leverage</dt><dd>{meta.max_leverage}x</dd></> : null}<dt>Wallets</dt><dd>{Number(meta?.wallets_long || row?.wallets_long || 0)} long / {Number(meta?.wallets_short || row?.wallets_short || 0)} short</dd><dt>Recent flow</dt><dd className={flowValue < 0 ? 'negative' : flowValue > 0 ? 'positive' : ''}>{flowValue ? compactMoney(flowValue) : '—'}</dd></dl></div>, document.body) : null
+  const tooltip = anchor && mounted ? createPortal(<div className="cc-asset-tooltip-portal" style={{ left: anchor.left, top: anchor.top }}><strong>{meta?.name || tokenFullName(symbol)}</strong><em>{symbol} on Hyperliquid</em><dl><dt>Mark price</dt><dd>{priceText(markPrice)}</dd><dt>Tracked tilt</dt><dd className={tilt.toLowerCase().includes('short') ? 'negative' : tilt.toLowerCase().includes('long') ? 'positive' : ''}>{tilt}{conviction ? `  |  ${Math.round(conviction)}%` : ''}</dd><dt>Open exposure</dt><dd>{gross ? compactMoney(gross) : '—'}</dd>{meta?.max_leverage ? <><dt>Max leverage</dt><dd>{meta.max_leverage}x</dd></> : null}<dt>Wallets</dt><dd>{Number(meta?.wallets_long || row?.wallets_long || 0)} long / {Number(meta?.wallets_short || row?.wallets_short || 0)} short</dd><dt>Recent flow</dt><dd className={flowValue < 0 ? 'negative' : flowValue > 0 ? 'positive' : ''}>{flowValue ? compactMoney(flowValue) : '—'}</dd></dl></div>, document.body) : null
   return <span className="cc-asset-hover" tabIndex={0} onMouseEnter={show} onMouseMove={show} onMouseLeave={hide} onFocus={show} onBlur={hide}><b>{symbol}</b>{tooltip}</span>
 }
 
@@ -389,7 +389,7 @@ function leverageRead(v: number | null) {
 }
 function leverageText(v: number | null) {
   if (!v || !Number.isFinite(v)) return ''
-  return `Gross leverage: ${v.toFixed(1)}x · ${leverageRead(v)}`
+  return `Gross leverage: ${v.toFixed(1)}x  |  ${leverageRead(v)}`
 }
 
 function formatDirectionalSignal(row: any) {
@@ -960,7 +960,7 @@ export default function Dashboard() {
   const sortedSignals = sortedRows(signals, signalSort)
   const sortedFlow = sortedRows(flow, flowSortState)
   const topCurrentExposure = useMemo(() => largestCurrentExposure(signals), [signals])
-  const flowContextText = `${flowWindowText(summary)} · ${flowIntensityText(flow, summary.tracked_open_position_value_usd)}`
+  const flowContextText = `${flowWindowText(summary)}  |  ${flowIntensityText(flow, summary.tracked_open_position_value_usd)}`
 
   return <><Nav /><main className="cc-dashboard-shell"><LineBackdrop variant="dashboard" />
     <section className="cc-dashboard-top">
@@ -1033,6 +1033,6 @@ export default function Dashboard() {
     </section>
 
 
-    <footer className="cc-warning-banner"><span className="cc-shield" aria-hidden><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5.2c0 4.5-2.7 8.4-7 9.8-4.3-1.4-7-5.3-7-9.8V6l7-3z"/><path d="M9.2 12.1l1.7 1.7 3.9-4.1"/></svg></span><div className="cc-footer-main"><strong>Market intelligence only.</strong><em>Not financial advice. {rankingScope}. {claimReady ? 'Broad-index threshold met.' : 'Not claiming all-Hyperliquid top 50 yet.'}</em><small>Live coverage: {liveCoverageText} Â· {summary.snapshot_wallets || 0} fallback Â· Sync: <b className={`cc-audit-${auditStatus}`}>{auditStatus}</b> Â· {audit?.message || 'Checking dashboard consistency'}</small></div><div className={`cc-footer-meta ${dataHealthy ? 'healthy' : 'checking'}`}><span className="cc-footer-quality"><span className="cc-pulse-dot" /><b>{dataHealthy ? (claimReady ? 'Live data and ranking verified' : 'Live feed healthy Â· ranking verification in progress') : 'Data quality checking'}</b></span><small>Signal refresh: {fmtTime(summary.latest_signal_ts_ms)} UTC Â· {summary.live_state_active ? `Live state: ${fmtTime(summary.latest_live_state_ts_ms)} UTC` : 'Snapshot mode'} Â· Snapshot/cache refresh</small></div><nav className="cc-legal-links" aria-label="Legal links" style={{ flexBasis: '100%', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 6, margin: '4px 0 0 41px', padding: 0, fontSize: 11, lineHeight: 1.25, color: 'rgba(247,251,255,.62)' }}><span style={{ color: 'rgba(247,251,255,.42)' }}>Legal:</span><a href="/terms" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>Terms</a><span aria-hidden="true" style={{ color: 'rgba(247,251,255,.42)' }}>Â·</span><a href="/privacy" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>Privacy</a><span aria-hidden="true" style={{ color: 'rgba(247,251,255,.42)' }}>Â·</span><a href="/risk-disclaimer" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>Risk disclaimer</a><span aria-hidden="true" style={{ color: 'rgba(247,251,255,.42)' }}>Â·</span><a href="/external-links" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>External links</a></nav></footer>
+    <footer className="cc-warning-banner"><span className="cc-shield" aria-hidden><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5.2c0 4.5-2.7 8.4-7 9.8-4.3-1.4-7-5.3-7-9.8V6l7-3z"/><path d="M9.2 12.1l1.7 1.7 3.9-4.1"/></svg></span><div className="cc-footer-main"><strong>Market intelligence only.</strong><em>Not financial advice. {rankingScope}. {claimReady ? 'Broad-index threshold met.' : 'Not claiming all-Hyperliquid top 50 yet.'}</em><small>Live coverage: {liveCoverageText}  |  {summary.snapshot_wallets || 0} fallback  |  Sync: <b className={`cc-audit-${auditStatus}`}>{auditStatus}</b>  |  {audit?.message || 'Checking dashboard consistency'}</small></div><div className={`cc-footer-meta ${dataHealthy ? 'healthy' : 'checking'}`}><span className="cc-footer-quality"><span className="cc-pulse-dot" /><b>{dataHealthy ? (claimReady ? 'Live data and ranking verified' : 'Live feed healthy  |  ranking verification in progress') : 'Data quality checking'}</b></span><small>Signal refresh: {fmtTime(summary.latest_signal_ts_ms)} UTC  |  {summary.live_state_active ? `Live state: ${fmtTime(summary.latest_live_state_ts_ms)} UTC` : 'Snapshot mode'}  |  Snapshot/cache refresh</small></div><nav className="cc-legal-links" aria-label="Legal links" style={{ flexBasis: '100%', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 6, margin: '4px 0 0 41px', padding: 0, fontSize: 11, lineHeight: 1.25, color: 'rgba(247,251,255,.62)' }}><span style={{ color: 'rgba(247,251,255,.42)' }}>Legal:</span><a href="/terms" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>Terms</a><span aria-hidden="true" style={{ color: 'rgba(247,251,255,.42)' }}> | </span><a href="/privacy" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>Privacy</a><span aria-hidden="true" style={{ color: 'rgba(247,251,255,.42)' }}> | </span><a href="/risk-disclaimer" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>Risk disclaimer</a><span aria-hidden="true" style={{ color: 'rgba(247,251,255,.42)' }}> | </span><a href="/external-links" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>External links</a></nav></footer>
   </main></>
 }
