@@ -30,8 +30,7 @@ MIN_ACTIVE_DAYS = 15
 MIN_OBSERVED_WEEKS = 5
 MIN_PROFITABLE_WEEKS = 4
 MIN_PROFITABLE_WEEK_RATIO = 0.65
-MIN_WIN_RATE = 0.52
-MAX_LARGEST_WIN_SHARE = 0.35
+SOFT_CONCENTRATION_REFERENCE = 0.50
 MAX_METRIC_AGE_HOURS = 48
 
 
@@ -154,9 +153,7 @@ def qualify(rows: list[dict[str, Any]], now: dt.datetime) -> tuple[list[dict[str
         "too_few_weeks": 0,
         "not_enough_profitable_weeks": 0,
         "low_weekly_consistency": 0,
-        "low_win_rate": 0,
         "non_positive_net_profit": 0,
-        "single_win_dominance": 0,
     }
     for row in rows:
         address = str(row.get("address") or "").lower()
@@ -180,12 +177,7 @@ def qualify(rows: list[dict[str, Any]], now: dt.datetime) -> tuple[list[dict[str
                 "low_weekly_consistency",
                 safe_float(row.get("profitable_week_ratio")) < MIN_PROFITABLE_WEEK_RATIO,
             ),
-            ("low_win_rate", safe_float(row.get("win_rate")) < MIN_WIN_RATE),
             ("non_positive_net_profit", safe_float(row.get("net_pnl")) <= 0),
-            (
-                "single_win_dominance",
-                safe_float(row.get("largest_win_share")) > MAX_LARGEST_WIN_SHARE,
-            ),
         ]
         failed = next((name for name, is_failed in checks if is_failed), None)
         if failed:
@@ -212,30 +204,43 @@ def rank(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     for row in rows:
         address = row["address"]
         week_consistency = safe_float(row.get("profitable_week_ratio"))
-        win_rate = safe_float(row.get("win_rate"))
         sample_quality = min(1.0, safe_int(row.get("fill_count")) / 500.0)
         active_quality = min(1.0, safe_int(row.get("active_days")) / 45.0)
-        diversification = max(0.0, 1.0 - safe_float(row.get("largest_win_share")) / MAX_LARGEST_WIN_SHARE)
-        drawdown_proxy = max(
+
+        gross_profit = safe_float(row.get("gross_profit"))
+        gross_loss = safe_float(row.get("gross_loss"))
+        profit_factor = gross_profit / max(gross_loss, 1.0)
+        profit_factor_quality = max(0.0, min(1.0, (profit_factor - 1.0) / 2.0))
+
+        largest_win_share = max(0.0, safe_float(row.get("largest_win_share")))
+        concentration_quality = max(
+            0.0,
+            1.0 - min(1.0, largest_win_share / SOFT_CONCENTRATION_REFERENCE),
+        )
+        drawdown_quality = max(
             0.0,
             1.0
             - safe_float(row.get("worst_day_loss"))
-            / max(safe_float(row.get("gross_profit")), 1.0),
+            / max(gross_profit, 1.0),
         )
+
         score = (
-            25 * net_pct.get(address, 0.0)
-            + 20 * roi_pct.get(address, 0.0)
-            + 20 * week_consistency
-            + 10 * win_rate
+            20 * net_pct.get(address, 0.0)
+            + 15 * roi_pct.get(address, 0.0)
+            + 25 * week_consistency
+            + 15 * profit_factor_quality
             + 10 * ((sample_quality + active_quality) / 2)
-            + 10 * diversification
-            + 5 * drawdown_proxy
+            + 10 * concentration_quality
+            + 5 * drawdown_quality
         )
         ranked.append(
             {
                 **row,
                 "roi": safe_float(row.get("net_pnl"))
                 / max(safe_float(row.get("account_value")), 1.0),
+                "profit_factor": profit_factor,
+                "concentration_quality": concentration_quality,
+                "drawdown_quality": drawdown_quality,
                 "consistency_score": round(max(0.0, min(100.0, score)), 4),
             }
         )
@@ -330,6 +335,7 @@ def compact_member(row: dict[str, Any]) -> dict[str, Any]:
         "profitable_weeks": safe_int(row.get("profitable_weeks")),
         "observed_weeks": safe_int(row.get("observed_weeks")),
         "win_rate_pct": round(safe_float(row.get("win_rate")) * 100, 2),
+        "profit_factor": round(safe_float(row.get("profit_factor")), 3),
         "largest_win_share_pct": round(safe_float(row.get("largest_win_share")) * 100, 2),
     }
 
@@ -357,8 +363,11 @@ def write_report(
         "qualified_wallets": len(ranked),
         "selected_wallets": len(selected),
         "applied": applied,
-        "entered": sorted(selected_set - current_set),
-        "exited": sorted(current_set - selected_set),
+        "live_cohort_wallets": len(current),
+        "live_wallet_addresses": list(current),
+        "verification_in_progress": len(ranked) < TARGET,
+        "entered": [] if status == "warming" else sorted(selected_set - current_set),
+        "exited": [] if status == "warming" else sorted(current_set - selected_set),
         "rules": {
             "minimum_account_value_usd": MIN_ACCOUNT_VALUE,
             "minimum_fills": MIN_FILLS,
@@ -367,8 +376,8 @@ def write_report(
             "minimum_observed_weeks": MIN_OBSERVED_WEEKS,
             "minimum_profitable_weeks": MIN_PROFITABLE_WEEKS,
             "minimum_profitable_week_ratio": MIN_PROFITABLE_WEEK_RATIO,
-            "minimum_win_rate": MIN_WIN_RATE,
-            "maximum_largest_win_share": MAX_LARGEST_WIN_SHARE,
+            "fill_win_rate_is_a_soft_metric": True,
+            "largest_win_concentration_is_a_soft_penalty": True,
             "maximum_metric_age_hours": MAX_METRIC_AGE_HOURS,
         },
         "excluded": excluded,
@@ -397,22 +406,46 @@ def write_report(
 
 def update_scanner_results(active: Path, report: dict[str, Any]) -> None:
     path = active / "scanner_state" / "scanner_results.json"
-    selected = report.get("selected") or []
+    existing: dict[str, Any] = {}
+    if path.exists():
+        try:
+            loaded = json.loads(path.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                existing = loaded
+        except Exception:
+            existing = {}
+
+    warming = report.get("status") == "warming"
+    strict_selected = report.get("selected") or []
+    if warming:
+        active_addresses = (
+            existing.get("selected_wallets")
+            or report.get("live_wallet_addresses")
+            or []
+        )
+        active_top_rows = existing.get("top_rows") or []
+    else:
+        active_addresses = [row.get("wallet") for row in strict_selected]
+        active_top_rows = strict_selected
+
     payload = {
+        **existing,
         "status": report.get("status"),
         "source": METHOD,
         "updated_at_ms": report.get("generated_at_ms"),
         "candidate_wallets_scored": report.get("deeply_scored_wallets"),
+        "deeply_scored_wallets": report.get("deeply_scored_wallets"),
+        "strict_qualified_wallets": report.get("qualified_wallets"),
+        "indexed_wallets": report.get("indexed_wallets"),
         "wallets_discovered_from_recent_trades": report.get("indexed_wallets"),
-        "selected_wallet_count": len(selected),
-        "selected_wallets": [row.get("wallet") for row in selected],
-        "top_rows": selected,
-        "all_rows": [],
+        "selected_wallet_count": len(active_addresses),
+        "selected_wallets": active_addresses,
+        "top_rows": active_top_rows,
         "method_note": (
             "Strict Copycat consistency ranking: 100+ fills, 30+ days, "
             "15+ active days, at least 4 profitable weeks, 65% profitable-week ratio, "
-            "52% win rate, positive net profit after fees and funding, "
-            "and no single winning fill above 35% of gross profit."
+            "positive net profit after fees and funding. Fill win rate and single-win "
+            "concentration affect the score but do not automatically reject a wallet."
         ),
     }
     atomic_text(path, json.dumps(payload, indent=2, ensure_ascii=False) + "\n")

@@ -201,17 +201,17 @@ function WalletExplorerLink({ wallet, label }: { wallet?: string; label?: string
 }
 
 function walletUniverseCaption(summary: any) {
-  const scanned = Number(summary?.scanner_candidate_wallets_scored || summary?.indexed_wallets || 0)
-  const discovered = Number(summary?.wallets_discovered_from_recent_trades || 0)
-  if (scanned > 0 && discovered > 0) return `${scanned.toLocaleString()} scanned · ${discovered.toLocaleString()} recent-trade discoveries`
-  if (scanned > 0) return `${scanned.toLocaleString()} wallets scanned locally`
+  const indexed = Number(summary?.indexed_wallets || summary?.known_wallet_candidates || summary?.registry_wallets || 0)
+  const analysed = Number(summary?.latest_scanner_candidate_wallets_scored || 0)
+  if (indexed > 0 && analysed > 0) return `${indexed.toLocaleString()} indexed Â· ${analysed.toLocaleString()} fully analysed`
+  if (indexed > 0) return `${indexed.toLocaleString()} wallets indexed locally`
   if (summary?.live_coverage_mode === 'local_snapshot') return 'local scanner universe'
   return 'ranked daily'
 }
 function footerUniverseCaption(summary: any) {
   const live = Number(summary?.live_wallets || summary?.tracked_active_wallets || 0)
-  const scanned = Number(summary?.scanner_candidate_wallets_scored || 0)
-  if (live && scanned) return ` · ${live} live wallets · ${scanned} scanned`
+  const indexed = Number(summary?.indexed_wallets || summary?.known_wallet_candidates || summary?.registry_wallets || 0)
+  if (live && indexed) return ` Â· ${live} live wallets Â· ${indexed} indexed`
   if (live) return ` · ${live} live wallets`
   return ''
 }
@@ -906,7 +906,7 @@ export default function Dashboard() {
   const isLong = longValue >= shortValue
   const dataHealthy = summary.data_quality_status === 'healthy'
   const claimReady = Boolean(summary.top_claim_ready)
-  const indexedWallets = Number(summary.scanner_candidate_wallets_scored || summary.indexed_wallets || summary.known_wallet_candidates || summary.registry_wallets || summary.owned_wallets_indexed || 0)
+  const indexedWallets = Number(summary.indexed_wallets || summary.known_wallet_candidates || summary.registry_wallets || summary.owned_wallets_indexed || summary.scanner_candidate_wallets_scored || 0)
   const suppliedRankingScope = String(summary.claim_label || summary.ranking_scope_label || '').trim()
   const rankingScope = indexedWallets > 0
     ? `Top ${summary.qualified_wallets || 0} Copycat-ranked wallets from ${indexedWallets.toLocaleString()} locally indexed Hyperliquid candidates`
@@ -997,7 +997,7 @@ export default function Dashboard() {
       <article><small>Copycat-ranked wallets</small><RollingInteger value={summary.qualified_wallets || 0} /><span>{walletUniverseCaption(summary)}</span></article>
       <article className="cc-tracked-value-card"><small>Tracked account value</small><RollingMoney value={summary.tracked_account_value_usd} /><span>{summary.live_state_active ? 'live wallet state' : 'latest snapshots'}</span>{summary.largest_account_value_usd ? <em>Largest account: {money(summary.largest_account_value_usd)}</em> : null}</article>
       <article className="cc-open-position-card"><small>Open position value</small><RollingMoney value={summary.tracked_open_position_value_usd} /><span>{summary.open_positions || 0} live positions</span>{grossLeverageValue ? <em>{leverageText(grossLeverageValue)}</em> : null}</article>
-      <article><small>Assets with signals</small><RollingInteger value={signals.length || summary.assets_with_signals || 0} /><span>{summary.markets_monitored ? `${summary.markets_monitored} markets monitored` : 'cross-asset breadth'}</span></article>
+      <article><small>Assets with signals</small><RollingInteger value={signals.length || summary.assets_with_signals || 0} /><span>{summary.markets_monitored ? `${summary.markets_monitored} price markets available` : 'cross-asset breadth'}</span></article>
     </section>
 
 
@@ -1033,6 +1033,6 @@ export default function Dashboard() {
     </section>
 
 
-    <footer className="cc-warning-banner"><span className="cc-shield" aria-hidden><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5.2c0 4.5-2.7 8.4-7 9.8-4.3-1.4-7-5.3-7-9.8V6l7-3z"/><path d="M9.2 12.1l1.7 1.7 3.9-4.1"/></svg></span><div className="cc-footer-main"><strong>Market intelligence only.</strong><em>Not financial advice. {rankingScope}. {claimReady ? 'Broad-index threshold met.' : 'Not claiming all-Hyperliquid top 50 yet.'}</em><small>Live coverage: {liveCoverageText} · {summary.snapshot_wallets || 0} fallback · Sync: <b className={`cc-audit-${auditStatus}`}>{auditStatus}</b> · {audit?.message || 'Checking dashboard consistency'}</small></div><div className={`cc-footer-meta ${dataHealthy ? 'healthy' : 'checking'}`}><span className="cc-footer-quality"><span className="cc-pulse-dot" /><b>{dataHealthy ? 'Data quality healthy' : 'Data quality checking'}</b></span><small>Signal refresh: {fmtTime(summary.latest_signal_ts_ms)} UTC · {summary.live_state_active ? `Live state: ${fmtTime(summary.latest_live_state_ts_ms)} UTC` : 'Snapshot mode'} · Snapshot/cache refresh</small></div><nav className="cc-legal-links" aria-label="Legal links" style={{ flexBasis: '100%', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 6, margin: '4px 0 0 41px', padding: 0, fontSize: 11, lineHeight: 1.25, color: 'rgba(247,251,255,.62)' }}><span style={{ color: 'rgba(247,251,255,.42)' }}>Legal:</span><a href="/terms" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>Terms</a><span aria-hidden="true" style={{ color: 'rgba(247,251,255,.42)' }}>·</span><a href="/privacy" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>Privacy</a><span aria-hidden="true" style={{ color: 'rgba(247,251,255,.42)' }}>·</span><a href="/risk-disclaimer" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>Risk disclaimer</a><span aria-hidden="true" style={{ color: 'rgba(247,251,255,.42)' }}>·</span><a href="/external-links" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>External links</a></nav></footer>
+    <footer className="cc-warning-banner"><span className="cc-shield" aria-hidden><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5.2c0 4.5-2.7 8.4-7 9.8-4.3-1.4-7-5.3-7-9.8V6l7-3z"/><path d="M9.2 12.1l1.7 1.7 3.9-4.1"/></svg></span><div className="cc-footer-main"><strong>Market intelligence only.</strong><em>Not financial advice. {rankingScope}. {claimReady ? 'Broad-index threshold met.' : 'Not claiming all-Hyperliquid top 50 yet.'}</em><small>Live coverage: {liveCoverageText} Â· {summary.snapshot_wallets || 0} fallback Â· Sync: <b className={`cc-audit-${auditStatus}`}>{auditStatus}</b> Â· {audit?.message || 'Checking dashboard consistency'}</small></div><div className={`cc-footer-meta ${dataHealthy ? 'healthy' : 'checking'}`}><span className="cc-footer-quality"><span className="cc-pulse-dot" /><b>{dataHealthy ? (claimReady ? 'Live data and ranking verified' : 'Live feed healthy Â· ranking verification in progress') : 'Data quality checking'}</b></span><small>Signal refresh: {fmtTime(summary.latest_signal_ts_ms)} UTC Â· {summary.live_state_active ? `Live state: ${fmtTime(summary.latest_live_state_ts_ms)} UTC` : 'Snapshot mode'} Â· Snapshot/cache refresh</small></div><nav className="cc-legal-links" aria-label="Legal links" style={{ flexBasis: '100%', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 6, margin: '4px 0 0 41px', padding: 0, fontSize: 11, lineHeight: 1.25, color: 'rgba(247,251,255,.62)' }}><span style={{ color: 'rgba(247,251,255,.42)' }}>Legal:</span><a href="/terms" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>Terms</a><span aria-hidden="true" style={{ color: 'rgba(247,251,255,.42)' }}>Â·</span><a href="/privacy" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>Privacy</a><span aria-hidden="true" style={{ color: 'rgba(247,251,255,.42)' }}>Â·</span><a href="/risk-disclaimer" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>Risk disclaimer</a><span aria-hidden="true" style={{ color: 'rgba(247,251,255,.42)' }}>Â·</span><a href="/external-links" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>External links</a></nav></footer>
   </main></>
 }

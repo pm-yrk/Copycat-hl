@@ -568,7 +568,7 @@ def main() -> int:
         default=r"C:\CopycatSnapshotPublisher\local_snapshot_publisher",
     )
     parser.add_argument("--once", action="store_true")
-    parser.add_argument("--interval-seconds", type=int, default=180)
+    parser.add_argument("--interval-seconds", type=int, default=60)
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
 
@@ -598,7 +598,7 @@ def main() -> int:
                     time.sleep(600)
             if args.once:
                 return 0
-            time.sleep(max(120, args.interval_seconds))
+            time.sleep(max(45, args.interval_seconds))
     finally:
         con.close()
 

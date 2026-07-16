@@ -47,4 +47,4 @@ Start-WorkerIfMissing `
     -Needle "copycat_profit_history_worker_v1.py" `
     -ScriptPath $profit `
     -LogName "copycat-profit-history" `
-    -ExtraArgs @("--interval-seconds", "180")
+    -ExtraArgs @("--interval-seconds", "60")
