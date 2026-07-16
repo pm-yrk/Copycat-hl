@@ -29,8 +29,19 @@ function freshness(ts: any) {
   if (mins < 60) return `Updated ${mins}m ago`
   return `Updated ${Math.round(mins / 60)}h ago`
 }
+function walletAddress(r: any) {
+  return String(r?.wallet || r?.address || r?.user || r?.account || r?.owner || r?.wallet_address || '').trim()
+}
 function rowWallet(r: any) {
-  return r?.wallet_label || r?.short_wallet || r?.label || (r?.wallet ? `${String(r.wallet).slice(0, 6)}…${String(r.wallet).slice(-4)}` : 'Wallet')
+  const wallet = walletAddress(r)
+  if (/^0x[a-fA-F0-9]{40}$/.test(wallet)) return `${wallet.slice(0, 8)}...${wallet.slice(-6)}`
+  return 'Wallet'
+}
+function WalletLink({ row }: { row: any }) {
+  const wallet = walletAddress(row)
+  const label = rowWallet(row)
+  if (!/^0x[a-fA-F0-9]{40}$/.test(wallet)) return <span>{label}</span>
+  return <a className="cc-api-wallet-link" href={`https://hypurrscan.io/address/${wallet}`} target="_blank" rel="noreferrer noopener" title={`Open ${wallet} on Hypurrscan`}>{label}</a>
 }
 function signed(value: any) {
   const n = Number(value || 0)
@@ -172,7 +183,7 @@ export default function ApiAccessPage() {
       try {
         const [s, l, t, c, feed] = await Promise.all([
           apiGet('/api/data/v1/status').catch(() => ({})),
-          apiGet('/api/data/v1/public/leaderboard-preview?limit=30').catch(() => ({})),
+          apiGet('/api/data/v1/public/leaderboard-preview?limit=50').catch(() => ({})),
           apiGet('/api/data/v1/public/token-screener-preview?limit=30').catch(() => ({})),
           apiGet('/api/data/v1/public/coverage-preview').catch(() => ({})),
           apiGet('/api/dashboard-feed').catch(() => ({})),
@@ -228,7 +239,7 @@ export default function ApiAccessPage() {
   const endpoints = [
     ['Dashboard feed', `${baseUrl}/dashboard-feed.json`, 'Dashboard-ready aggregate snapshot.'],
     ['Performance index', `${baseUrl}/performance-index.json`, 'Live model index and benchmarks.'],
-    ['Ranked wallets', `${baseUrl}/api/leaderboard-preview.json`, 'Selected wallet preview.'],
+    ['Ranked wallets', `${baseUrl}/api/leaderboard-preview.json`, 'Current live wallet cohort.'],
     ['Token screener', `${baseUrl}/api/token-screener-preview.json`, 'Market-level positioning snapshot.'],
     ['Coverage status', `${baseUrl}/api/coverage-preview.json`, 'Freshness and coverage checks.'],
     ['Ranking audit', `${baseUrl}/api/ranking-audit.json`, 'Quality checks for the public snapshot.'],
@@ -268,9 +279,8 @@ export default function ApiAccessPage() {
 
     <section className="cc-api-nansen-grid">
       <article className="cc-card cc-api-data-card cc-api-leaderboard-card">
-        <header><div><p className="eyebrow live">Ranked wallet leaderboard</p><h2>Ranked wallet selection</h2></div><span>scanner-ranked</span></header>
-        <div className="cc-api-tab-row"><b>7D</b><span>30D</span><span>90D</span><span>180D</span></div>
-        <div className="cc-api-table-wrap"><table><thead><tr><th>#</th><th>Wallet</th><th>Account value</th><th>Open exposure</th><th>Positions</th></tr></thead><tbody>{leaderboard.slice(0, 24).map((r:any, i:number) => <tr key={r.wallet || i}><td>{r.rank || i + 1}</td><td>{rowWallet(r)}</td><td>{money(r.account_value_usd)}</td><td><span className="cc-mini-bar"><i style={{width: `${Math.max(8, Math.min(100, Number(r.open_position_value_usd || 0) / Math.max(1, Number(leaderboard[0]?.open_position_value_usd || 1)) * 100))}%`}} />{money(r.open_position_value_usd)}</span></td><td>{compact(r.open_positions)}</td></tr>)}</tbody></table></div>
+        <header><div><p className="eyebrow live">Live wallet cohort</p><h2>Live wallet selection</h2></div><span>live</span></header>
+        <div className="cc-api-table-wrap"><table><thead><tr><th>#</th><th>Wallet</th><th>Account value</th><th>Open exposure</th><th>Positions</th></tr></thead><tbody>{leaderboard.slice(0, 50).map((r:any, i:number) => <tr key={r.wallet || i}><td>{r.rank || i + 1}</td><td><WalletLink row={r} /></td><td>{money(r.account_value_usd)}</td><td><span className="cc-mini-bar"><i style={{width: `${Math.max(8, Math.min(100, Number(r.open_position_value_usd || 0) / Math.max(1, Number(leaderboard[0]?.open_position_value_usd || 1)) * 100))}%`}} />{money(r.open_position_value_usd)}</span></td><td>{compact(r.open_positions)}</td></tr>)}</tbody></table></div>
       </article>
 
       <article className="cc-card cc-api-data-card cc-api-market-card">
@@ -282,7 +292,7 @@ export default function ApiAccessPage() {
 
     <section id="recent-activity" className="cc-card cc-api-data-card cc-api-activity-card">
       <header><div><p className="eyebrow live">Live tracked-wallet tape</p><h2>Recent tracked-wallet activity</h2></div><span>{freshness(updatedAt)}</span></header>
-      <div className="cc-api-table-wrap"><table><thead><tr><th>Wallet</th><th>Action</th><th>Asset</th><th>Value</th><th>Time</th></tr></thead><tbody>{orders.slice(0, 24).map((r:any, i:number) => <tr key={`${r.wallet || 'wallet'}-${r.ts_ms || i}`}><td>{rowWallet(r)}</td><td className={actionClass(r.side || r.action)}>{r.side || r.action || 'Order'}</td><td><AssetCell coin={r.coin || r.asset} icons={icons} details={assetDetails} row={r} /></td><td>{money(r.delta_value_usd || r.position_value_usd || r.value_usd || r.notional_usd)}</td><td>{freshness(r.ts_ms)}</td></tr>)}</tbody></table></div>
+      <div className="cc-api-table-wrap"><table><thead><tr><th>Wallet</th><th>Action</th><th>Asset</th><th>Value</th><th>Time</th></tr></thead><tbody>{orders.slice(0, 24).map((r:any, i:number) => <tr key={`${r.wallet || 'wallet'}-${r.ts_ms || i}`}><td><WalletLink row={r} /></td><td className={actionClass(r.side || r.action)}>{r.side || r.action || 'Order'}</td><td><AssetCell coin={r.coin || r.asset} icons={icons} details={assetDetails} row={r} /></td><td>{money(r.delta_value_usd || r.position_value_usd || r.value_usd || r.notional_usd)}</td><td>{freshness(r.ts_ms)}</td></tr>)}</tbody></table></div>
     </section>
 
     <section id="snapshot-endpoints" className="cc-card cc-api-endpoints-pro">
