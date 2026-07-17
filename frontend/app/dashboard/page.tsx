@@ -97,11 +97,15 @@ function displaySignalDirection(row: any) {
   if (value < 0) return 'Short'
   return 'Neutral'
 }
+
 function signalConvictionParts(row: any) {
   const strength = Math.abs(displaySignalValue(row))
   const net = Math.abs(Number(row?.net_value_usd || 0))
   const gross = Number(row?.value_long_usd || 0) + Number(row?.value_short_usd || 0)
-  return { strength, net, gross }
+  const wallets = Number(row?.wallets_long || 0) + Number(row?.wallets_short || 0)
+  const confidenceRank: Record<string, number> = { high: 3, medium: 2, med: 2, low: 1, reserve: 0 }
+  const confidence = confidenceRank[String(row?.confidence || '').toLowerCase()] ?? 0
+  return { confidence, strength, wallets, net, gross }
 }
 
 function signalDirectionClass(row: any) {
@@ -428,6 +432,37 @@ function sortArrow(current: SortState, key: string) {
   if (current.key !== key) return '↕'
   return current.dir === 'desc' ? '↓' : '↑'
 }
+function alignPressureWithSignals(signalRows: any[], flowRows: any[]) {
+  const exactFlow = new Map<string, any>()
+  const canonicalFlow = new Map<string, any>()
+  for (const row of flowRows || []) {
+    const coin = String(row?.coin || '').trim()
+    if (!coin) continue
+    exactFlow.set(coin.toUpperCase(), row)
+    canonicalFlow.set(canonicalToken(coin), row)
+  }
+  return (signalRows || [])
+    .filter((row: any) => {
+      const coin = String(row?.coin || '').trim()
+      const longValue = Math.abs(Number(row?.value_long_usd || 0))
+      const shortValue = Math.abs(Number(row?.value_short_usd || 0))
+      return Boolean(coin) && longValue + shortValue > 0
+    })
+    .map((row: any) => {
+      const coin = String(row?.coin || '').trim()
+      const recent = exactFlow.get(coin.toUpperCase()) || canonicalFlow.get(canonicalToken(coin)) || {}
+      const bullish = Number(recent?.bullish_flow_usd || recent?.bullish_value_flow_usd || 0)
+      const bearish = Number(recent?.bearish_flow_usd || recent?.bearish_value_flow_usd || 0)
+      return {
+        ...row,
+        bullish_flow_usd: bullish,
+        bearish_flow_usd: bearish,
+        net_value_flow_usd: Number(recent?.net_value_flow_usd ?? (bullish - bearish)),
+        net_buyer_count: Number(recent?.net_buyer_count || 0),
+      }
+    })
+}
+
 function sorterValue(row: any, key: string) {
   if (key === 'wallets') return Number(row.wallets_long || 0) + Number(row.wallets_short || 0)
   if (key === 'value_ls') return Number(row.value_long_usd || 0) + Number(row.value_short_usd || 0)
@@ -456,8 +491,12 @@ function sortedRows(rows: any[], sort: SortState) {
     if (sort.key === 'conviction') {
       const av = signalConvictionParts(a)
       const bv = signalConvictionParts(b)
+      const byConfidence = av.confidence - bv.confidence
+      if (byConfidence !== 0) return byConfidence * dir
       const byStrength = av.strength - bv.strength
       if (Math.abs(byStrength) > 0.000001) return byStrength * dir
+      const byWallets = av.wallets - bv.wallets
+      if (byWallets !== 0) return byWallets * dir
       const byNet = av.net - bv.net
       if (Math.abs(byNet) > 0.01) return byNet * dir
       return (av.gross - bv.gross) * dir
@@ -958,7 +997,8 @@ export default function Dashboard() {
   }, [orderSignature])
   const visibleOrders = showAllOrders ? stagedOrders : stagedOrders.slice(0, 3)
   const sortedSignals = sortedRows(signals, signalSort)
-  const sortedFlow = sortedRows(flow, flowSortState)
+  const alignedFlow = useMemo(() => alignPressureWithSignals(signals, flow), [signals, flow])
+  const sortedFlow = sortedRows(alignedFlow, flowSortState)
   const topCurrentExposure = useMemo(() => largestCurrentExposure(signals), [signals])
   const flowContextText = `${flowWindowText(summary)}  |  ${flowIntensityText(flow, summary.tracked_open_position_value_usd)}`
 
@@ -1025,8 +1065,8 @@ export default function Dashboard() {
         <div className="cc-panel-title"><h3>Recent buyer / seller pressure</h3><span>{flowContextText}</span></div>
         <div className="cc-scroll-table cc-scroll-y">
           <table className="cc-flow-table">
-            <thead><tr><th className="cc-mobile-asset-logo-head" aria-label="Asset logo" /><SortTh label="Asset" sortKey="asset" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Net buyers" sortKey="net_buyers" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Bullish flow" sortKey="bullish" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Bearish flow" sortKey="bearish" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Net value flow" sortKey="net_value_flow_usd" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Read" sortKey="pressure" sort={flowSortState} setSort={setFlowSortState} /></tr></thead>
-            <tbody>{sortedFlow.map((r, i) => { const read = flowRead(r.net_value_flow_usd); return <tr key={`${r.coin}-${i}`}><td className="cc-mobile-asset-logo-cell" aria-hidden="true"><TokenLogo coin={r.coin} icons={icons} /></td><td><span className="cc-asset-cell"><TokenLogo coin={r.coin} icons={icons} /><AssetName coin={r.coin} details={mergedAssetDetails} row={r} /></span></td><td className={cls(r.net_buyer_count)}>{r.net_buyer_count}</td><td>{money(r.bullish_flow_usd)}</td><td>{money(r.bearish_flow_usd)}</td><td className={cls(r.net_value_flow_usd)}>{money(r.net_value_flow_usd)}</td><td><span className={`cc-read ${read.toLowerCase()}`}>{read}</span></td></tr> })}</tbody>
+            <thead><tr><th className="cc-mobile-asset-logo-head" aria-label="Asset logo" /><SortTh label="Asset" sortKey="asset" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Long exposure" sortKey="value_long_usd" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Short exposure" sortKey="value_short_usd" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Buy flow" sortKey="bullish" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Sell flow" sortKey="bearish" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Net flow" sortKey="net_value_flow_usd" sort={flowSortState} setSort={setFlowSortState} /></tr></thead>
+            <tbody>{sortedFlow.map((r, i) => <tr key={`${r.coin}-${i}`}><td className="cc-mobile-asset-logo-cell" aria-hidden="true"><TokenLogo coin={r.coin} icons={icons} /></td><td><span className="cc-asset-cell"><TokenLogo coin={r.coin} icons={icons} /><AssetName coin={r.coin} details={mergedAssetDetails} row={r} /></span></td><td className="positive">{money(r.value_long_usd)}</td><td className="negative">{money(r.value_short_usd)}</td><td>{money(r.bullish_flow_usd)}</td><td>{money(r.bearish_flow_usd)}</td><td className={cls(r.net_value_flow_usd)}>{money(r.net_value_flow_usd)}</td></tr>)}</tbody>
           </table>
         </div>
       </div>
