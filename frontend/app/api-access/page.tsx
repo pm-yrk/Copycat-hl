@@ -43,6 +43,20 @@ function WalletLink({ row }: { row: any }) {
   if (!/^0x[a-fA-F0-9]{40}$/.test(wallet)) return <span>{label}</span>
   return <a className="cc-api-wallet-link" href={`https://hypurrscan.io/address/${wallet}`} target="_blank" rel="noreferrer noopener" title={`Open ${wallet} on Hypurrscan`}>{label}</a>
 }
+function walletTotalValue(r: any) {
+  const raw = r?.total_wallet_value_usd
+  if (raw === null || raw === undefined || raw === '') return 'Unavailable'
+  const rendered = money(raw)
+  const status = String(r?.total_value_status || '').toLowerCase()
+  return ['partial', 'estimated', 'stale'].includes(status) ? `~${rendered}` : rendered
+}
+function walletTotalValueTitle(r: any) {
+  const status = String(r?.total_value_status || 'unknown')
+  const mode = String(r?.account_mode || 'unknown')
+  const updated = r?.total_value_updated_at_ms ? freshness(r.total_value_updated_at_ms) : 'Update time unavailable'
+  const unpriced = Array.isArray(r?.unpriced_spot_tokens) && r.unpriced_spot_tokens.length ? `; unpriced: ${r.unpriced_spot_tokens.join(', ')}` : ''
+  return `Total wallet value; status ${status}; mode ${mode}; ${updated}${unpriced}`
+}
 function signed(value: any) {
   const n = Number(value || 0)
   if (!Number.isFinite(n)) return '$0'
@@ -239,7 +253,7 @@ export default function ApiAccessPage() {
   const endpoints = [
     ['Dashboard feed', `${baseUrl}/dashboard-feed.json`, 'Dashboard-ready aggregate snapshot.'],
     ['Performance index', `${baseUrl}/performance-index.json`, 'Live model index and benchmarks.'],
-    ['Ranked wallets', `${baseUrl}/api/leaderboard-preview.json`, 'Current live wallet cohort.'],
+    ['Ranked wallets', `${baseUrl}/api/leaderboard-preview.json`, 'Live cohort with total wallet value, perp equity and exposure.'],
     ['Token screener', `${baseUrl}/api/token-screener-preview.json`, 'Market-level positioning snapshot.'],
     ['Coverage status', `${baseUrl}/api/coverage-preview.json`, 'Freshness and coverage checks.'],
     ['Ranking audit', `${baseUrl}/api/ranking-audit.json`, 'Quality checks for the public snapshot.'],
@@ -280,7 +294,7 @@ export default function ApiAccessPage() {
     <section className="cc-api-nansen-grid">
       <article className="cc-card cc-api-data-card cc-api-leaderboard-card">
         <header><div><p className="eyebrow live">Live wallet cohort</p><h2>Live wallet selection</h2></div><span>live</span></header>
-        <div className="cc-api-table-wrap"><table><thead><tr><th>#</th><th>Wallet</th><th>Account value</th><th>Open exposure</th><th>Positions</th></tr></thead><tbody>{leaderboard.slice(0, 50).map((r:any, i:number) => <tr key={r.wallet || i}><td>{r.rank || i + 1}</td><td><WalletLink row={r} /></td><td>{money(r.account_value_usd)}</td><td><span className="cc-mini-bar"><i style={{width: `${Math.max(8, Math.min(100, Number(r.open_position_value_usd || 0) / Math.max(1, Number(leaderboard[0]?.open_position_value_usd || 1)) * 100))}%`}} />{money(r.open_position_value_usd)}</span></td><td>{compact(r.open_positions)}</td></tr>)}</tbody></table></div>
+        <div className="cc-api-table-wrap"><table><thead><tr><th>#</th><th>Wallet</th><th>Total wallet value</th><th>Perp equity</th><th>Open exposure</th><th>Positions</th></tr></thead><tbody>{leaderboard.slice(0, 50).map((r:any, i:number) => <tr key={r.wallet || i}><td>{r.rank || i + 1}</td><td><WalletLink row={r} /></td><td title={walletTotalValueTitle(r)}>{walletTotalValue(r)}</td><td>{money(r.perp_account_value_usd ?? r.account_value_usd)}</td><td><span className="cc-mini-bar"><i style={{width: `${Math.max(8, Math.min(100, Number(r.open_position_value_usd || 0) / Math.max(1, Number(leaderboard[0]?.open_position_value_usd || 1)) * 100))}%`}} />{money(r.open_position_value_usd)}</span></td><td>{compact(r.open_positions)}</td></tr>)}</tbody></table></div>
       </article>
 
       <article className="cc-card cc-api-data-card cc-api-market-card">

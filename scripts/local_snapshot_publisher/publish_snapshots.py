@@ -217,7 +217,7 @@ def load_wallets(path: Path, max_wallets: int) -> List[str]:
 
 
 def short_wallet(wallet: str) -> str:
-    return f"{wallet[:6]}â€¦{wallet[-4:]}" if len(wallet) >= 12 else wallet
+    return f"{wallet[:8]}...{wallet[-6:]}" if len(wallet) >= 16 else wallet
 
 
 def safe_float(value: Any, default: float = 0.0) -> float:
@@ -273,6 +273,352 @@ def get_meta(timeout: int) -> Dict[str, Any]:
     except Exception as exc:
         log(f"Warning: could not fetch meta: {exc}")
     return {}
+
+
+# COPYCAT_TOTAL_WALLET_VALUE_V1_START
+TOTAL_VALUE_CACHE_FILE = SCRIPT_DIR / "scanner_state" / "wallet_total_value_cache.json"
+
+
+def load_total_value_cache() -> Dict[str, Any]:
+    try:
+        if TOTAL_VALUE_CACHE_FILE.exists():
+            raw = json.loads(TOTAL_VALUE_CACHE_FILE.read_text(encoding="utf-8"))
+            if isinstance(raw, dict):
+                raw.setdefault("wallets", {})
+                return raw
+    except Exception as exc:
+        log(f"Warning: could not read total-value cache: {exc}")
+    return {"version": 1, "wallets": {}}
+
+
+def save_total_value_cache(cache: Dict[str, Any]) -> None:
+    try:
+        TOTAL_VALUE_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        TOTAL_VALUE_CACHE_FILE.write_text(
+            json.dumps(cache, separators=(",", ":"), ensure_ascii=False),
+            encoding="utf-8",
+        )
+    except Exception as exc:
+        log(f"Warning: could not save total-value cache: {exc}")
+
+
+def get_spot_market_data(
+    cache: Dict[str, Any],
+    now_ms: int,
+    timeout: int,
+    refresh_seconds: int,
+) -> Tuple[Optional[Any], str, int]:
+    cached = cache.get("spot_market") if isinstance(cache.get("spot_market"), dict) else {}
+    cached_at = safe_int(cached.get("updated_at_ms"))
+    cached_data = cached.get("data")
+    age_seconds = max(0, int((now_ms - cached_at) / 1000)) if cached_at else 0
+
+    if isinstance(cached_data, list) and cached_at and age_seconds <= refresh_seconds:
+        return cached_data, "cached", age_seconds
+
+    try:
+        raw = hl_post({"type": "spotMetaAndAssetCtxs"}, timeout)
+        if isinstance(raw, list) and len(raw) >= 2:
+            cache["spot_market"] = {"updated_at_ms": now_ms, "data": raw}
+            return raw, "live", 0
+    except Exception as exc:
+        log(f"Spot market metadata warning: {exc}")
+
+    if isinstance(cached_data, list):
+        return cached_data, "stale", age_seconds
+    return None, "missing", 0
+
+
+def get_spot_state(wallet: str, timeout: int, retries: int = 2) -> Optional[Dict[str, Any]]:
+    for attempt in range(retries + 1):
+        try:
+            raw = hl_post({"type": "spotClearinghouseState", "user": wallet}, timeout)
+            return raw if isinstance(raw, dict) else None
+        except urllib.error.HTTPError as exc:
+            if exc.code == 429 and attempt < retries:
+                wait = 1.5 * (attempt + 1)
+                log(f"Wallet {short_wallet(wallet)} spot HTTP 429; retrying in {wait:.1f}s")
+                time.sleep(wait)
+                continue
+            log(f"Wallet {short_wallet(wallet)} spot HTTP error: {exc.code}")
+        except Exception as exc:
+            log(f"Wallet {short_wallet(wallet)} spot warning: {exc}")
+            break
+    return None
+
+
+def get_user_abstraction(wallet: str, timeout: int, retries: int = 1) -> Any:
+    for attempt in range(retries + 1):
+        try:
+            return hl_post({"type": "userAbstraction", "user": wallet}, timeout)
+        except urllib.error.HTTPError as exc:
+            if exc.code == 429 and attempt < retries:
+                wait = 1.5 * (attempt + 1)
+                log(f"Wallet {short_wallet(wallet)} account mode HTTP 429; retrying in {wait:.1f}s")
+                time.sleep(wait)
+                continue
+            log(f"Wallet {short_wallet(wallet)} account mode HTTP error: {exc.code}")
+        except Exception as exc:
+            log(f"Wallet {short_wallet(wallet)} account mode warning: {exc}")
+            break
+    return None
+
+
+def cached_total_value_inputs(
+    cache: Dict[str, Any],
+    wallet: str,
+    now_ms: int,
+    timeout: int,
+    spot_refresh_seconds: int,
+    mode_refresh_seconds: int,
+) -> Dict[str, Any]:
+    wallets_cache = cache.setdefault("wallets", {})
+    if not isinstance(wallets_cache, dict):
+        wallets_cache = {}
+        cache["wallets"] = wallets_cache
+
+    item = wallets_cache.setdefault(wallet.lower(), {})
+    if not isinstance(item, dict):
+        item = {}
+        wallets_cache[wallet.lower()] = item
+
+    spot_state = item.get("spot_state") if isinstance(item.get("spot_state"), dict) else None
+    spot_updated_at_ms = safe_int(item.get("spot_updated_at_ms"))
+    spot_age_seconds = (
+        max(0, int((now_ms - spot_updated_at_ms) / 1000))
+        if spot_updated_at_ms
+        else 0
+    )
+    spot_status = "cached"
+
+    wallet_jitter = int(wallet[-2:], 16) if len(wallet) >= 2 else 0
+    effective_spot_refresh = spot_refresh_seconds + (wallet_jitter % max(1, spot_refresh_seconds))
+    if spot_state is None or spot_age_seconds > effective_spot_refresh:
+        live_spot = get_spot_state(wallet, timeout)
+        if live_spot is not None:
+            spot_state = live_spot
+            spot_updated_at_ms = now_ms
+            spot_age_seconds = 0
+            spot_status = "live"
+            item["spot_state"] = live_spot
+            item["spot_updated_at_ms"] = now_ms
+        elif spot_state is not None:
+            spot_status = "stale"
+        else:
+            spot_status = "missing"
+    elif spot_age_seconds > 0:
+        spot_status = "cached"
+
+    mode_raw = item.get("account_mode_raw")
+    mode_updated_at_ms = safe_int(item.get("mode_updated_at_ms"))
+    mode_age_seconds = (
+        max(0, int((now_ms - mode_updated_at_ms) / 1000))
+        if mode_updated_at_ms
+        else 0
+    )
+    mode_status = "cached"
+
+    effective_mode_refresh = mode_refresh_seconds + ((wallet_jitter * 97) % max(1, mode_refresh_seconds // 4))
+    if mode_raw is None or mode_age_seconds > effective_mode_refresh:
+        live_mode = get_user_abstraction(wallet, timeout)
+        if live_mode is not None:
+            mode_raw = live_mode
+            mode_updated_at_ms = now_ms
+            mode_age_seconds = 0
+            mode_status = "live"
+            item["account_mode_raw"] = live_mode
+            item["mode_updated_at_ms"] = now_ms
+        elif mode_raw is not None:
+            mode_status = "stale"
+        else:
+            mode_status = "missing"
+    elif mode_age_seconds > 0:
+        mode_status = "cached"
+
+    return {
+        "spot_state": spot_state,
+        "spot_status": spot_status,
+        "spot_updated_at_ms": spot_updated_at_ms,
+        "spot_age_seconds": spot_age_seconds,
+        "account_mode_raw": mode_raw,
+        "mode_status": mode_status,
+        "mode_updated_at_ms": mode_updated_at_ms,
+        "mode_age_seconds": mode_age_seconds,
+    }
+
+
+def normalise_account_mode(raw: Any) -> str:
+    try:
+        encoded = json.dumps(raw, separators=(",", ":"), sort_keys=True).lower()
+    except Exception:
+        encoded = str(raw or "").lower()
+
+    if "portfolio" in encoded:
+        return "portfolio_margin"
+    if "unified" in encoded:
+        return "unified"
+    if "dex" in encoded:
+        return "dex_abstraction"
+    if any(term in encoded for term in ["standard", "classic", "disabled"]):
+        return "standard"
+    if encoded in {"", "null", "false", "none", '"none"', '"disabled"'}:
+        return "standard"
+    return "unknown"
+
+
+def spot_token_prices(spot_market: Any) -> Tuple[Dict[int, float], Dict[int, str]]:
+    if not isinstance(spot_market, list) or len(spot_market) < 2:
+        return {0: 1.0}, {0: "USDC"}
+
+    meta = spot_market[0] if isinstance(spot_market[0], dict) else {}
+    contexts = spot_market[1] if isinstance(spot_market[1], list) else []
+    tokens = meta.get("tokens") if isinstance(meta.get("tokens"), list) else []
+    universe = meta.get("universe") if isinstance(meta.get("universe"), list) else []
+
+    names: Dict[int, str] = {}
+    for token in tokens:
+        if not isinstance(token, dict):
+            continue
+        token_index = safe_int(token.get("index"), -1)
+        if token_index >= 0:
+            names[token_index] = str(token.get("name") or f"token-{token_index}")
+
+    prices: Dict[int, float] = {0: 1.0}
+    pairs: List[Tuple[int, int, float]] = []
+
+    for index, pair in enumerate(universe):
+        if not isinstance(pair, dict):
+            continue
+        token_pair = pair.get("tokens")
+        if not isinstance(token_pair, list) or len(token_pair) < 2:
+            continue
+        base_token = safe_int(token_pair[0], -1)
+        quote_token = safe_int(token_pair[1], -1)
+        context = contexts[index] if index < len(contexts) and isinstance(contexts[index], dict) else {}
+        price = safe_float(context.get("midPx"), safe_float(context.get("markPx")))
+        if base_token >= 0 and quote_token >= 0 and price > 0:
+            pairs.append((base_token, quote_token, price))
+
+    for _ in range(max(4, len(pairs) + 1)):
+        changed = False
+        for base_token, quote_token, pair_price in pairs:
+            quote_price = prices.get(quote_token)
+            base_price = prices.get(base_token)
+            if quote_price is not None and quote_price > 0 and base_token not in prices:
+                prices[base_token] = pair_price * quote_price
+                changed = True
+            elif base_price is not None and base_price > 0 and quote_token not in prices:
+                prices[quote_token] = base_price / pair_price
+                changed = True
+        if not changed:
+            break
+
+    return prices, names
+
+
+def spot_wallet_value(
+    spot_state: Optional[Dict[str, Any]],
+    spot_market: Any,
+) -> Dict[str, Any]:
+    if not isinstance(spot_state, dict):
+        return {
+            "spot_wallet_value_usd": None,
+            "spot_value_complete": False,
+            "unpriced_spot_tokens": [],
+        }
+
+    prices, names = spot_token_prices(spot_market)
+    balances = spot_state.get("balances") if isinstance(spot_state.get("balances"), list) else []
+    total_value = 0.0
+    unpriced: List[str] = []
+
+    for balance in balances:
+        if not isinstance(balance, dict):
+            continue
+        token_index = safe_int(balance.get("token"), -1)
+        amount = safe_float(balance.get("total"))
+        if token_index < 0 or abs(amount) < 1e-15:
+            continue
+        price = prices.get(token_index)
+        if price is None or price <= 0:
+            unpriced.append(str(balance.get("coin") or names.get(token_index) or f"token-{token_index}"))
+            continue
+        total_value += amount * price
+
+    return {
+        "spot_wallet_value_usd": round(total_value, 2),
+        "spot_value_complete": not unpriced,
+        "unpriced_spot_tokens": sorted(set(unpriced)),
+    }
+
+
+def resolve_total_wallet_value(
+    perp_account_value: float,
+    inputs: Optional[Dict[str, Any]],
+    spot_market: Any,
+) -> Dict[str, Any]:
+    inputs = inputs if isinstance(inputs, dict) else {}
+    spot_state = inputs.get("spot_state") if isinstance(inputs.get("spot_state"), dict) else None
+    spot_result = spot_wallet_value(spot_state, spot_market)
+    spot_value = spot_result.get("spot_wallet_value_usd")
+    mode = normalise_account_mode(inputs.get("account_mode_raw"))
+    mode_inferred = False
+
+    if mode == "unknown" and isinstance(spot_state, dict):
+        available_after_maintenance = spot_state.get("tokenToAvailableAfterMaintenance")
+        if isinstance(available_after_maintenance, list) and available_after_maintenance:
+            mode = "unified_or_portfolio_inferred"
+        else:
+            mode = "standard_or_dex_inferred"
+        mode_inferred = True
+
+    if spot_value is None:
+        return {
+            "total_wallet_value_usd": None,
+            "spot_wallet_value_usd": None,
+            "perp_account_value_usd": round(perp_account_value, 2),
+            "account_mode": mode,
+            "total_value_status": "missing",
+            "total_value_complete": False,
+            "total_value_formula": "unavailable",
+            "total_value_updated_at_ms": safe_int(inputs.get("spot_updated_at_ms")) or None,
+            "unpriced_spot_tokens": spot_result.get("unpriced_spot_tokens") or [],
+        }
+
+    if mode in {"unified", "portfolio_margin", "unified_or_portfolio_inferred"}:
+        total_value = safe_float(spot_value)
+        formula = "spot_source_of_truth"
+    else:
+        total_value = safe_float(spot_value) + safe_float(perp_account_value)
+        formula = "spot_plus_perp"
+
+    complete = bool(spot_result.get("spot_value_complete")) and not mode_inferred
+    spot_status = str(inputs.get("spot_status") or "missing")
+    mode_status = str(inputs.get("mode_status") or "missing")
+
+    if not spot_result.get("spot_value_complete"):
+        value_status = "partial"
+    elif mode_inferred:
+        value_status = "estimated"
+    elif spot_status == "stale" or mode_status == "stale":
+        value_status = "stale"
+    else:
+        value_status = "complete"
+
+    return {
+        "total_wallet_value_usd": round(total_value, 2),
+        "spot_wallet_value_usd": round(safe_float(spot_value), 2),
+        "perp_account_value_usd": round(perp_account_value, 2),
+        "account_mode": mode,
+        "total_value_status": value_status,
+        "total_value_complete": complete,
+        "total_value_formula": formula,
+        "total_value_updated_at_ms": safe_int(inputs.get("spot_updated_at_ms")) or None,
+        "spot_cache_age_seconds": safe_int(inputs.get("spot_age_seconds")),
+        "account_mode_cache_age_seconds": safe_int(inputs.get("mode_age_seconds")),
+        "unpriced_spot_tokens": spot_result.get("unpriced_spot_tokens") or [],
+    }
+# COPYCAT_TOTAL_WALLET_VALUE_V1_END
 
 
 def get_state(wallet: str, timeout: int, retries: int = 2) -> Optional[Dict[str, Any]]:
@@ -1666,6 +2012,17 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
     orders: List[Dict[str, Any]] = []
     start_ms = now_ms - config.fill_lookback_minutes * 60 * 1000
     wallet_cache = load_wallet_state_cache()
+    total_value_cache = load_total_value_cache()
+    spot_market_refresh_seconds = max(60, env_int("SPOT_MARKET_REFRESH_SECONDS", 300))
+    spot_value_refresh_seconds = max(60, env_int("SPOT_VALUE_REFRESH_SECONDS", 300))
+    account_mode_refresh_seconds = max(3600, env_int("ACCOUNT_MODE_REFRESH_SECONDS", 24 * 60 * 60))
+    spot_market, spot_market_status, spot_market_age_seconds = get_spot_market_data(
+        total_value_cache,
+        now_ms,
+        config.request_timeout_seconds,
+        spot_market_refresh_seconds,
+    )
+    total_value_inputs: Dict[str, Dict[str, Any]] = {}
     live_state_count = 0
     stale_state_count = 0
     missing_state_wallets: List[str] = []
@@ -1691,7 +2048,17 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
             state["_wallet"] = wallet
             state["_copycat_state_status"] = state_status
             states.append(state)
-        time.sleep(max(0.05, config.request_pause_seconds / 2))
+
+        time.sleep(max(0.05, config.request_pause_seconds / 3))
+        total_value_inputs[wallet.lower()] = cached_total_value_inputs(
+            total_value_cache,
+            wallet,
+            now_ms,
+            config.request_timeout_seconds,
+            spot_value_refresh_seconds,
+            account_mode_refresh_seconds,
+        )
+        time.sleep(max(0.05, config.request_pause_seconds / 3))
         fills = get_fills(wallet, start_ms, config.request_timeout_seconds)
         for fill in fills:
             coin = clean_coin(fill.get("coin"))
@@ -1716,11 +2083,15 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
         if idx % 10 == 0:
             log(f"Fetched {idx}/{len(wallets)} wallet(s)")
     save_wallet_state_cache(wallet_cache)
+    save_total_value_cache(total_value_cache)
 
     by_coin: Dict[str, Dict[str, Any]] = {}
     wallet_rows: List[Dict[str, Any]] = []
     tracked_account_value = 0.0
     largest_account_value = 0.0
+    tracked_total_wallet_value = 0.0
+    largest_total_wallet_value = 0.0
+    complete_total_value_wallets = 0
     open_value_total = 0.0
     open_positions = 0
 
@@ -1770,11 +2141,32 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
             wallet_position_count += 1
             open_positions += 1
         state_status = str(state.get("_copycat_state_status") or "live")
+        total_value = resolve_total_wallet_value(
+            account_value,
+            total_value_inputs.get(str(wallet).lower()),
+            spot_market,
+        )
+        resolved_total = total_value.get("total_wallet_value_usd")
+        if resolved_total is not None:
+            tracked_total_wallet_value += safe_float(resolved_total)
+            largest_total_wallet_value = max(largest_total_wallet_value, safe_float(resolved_total))
+        if total_value.get("total_value_complete"):
+            complete_total_value_wallets += 1
+
         wallet_rows.append(
             {
                 "wallet": wallet,
                 "wallet_label": short_wallet(wallet),
                 "account_value_usd": round(account_value, 2),
+                "perp_account_value_usd": round(account_value, 2),
+                "total_wallet_value_usd": resolved_total,
+                "spot_wallet_value_usd": total_value.get("spot_wallet_value_usd"),
+                "account_mode": total_value.get("account_mode"),
+                "total_value_status": total_value.get("total_value_status"),
+                "total_value_complete": bool(total_value.get("total_value_complete")),
+                "total_value_formula": total_value.get("total_value_formula"),
+                "total_value_updated_at_ms": total_value.get("total_value_updated_at_ms"),
+                "unpriced_spot_tokens": total_value.get("unpriced_spot_tokens") or [],
                 "open_position_value_usd": round(wallet_open, 2),
                 "open_positions": wallet_position_count,
                 "data_status": state_status,
@@ -1787,11 +2179,32 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
     wallet_rows_by_address = {str(row.get("wallet", "")).lower(): row for row in wallet_rows}
     for wallet in wallets:
         if wallet.lower() not in wallet_rows_by_address:
+            total_value = resolve_total_wallet_value(
+                0.0,
+                total_value_inputs.get(wallet.lower()),
+                spot_market,
+            )
+            resolved_total = total_value.get("total_wallet_value_usd")
+            if resolved_total is not None:
+                tracked_total_wallet_value += safe_float(resolved_total)
+                largest_total_wallet_value = max(largest_total_wallet_value, safe_float(resolved_total))
+            if total_value.get("total_value_complete"):
+                complete_total_value_wallets += 1
+
             wallet_rows.append(
                 {
                     "wallet": wallet,
                     "wallet_label": short_wallet(wallet),
                     "account_value_usd": 0.0,
+                    "perp_account_value_usd": 0.0,
+                    "total_wallet_value_usd": resolved_total,
+                    "spot_wallet_value_usd": total_value.get("spot_wallet_value_usd"),
+                    "account_mode": total_value.get("account_mode"),
+                    "total_value_status": total_value.get("total_value_status"),
+                    "total_value_complete": bool(total_value.get("total_value_complete")),
+                    "total_value_formula": total_value.get("total_value_formula"),
+                    "total_value_updated_at_ms": total_value.get("total_value_updated_at_ms"),
+                    "unpriced_spot_tokens": total_value.get("unpriced_spot_tokens") or [],
                     "open_position_value_usd": 0.0,
                     "open_positions": 0,
                     "data_status": "missing",
@@ -1919,6 +2332,11 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
         "known_wallet_candidates": registry_indexed,
         "tracked_account_value_usd": round(tracked_account_value, 2),
         "largest_account_value_usd": round(largest_account_value, 2),
+        "tracked_total_wallet_value_usd": round(tracked_total_wallet_value, 2),
+        "largest_total_wallet_value_usd": round(largest_total_wallet_value, 2),
+        "wallets_with_complete_total_value": complete_total_value_wallets,
+        "spot_market_value_status": spot_market_status,
+        "spot_market_value_age_seconds": spot_market_age_seconds,
         "tracked_open_position_value_usd": round(open_value_total, 2),
         "open_positions": open_positions,
         "assets_with_signals": len(signals),
@@ -1989,6 +2407,11 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
         "registry_scan_history": registry_scan_history,
         "registry_discoveries": registry_discoveries,
         "selected_wallet_count": scanner_selected or len(wallet_rows),
+        "value_fields": {
+            "total_wallet_value_usd": "HyperCore wallet value comparable to portfolio explorers",
+            "perp_account_value_usd": "Perpetual account equity",
+            "spot_wallet_value_usd": "Priced spot clearinghouse balances",
+        },
         "rows": sorted(wallet_rows, key=lambda r: (r.get("account_value_usd", 0), r.get("open_position_value_usd", 0)), reverse=True)[:50],
     }
     token_screener = {
@@ -2113,7 +2536,11 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
             {'name': 'Ranking claim guard', 'status': 'pass', 'severity': 'info', 'detail': 'Broad all-Hyperliquid top-50 claim is disabled until a larger audited universe exists.'},
         ],
         'totals': {
-            'snapshot_rollup': {'tracked_total': round(tracked_account_value, 2)},
+            'snapshot_rollup': {
+                'tracked_perp_equity': round(tracked_account_value, 2),
+                'tracked_total_wallet_value': round(tracked_total_wallet_value, 2),
+                'total_value_complete_wallets': complete_total_value_wallets,
+            },
             'position_rollup': {'open_total': round(open_value_total, 2), 'positions': open_positions},
             'scanner_rollup': {'candidate_wallets_scored': scanner_scored, 'selected_wallet_count': scanner_selected or len(wallets)},
         },
@@ -2296,4 +2723,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

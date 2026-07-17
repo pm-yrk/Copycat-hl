@@ -6209,3 +6209,23 @@ html[data-theme='light'] .cc-catalyst-row:focus-visible {
   text-decoration: underline;
   text-underline-offset: 4px;
 }
+
+/* Copycat API wallet value columns */
+.cc-api-wallet-link {
+  color: inherit;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.78rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.cc-api-wallet-link:hover,
+.cc-api-wallet-link:focus-visible {
+  color: #38f2ba;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.cc-api-leaderboard-card table {
+  min-width: 760px;
+}
