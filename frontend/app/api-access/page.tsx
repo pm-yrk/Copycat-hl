@@ -294,12 +294,11 @@ export default function ApiAccessPage() {
     <section className="cc-api-nansen-grid">
       <article className="cc-card cc-api-data-card cc-api-leaderboard-card">
         <header><div><p className="eyebrow live">Live wallet cohort</p><h2>Live wallet selection</h2></div><span>live</span></header>
-        <div className="cc-api-table-wrap"><table><thead><tr><th>#</th><th>Wallet</th><th>Total wallet value</th><th>Perp equity</th><th>Open exposure</th><th>Positions</th></tr></thead><tbody>{leaderboard.slice(0, 50).map((r:any, i:number) => <tr key={r.wallet || i}><td>{r.rank || i + 1}</td><td><WalletLink row={r} /></td><td title={walletTotalValueTitle(r)}>{walletTotalValue(r)}</td><td>{money(r.perp_account_value_usd ?? r.account_value_usd)}</td><td><span className="cc-mini-bar"><i style={{width: `${Math.max(8, Math.min(100, Number(r.open_position_value_usd || 0) / Math.max(1, Number(leaderboard[0]?.open_position_value_usd || 1)) * 100))}%`}} />{money(r.open_position_value_usd)}</span></td><td>{compact(r.open_positions)}</td></tr>)}</tbody></table></div>
+        <div className="cc-api-table-wrap"><table><thead><tr><th>#</th><th>Wallet</th><th>Total value</th><th>Perp equity</th><th>Exposure</th></tr></thead><tbody>{leaderboard.slice(0, 50).map((r:any, i:number) => <tr key={r.wallet || i}><td>{r.rank || i + 1}</td><td><WalletLink row={r} /></td><td title={walletTotalValueTitle(r)}>{walletTotalValue(r)}</td><td>{money(r.perp_account_value_usd ?? r.account_value_usd)}</td><td><span className="cc-mini-bar"><i style={{width: `${Math.max(8, Math.min(100, Number(r.open_position_value_usd || 0) / Math.max(1, Number(leaderboard[0]?.open_position_value_usd || 1)) * 100))}%`}} />{money(r.open_position_value_usd)}</span></td></tr>)}</tbody></table></div>
       </article>
 
       <article className="cc-card cc-api-data-card cc-api-market-card">
         <header><div><p className="eyebrow live">Token screener</p><h2>Markets the selection is leaning into</h2></div><span>top conviction</span></header>
-        <div className="cc-api-tab-row"><span>5m</span><span>1h</span><b>24h</b><span>7D</span></div>
         <div className="cc-api-table-wrap"><table><thead><tr><th>Asset</th><th>Tilt</th><th>Wallets</th><th>Exposure</th><th>Net</th></tr></thead><tbody>{tokens.slice(0, 24).map((r:any, i:number) => { const label = biasLabel(r); return <tr key={r.coin || i}><td><AssetCell coin={r.coin} icons={icons} details={assetDetails} row={r} /></td><td className={biasClass(label)}>{label}</td><td>{compact(r.wallets_long)}L / {compact(r.wallets_short)}S</td><td>{money(r.gross_value_usd || r.gross_exposure_usd)}</td><td className={biasClass(r.net_value_usd)}>{signed(r.net_value_usd)}</td></tr> })}</tbody></table></div>
       </article>
     </section>

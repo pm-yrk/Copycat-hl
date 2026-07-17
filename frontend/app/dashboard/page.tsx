@@ -1035,7 +1035,7 @@ export default function Dashboard() {
 
 <section className="cc-kpi-grid cc-kpi-grid-tight">
       <article><small>Copycat-ranked wallets</small><RollingInteger value={summary.qualified_wallets || 0} /><span>{walletUniverseCaption(summary)}</span></article>
-      <article className="cc-tracked-value-card"><small>Tracked account value</small><RollingMoney value={summary.tracked_account_value_usd} /><span>{summary.live_state_active ? 'live wallet state' : 'latest snapshots'}</span>{summary.largest_account_value_usd ? <em>Largest account: {money(summary.largest_account_value_usd)}</em> : null}</article>
+      <article className="cc-tracked-value-card"><small>Tracked wallet value</small><RollingMoney value={summary.tracked_total_wallet_value_usd ?? summary.tracked_account_value_usd} /><span>same live 50-wallet cohort as API</span>{summary.tracked_account_value_usd ? <em>Perp equity: {money(summary.tracked_account_value_usd)}</em> : null}</article>
       <article className="cc-open-position-card"><small>Open position value</small><RollingMoney value={summary.tracked_open_position_value_usd} /><span>{summary.open_positions || 0} live positions</span>{grossLeverageValue ? <em>{leverageText(grossLeverageValue)}</em> : null}</article>
       <article><small>Assets with signals</small><RollingInteger value={signals.length || summary.assets_with_signals || 0} /><span>{summary.markets_monitored ? `${summary.markets_monitored} price markets available` : 'cross-asset breadth'}</span></article>
     </section>

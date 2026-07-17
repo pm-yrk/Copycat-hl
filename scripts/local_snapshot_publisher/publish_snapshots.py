@@ -466,9 +466,23 @@ def normalise_account_mode(raw: Any) -> str:
     return "unknown"
 
 
-def spot_token_prices(spot_market: Any) -> Tuple[Dict[int, float], Dict[int, str]]:
+def spot_token_prices(spot_market: Any) -> Tuple[Dict[int, Dict[str, Any]], Dict[int, str]]:
+    """Return conservative USD prices from direct token/USDC spot pairs only.
+
+    V1 recursively propagated prices through every cross pair. A thin or
+    malformed cross market could therefore turn a large token balance into an
+    implausible multi-billion-dollar wallet value. V2 uses only direct USDC
+    pairs and records liquidity so oversized marks can be excluded honestly.
+    """
     if not isinstance(spot_market, list) or len(spot_market) < 2:
-        return {0: 1.0}, {0: "USDC"}
+        return {
+            0: {
+                "price": 1.0,
+                "day_ntl_volume": float("inf"),
+                "pair": "USDC",
+                "canonical": True,
+            }
+        }, {0: "USDC"}
 
     meta = spot_market[0] if isinstance(spot_market[0], dict) else {}
     contexts = spot_market[1] if isinstance(spot_market[1], list) else []
@@ -476,42 +490,61 @@ def spot_token_prices(spot_market: Any) -> Tuple[Dict[int, float], Dict[int, str
     universe = meta.get("universe") if isinstance(meta.get("universe"), list) else []
 
     names: Dict[int, str] = {}
+    token_canonical: Dict[int, bool] = {}
     for token in tokens:
         if not isinstance(token, dict):
             continue
         token_index = safe_int(token.get("index"), -1)
-        if token_index >= 0:
-            names[token_index] = str(token.get("name") or f"token-{token_index}")
+        if token_index < 0:
+            continue
+        names[token_index] = str(token.get("name") or f"token-{token_index}")
+        token_canonical[token_index] = bool(token.get("isCanonical"))
 
-    prices: Dict[int, float] = {0: 1.0}
-    pairs: List[Tuple[int, int, float]] = []
+    prices: Dict[int, Dict[str, Any]] = {
+        0: {
+            "price": 1.0,
+            "day_ntl_volume": float("inf"),
+            "pair": "USDC",
+            "canonical": True,
+        }
+    }
 
-    for index, pair in enumerate(universe):
+    for list_index, pair in enumerate(universe):
         if not isinstance(pair, dict):
             continue
         token_pair = pair.get("tokens")
         if not isinstance(token_pair, list) or len(token_pair) < 2:
             continue
+
         base_token = safe_int(token_pair[0], -1)
         quote_token = safe_int(token_pair[1], -1)
-        context = contexts[index] if index < len(contexts) and isinstance(contexts[index], dict) else {}
-        price = safe_float(context.get("midPx"), safe_float(context.get("markPx")))
-        if base_token >= 0 and quote_token >= 0 and price > 0:
-            pairs.append((base_token, quote_token, price))
+        if base_token < 0 or quote_token != 0:
+            continue
 
-    for _ in range(max(4, len(pairs) + 1)):
-        changed = False
-        for base_token, quote_token, pair_price in pairs:
-            quote_price = prices.get(quote_token)
-            base_price = prices.get(base_token)
-            if quote_price is not None and quote_price > 0 and base_token not in prices:
-                prices[base_token] = pair_price * quote_price
-                changed = True
-            elif base_price is not None and base_price > 0 and quote_token not in prices:
-                prices[quote_token] = base_price / pair_price
-                changed = True
-        if not changed:
-            break
+        context_index = safe_int(pair.get("index"), list_index)
+        if context_index < 0 or context_index >= len(contexts):
+            context_index = list_index
+        context = (
+            contexts[context_index]
+            if 0 <= context_index < len(contexts) and isinstance(contexts[context_index], dict)
+            else {}
+        )
+
+        price = safe_float(context.get("midPx"), safe_float(context.get("markPx")))
+        if price <= 0:
+            continue
+
+        day_volume = max(0.0, safe_float(context.get("dayNtlVlm")))
+        candidate = {
+            "price": price,
+            "day_ntl_volume": day_volume,
+            "pair": str(pair.get("name") or f"@{context_index}"),
+            "canonical": bool(pair.get("isCanonical")) or token_canonical.get(base_token, False),
+        }
+
+        existing = prices.get(base_token)
+        if existing is None or day_volume > safe_float(existing.get("day_ntl_volume")):
+            prices[base_token] = candidate
 
     return prices, names
 
@@ -525,12 +558,18 @@ def spot_wallet_value(
             "spot_wallet_value_usd": None,
             "spot_value_complete": False,
             "unpriced_spot_tokens": [],
+            "spot_valuation_method": "direct_usdc_liquidity_checked_v2",
         }
 
-    prices, names = spot_token_prices(spot_market)
+    price_info, names = spot_token_prices(spot_market)
     balances = spot_state.get("balances") if isinstance(spot_state.get("balances"), list) else []
     total_value = 0.0
-    unpriced: List[str] = []
+    excluded: List[str] = []
+
+    # Small balances are safe to mark even in thin markets. Larger balances
+    # must be supportable by the pair's reported daily notional volume.
+    small_balance_limit_usd = 250_000.0
+    max_daily_volume_multiple = 50.0
 
     for balance in balances:
         if not isinstance(balance, dict):
@@ -539,16 +578,38 @@ def spot_wallet_value(
         amount = safe_float(balance.get("total"))
         if token_index < 0 or abs(amount) < 1e-15:
             continue
-        price = prices.get(token_index)
-        if price is None or price <= 0:
-            unpriced.append(str(balance.get("coin") or names.get(token_index) or f"token-{token_index}"))
+
+        token_name = str(balance.get("coin") or names.get(token_index) or f"token-{token_index}")
+        info = price_info.get(token_index)
+        if not isinstance(info, dict):
+            excluded.append(f"{token_name} (no direct USDC market)")
             continue
-        total_value += amount * price
+
+        price = safe_float(info.get("price"))
+        if price <= 0:
+            excluded.append(f"{token_name} (no reliable price)")
+            continue
+
+        marked_value = amount * price
+        if token_index != 0:
+            day_volume = max(0.0, safe_float(info.get("day_ntl_volume")))
+            supported_value = max(
+                small_balance_limit_usd,
+                day_volume * max_daily_volume_multiple,
+            )
+            if abs(marked_value) > supported_value:
+                excluded.append(
+                    f"{token_name} (value exceeds liquidity check)"
+                )
+                continue
+
+        total_value += marked_value
 
     return {
         "spot_wallet_value_usd": round(total_value, 2),
-        "spot_value_complete": not unpriced,
-        "unpriced_spot_tokens": sorted(set(unpriced)),
+        "spot_value_complete": not excluded,
+        "unpriced_spot_tokens": sorted(set(excluded)),
+        "spot_valuation_method": "direct_usdc_liquidity_checked_v2",
     }
 
 
@@ -583,6 +644,7 @@ def resolve_total_wallet_value(
             "total_value_formula": "unavailable",
             "total_value_updated_at_ms": safe_int(inputs.get("spot_updated_at_ms")) or None,
             "unpriced_spot_tokens": spot_result.get("unpriced_spot_tokens") or [],
+            "spot_valuation_method": spot_result.get("spot_valuation_method"),
         }
 
     if mode in {"unified", "portfolio_margin", "unified_or_portfolio_inferred"}:
@@ -617,6 +679,7 @@ def resolve_total_wallet_value(
         "spot_cache_age_seconds": safe_int(inputs.get("spot_age_seconds")),
         "account_mode_cache_age_seconds": safe_int(inputs.get("mode_age_seconds")),
         "unpriced_spot_tokens": spot_result.get("unpriced_spot_tokens") or [],
+        "spot_valuation_method": spot_result.get("spot_valuation_method"),
     }
 # COPYCAT_TOTAL_WALLET_VALUE_V1_END
 
@@ -2161,6 +2224,7 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
                 "perp_account_value_usd": round(account_value, 2),
                 "total_wallet_value_usd": resolved_total,
                 "spot_wallet_value_usd": total_value.get("spot_wallet_value_usd"),
+                "spot_valuation_method": total_value.get("spot_valuation_method"),
                 "account_mode": total_value.get("account_mode"),
                 "total_value_status": total_value.get("total_value_status"),
                 "total_value_complete": bool(total_value.get("total_value_complete")),
@@ -2199,6 +2263,7 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
                     "perp_account_value_usd": 0.0,
                     "total_wallet_value_usd": resolved_total,
                     "spot_wallet_value_usd": total_value.get("spot_wallet_value_usd"),
+                "spot_valuation_method": total_value.get("spot_valuation_method"),
                     "account_mode": total_value.get("account_mode"),
                     "total_value_status": total_value.get("total_value_status"),
                     "total_value_complete": bool(total_value.get("total_value_complete")),
@@ -2337,6 +2402,7 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
         "wallets_with_complete_total_value": complete_total_value_wallets,
         "spot_market_value_status": spot_market_status,
         "spot_market_value_age_seconds": spot_market_age_seconds,
+        "total_wallet_value_method": "direct_usdc_liquidity_checked_v2",
         "tracked_open_position_value_usd": round(open_value_total, 2),
         "open_positions": open_positions,
         "assets_with_signals": len(signals),
@@ -2407,6 +2473,10 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
         "registry_scan_history": registry_scan_history,
         "registry_discoveries": registry_discoveries,
         "selected_wallet_count": scanner_selected or len(wallet_rows),
+        "tracked_total_wallet_value_usd": round(tracked_total_wallet_value, 2),
+        "tracked_perp_equity_usd": round(tracked_account_value, 2),
+        "tracked_open_position_value_usd": round(open_value_total, 2),
+        "total_wallet_value_method": "direct_usdc_liquidity_checked_v2",
         "value_fields": {
             "total_wallet_value_usd": "HyperCore wallet value comparable to portfolio explorers",
             "perp_account_value_usd": "Perpetual account equity",

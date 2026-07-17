@@ -6229,3 +6229,49 @@ html[data-theme='light'] .cc-catalyst-row:focus-visible {
 .cc-api-leaderboard-card table {
   min-width: 760px;
 }
+
+/* Copycat API correlated wallet table V2 */
+.cc-api-leaderboard-card .cc-api-table-wrap {
+  overflow-x: hidden !important;
+}
+
+.cc-api-leaderboard-card table {
+  width: 100% !important;
+  min-width: 0 !important;
+  table-layout: fixed !important;
+}
+
+.cc-api-leaderboard-card th,
+.cc-api-leaderboard-card td {
+  padding-left: 6px !important;
+  padding-right: 6px !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cc-api-leaderboard-card th:nth-child(1),
+.cc-api-leaderboard-card td:nth-child(1) { width: 7%; }
+.cc-api-leaderboard-card th:nth-child(2),
+.cc-api-leaderboard-card td:nth-child(2) { width: 27%; }
+.cc-api-leaderboard-card th:nth-child(3),
+.cc-api-leaderboard-card td:nth-child(3) { width: 20%; }
+.cc-api-leaderboard-card th:nth-child(4),
+.cc-api-leaderboard-card td:nth-child(4) { width: 19%; }
+.cc-api-leaderboard-card th:nth-child(5),
+.cc-api-leaderboard-card td:nth-child(5) { width: 27%; }
+
+.cc-api-leaderboard-card .cc-api-wallet-link {
+  font-size: 0.72rem;
+}
+
+.cc-api-leaderboard-card .cc-mini-bar {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 5px;
+}
+
+.cc-api-leaderboard-card .cc-mini-bar > i {
+  max-width: 34px;
+}
