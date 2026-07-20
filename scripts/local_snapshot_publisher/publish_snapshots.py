@@ -990,10 +990,63 @@ def build_consensus_index_targets(states: List[Dict[str, Any]], wallets: List[st
     return targets
 # COPYCAT_CONSENSUS_INDEX_V2_END
 
+# COPYCAT_PERSISTENT_INDEX_CONVICTION_V2_START
+def performance_index_state_path() -> Path:
+    configured = os.getenv("COPYCAT_PERFORMANCE_INDEX_STATE", "").strip()
+    if configured:
+        return Path(configured).expanduser()
+    if os.name == "nt":
+        return Path(r"C:\CopycatPersistentState\performance_index_state.json")
+    return SCRIPT_DIR / "scanner_state" / "performance_index_state.json"
+
+
+def top_conviction_display_value(row: Dict[str, Any]) -> float:
+    long_value = max(0.0, safe_float(row.get("value_long_usd")))
+    short_value = max(0.0, safe_float(row.get("value_short_usd")))
+    gross_value = long_value + short_value
+    if gross_value <= 0:
+        return safe_float(row.get("signal"))
+    if long_value >= short_value:
+        return long_value / gross_value
+    return -(short_value / gross_value)
+
+
+def top_conviction_sort_key(
+    row: Dict[str, Any],
+) -> Tuple[float, float, int, float, float]:
+    confidence_rank = {
+        "high": 3.0,
+        "medium": 2.0,
+        "med": 2.0,
+        "low": 1.0,
+        "reserve": 0.0,
+    }
+    confidence_value = confidence_rank.get(
+        str(row.get("confidence") or "").strip().lower(),
+        0.0,
+    )
+    display_strength = abs(top_conviction_display_value(row))
+    wallet_count = (
+        safe_int(row.get("wallets_long"))
+        + safe_int(row.get("wallets_short"))
+    )
+    net_value = abs(safe_float(row.get("net_value_usd")))
+    gross_value = (
+        max(0.0, safe_float(row.get("value_long_usd")))
+        + max(0.0, safe_float(row.get("value_short_usd")))
+    )
+    return (
+        confidence_value,
+        display_strength,
+        wallet_count,
+        net_value,
+        gross_value,
+    )
+# COPYCAT_PERSISTENT_INDEX_CONVICTION_V2_END
+
 def build_performance_index_snapshot(now_ms: int, mids: Dict[str, float], signals: List[Dict[str, Any]], targets: List[Dict[str, Any]], config: Config) -> Dict[str, Any]:
-    state_dir = SCRIPT_DIR / "scanner_state"
-    state_dir.mkdir(parents=True, exist_ok=True)
-    path = state_dir / "performance_index_state.json"
+    path = performance_index_state_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
     try:
         state = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
         if not isinstance(state, dict):
@@ -1060,7 +1113,7 @@ def build_performance_index_snapshot(now_ms: int, mids: Dict[str, float], signal
         path.write_text(json.dumps(next_state,separators=(",",":")),encoding="utf-8")
     except Exception as exc:
         log(f"Warning: could not save performance index state: {exc}")
-    return {"status":"ok","source":"local_snapshot_index_v2","spx_benchmark_symbol":spx_symbol,"method":"copycat_consensus_equity_normalized_v2","method_note":"Wallet positions are normalized by perp equity, higher-ranked wallets receive gentle extra influence, opposing longs and shorts cancel, stablecoins are excluded, and previous-period weights earn the next price move.","start_ts_ms":start_ts,"latest_ts_ms":now_ms,"copycat_nav":round(copycat_nav,6),"btc_nav":round(btc_nav,6),"eth_nav":round(eth_nav,6),"spx_nav":round(spx_nav,6),"copycat_return_pct":round(copycat_nav-100.0,6),"btc_return_pct":round(btc_nav-100.0,6),"eth_return_pct":round(eth_nav-100.0,6),"spx_return_pct":round(spx_nav-100.0,6),"max_drawdown_pct":round(max_dd,6),"points_count":len(points),"points":points,"current_weights":current_weights[:20],"previous_period_weights_used":True,"stablecoins_excluded":True,"minimum_wallets_per_asset":INDEX_MIN_WALLETS,"minimum_consensus_ratio":INDEX_MIN_CONSENSUS,"cache_ttl_ms":config.interval_seconds*1000,"public_readonly":True,"snapshot_mode":True}
+    return {"status":"ok","source":"local_snapshot_index_v2","spx_benchmark_symbol":spx_symbol,"method":"copycat_consensus_equity_normalized_v2","method_note":"Wallet positions are normalized by perp equity, higher-ranked wallets receive gentle extra influence, opposing longs and shorts cancel, stablecoins are excluded, and previous-period weights earn the next price move.","start_ts_ms":start_ts,"latest_ts_ms":now_ms,"copycat_nav":round(copycat_nav,6),"btc_nav":round(btc_nav,6),"eth_nav":round(eth_nav,6),"spx_nav":round(spx_nav,6),"copycat_return_pct":round(copycat_nav-100.0,6),"btc_return_pct":round(btc_nav-100.0,6),"eth_return_pct":round(eth_nav-100.0,6),"spx_return_pct":round(spx_nav-100.0,6),"max_drawdown_pct":round(max_dd,6),"points_count":len(points),"points":points,"current_weights":current_weights[:20],"previous_period_weights_used":True,"stablecoins_excluded":True,"minimum_wallets_per_asset":INDEX_MIN_WALLETS,"minimum_consensus_ratio":INDEX_MIN_CONSENSUS,"cache_ttl_ms":config.interval_seconds*1000,"public_readonly":True,"snapshot_mode":True,"index_state_storage":"persistent_windows_state_v1"}
 
 # Copycat registry summary counts v1
 def read_registry_summary_counts() -> Dict[str, int]:
@@ -2502,9 +2555,10 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
 
     insights: List[Dict[str, Any]] = []
     if signals:
-        top_signal = signals[0]
-        pct = round(abs(safe_float(top_signal.get("signal"))) * 100)
-        side = "Long" if safe_float(top_signal.get("signal")) >= 0 else "Short"
+        top_signal = max(signals, key=top_conviction_sort_key)
+        top_display_signal = top_conviction_display_value(top_signal)
+        pct = round(abs(top_display_signal) * 100)
+        side = "Long" if top_display_signal >= 0 else "Short"
         insights.append({"type": "top_signal", "label": "Top conviction asset", "coin": top_signal["coin"], "detail": f"{pct}% {side} Â· {top_signal.get('confidence')}", "row": top_signal})
         largest = max(signals, key=lambda r: r.get("gross_value_usd", 0))
         insights.append({"type": "largest_exposure", "label": "Largest current exposure", "coin": largest["coin"], "detail": f"${largest.get('gross_value_usd',0):,.0f} gross exposure", "row": largest})
