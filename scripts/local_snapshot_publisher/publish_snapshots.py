@@ -823,13 +823,174 @@ def clamp(value: float, lo: float, hi: float) -> float:
     return max(lo, min(hi, value))
 
 
-def build_performance_index_snapshot(now_ms: int, mids: Dict[str, float], signals: List[Dict[str, Any]], targets: List[Dict[str, Any]], config: Config) -> Dict[str, Any]:
-    """Maintain a tiny from-now performance index without Supabase.
+# COPYCAT_CONSENSUS_INDEX_V2_START
+INDEX_STABLECOINS = {
+    "USDC", "USDT", "USDT0", "USDE", "SUSDE", "USDH",
+    "DAI", "USDS", "FDUSD", "TUSD", "PYUSD", "USDP",
+    "FRAX", "LUSD", "GHO", "DOLA", "CRVUSD", "CASH",
+}
+INDEX_MIN_WALLETS = 3
+INDEX_MIN_CONSENSUS = 0.20
 
-    This is a live snapshot-mode index: it starts at 100 when this local publisher
-    first runs, then updates using the current value-weighted signed exposure.
-    It is not a historical backfill and does not claim all-Hyperliquid ranking.
-    """
+
+def index_coin_key(value: Any) -> str:
+    return re.sub(r"[^A-Z0-9]", "", clean_coin(value).upper())
+
+
+def index_is_stablecoin(value: Any) -> bool:
+    return index_coin_key(value) in INDEX_STABLECOINS
+
+
+def index_wallet_quality_weights(wallets: List[str]) -> Dict[str, float]:
+    clean = [str(wallet or "").lower() for wallet in wallets if wallet]
+    count = len(clean)
+    if count <= 0:
+        return {}
+    if count == 1:
+        raw = {clean[0]: 1.0}
+    else:
+        raw = {
+            wallet: 1.5 - (index / (count - 1))
+            for index, wallet in enumerate(clean)
+        }
+    total = sum(raw.values()) or 1.0
+    return {wallet: value / total for wallet, value in raw.items()}
+
+
+def index_asset_cap(asset_count: int) -> float:
+    if asset_count <= 1:
+        return 1.0
+    if asset_count == 2:
+        return 0.75
+    if asset_count == 3:
+        return 0.50
+    if asset_count == 4:
+        return 0.35
+    return 0.25
+
+
+def index_capped_normalize(scores: Dict[str, float], maximum_weight: float) -> Dict[str, float]:
+    positive = {coin: max(0.0, safe_float(score)) for coin, score in scores.items() if safe_float(score) > 0}
+    if not positive:
+        return {}
+    if len(positive) == 1:
+        only = next(iter(positive))
+        return {only: 1.0}
+    cap = max(maximum_weight, 1.0 / len(positive))
+    remaining = set(positive)
+    weights: Dict[str, float] = {}
+    remaining_weight = 1.0
+    while remaining:
+        score_total = sum(positive[coin] for coin in remaining)
+        if score_total <= 0:
+            equal = remaining_weight / len(remaining)
+            for coin in remaining:
+                weights[coin] = equal
+            break
+        capped = []
+        for coin in remaining:
+            proposed = remaining_weight * positive[coin] / score_total
+            if proposed > cap + 1e-12:
+                weights[coin] = cap
+                capped.append(coin)
+        if not capped:
+            for coin in remaining:
+                weights[coin] = remaining_weight * positive[coin] / score_total
+            break
+        for coin in capped:
+            remaining.remove(coin)
+            remaining_weight -= cap
+        if remaining_weight <= 1e-12:
+            break
+    total = sum(weights.values()) or 1.0
+    return {coin: value / total for coin, value in weights.items()}
+
+
+def build_consensus_index_targets(states: List[Dict[str, Any]], wallets: List[str], now_ms: int, mids: Dict[str, float]) -> List[Dict[str, Any]]:
+    quality = index_wallet_quality_weights(wallets)
+    assets: Dict[str, Dict[str, Any]] = {}
+    for state in states:
+        wallet = str(state.get("_wallet") or "").lower()
+        wallet_weight = safe_float(quality.get(wallet))
+        margin = state.get("marginSummary") or state.get("crossMarginSummary") or {}
+        equity = safe_float(margin.get("accountValue"))
+        if wallet_weight <= 0 or equity <= 0:
+            continue
+        positions: List[Tuple[str, float]] = []
+        for item in state.get("assetPositions") or []:
+            pos = item.get("position") if isinstance(item, dict) else None
+            if not isinstance(pos, dict):
+                continue
+            coin = clean_coin(pos.get("coin"))
+            if not coin or index_is_stablecoin(coin):
+                continue
+            size = safe_float(pos.get("szi") or pos.get("sz"))
+            if size == 0:
+                continue
+            value = abs(safe_float(pos.get("positionValue")))
+            if value <= 0:
+                mark = safe_float(mids.get(coin), safe_float(pos.get("markPx")))
+                value = abs(size) * mark
+            if value <= 0:
+                continue
+            conviction = clamp(value / equity, 0.0, 1.0)
+            positions.append((coin, conviction if size > 0 else -conviction))
+        total_conviction = sum(abs(value) for _, value in positions)
+        if total_conviction <= 0:
+            continue
+        scale = min(1.0, 1.0 / total_conviction)
+        for coin, signed_conviction in positions:
+            contribution = wallet_weight * signed_conviction * scale
+            row = assets.setdefault(coin, {"weighted_net": 0.0, "weighted_gross": 0.0, "wallets": set(), "wallets_long": set(), "wallets_short": set()})
+            row["weighted_net"] += contribution
+            row["weighted_gross"] += abs(contribution)
+            row["wallets"].add(wallet)
+            if contribution > 0:
+                row["wallets_long"].add(wallet)
+            elif contribution < 0:
+                row["wallets_short"].add(wallet)
+    eligible: Dict[str, Dict[str, Any]] = {}
+    scores: Dict[str, float] = {}
+    for coin, row in assets.items():
+        gross = safe_float(row.get("weighted_gross"))
+        net = safe_float(row.get("weighted_net"))
+        wallet_count = len(row.get("wallets") or [])
+        if gross <= 0 or wallet_count < INDEX_MIN_WALLETS:
+            continue
+        consensus = abs(net) / gross
+        if consensus < INDEX_MIN_CONSENSUS or abs(net) <= 0:
+            continue
+        score = abs(net) * consensus
+        eligible[coin] = {**row, "consensus": consensus, "score": score}
+        scores[coin] = score
+    weights = index_capped_normalize(scores, index_asset_cap(len(scores)))
+    targets: List[Dict[str, Any]] = []
+    for coin, weight in weights.items():
+        row = eligible[coin]
+        net = safe_float(row.get("weighted_net"))
+        direction = "long" if net > 0 else "short"
+        signed = weight if direction == "long" else -weight
+        targets.append({
+            "ts_ms": now_ms,
+            "coin": coin,
+            "target_weight": round(weight, 8),
+            "index_weight": round(signed, 8),
+            "signed_weight": round(signed, 8),
+            "direction": direction,
+            "consensus_ratio": round(safe_float(row.get("consensus")), 6),
+            "participating_wallets": len(row.get("wallets") or []),
+            "wallets_long": len(row.get("wallets_long") or []),
+            "wallets_short": len(row.get("wallets_short") or []),
+            "weighted_net_signal": round(net, 8),
+            "weighted_gross_signal": round(safe_float(row.get("weighted_gross")), 8),
+            "allocation_method": "equity_normalized_rank_weighted_net_consensus_v2",
+            "stablecoins_excluded": True,
+        })
+    targets.sort(key=lambda row: safe_float(row.get("target_weight")), reverse=True)
+    return targets
+# COPYCAT_CONSENSUS_INDEX_V2_END
+
+def build_performance_index_snapshot(now_ms: int, mids: Dict[str, float], signals: List[Dict[str, Any]], targets: List[Dict[str, Any]], config: Config) -> Dict[str, Any]:
     state_dir = SCRIPT_DIR / "scanner_state"
     state_dir.mkdir(parents=True, exist_ok=True)
     path = state_dir / "performance_index_state.json"
@@ -839,133 +1000,67 @@ def build_performance_index_snapshot(now_ms: int, mids: Dict[str, float], signal
             state = {}
     except Exception:
         state = {}
-
     current_weights: List[Dict[str, Any]] = []
-    rows = targets or []
-    for row in rows:
+    for row in targets or []:
         coin = clean_coin(row.get("coin"))
-        if not coin or coin == "USDC":
+        if not coin or index_is_stablecoin(coin):
             continue
         signed = safe_float(row.get("signed_weight"), safe_float(row.get("index_weight"), safe_float(row.get("target_weight"))))
-        direction = str(row.get("direction") or ("short" if signed < 0 else "long")).lower()
-        weight = abs(signed)
-        if weight > 0:
-            current_weights.append({"coin": coin, "weight": weight, "signed_weight": signed, "direction": direction})
-    if not current_weights:
-        total_gross = sum(abs(safe_float(s.get("net_value_usd"))) for s in signals) or sum(safe_float(s.get("gross_value_usd")) for s in signals) or 1.0
-        for s in signals[:30]:
-            coin = clean_coin(s.get("coin"))
-            if not coin or coin == "USDC":
-                continue
-            net = safe_float(s.get("net_value_usd"), safe_float(s.get("signal")) * safe_float(s.get("gross_value_usd")))
-            signed = net / total_gross if total_gross else 0.0
-            if signed:
-                current_weights.append({"coin": coin, "weight": abs(signed), "signed_weight": signed, "direction": "short" if signed < 0 else "long"})
-    total_abs = sum(abs(safe_float(w.get("signed_weight"))) for w in current_weights) or 1.0
-    for w in current_weights:
-        signed = safe_float(w.get("signed_weight")) / total_abs
-        w["signed_weight"] = signed
-        w["weight"] = abs(signed)
-
+        if signed == 0:
+            continue
+        current_weights.append({"coin": coin, "weight": abs(signed), "signed_weight": signed, "direction": "short" if signed < 0 else "long", "consensus_ratio": safe_float(row.get("consensus_ratio")), "participating_wallets": safe_int(row.get("participating_wallets"))})
+    previous_weights = state.get("current_weights") if isinstance(state.get("current_weights"), list) else []
+    previous_weights = [row for row in previous_weights if isinstance(row, dict) and clean_coin(row.get("coin")) and not index_is_stablecoin(row.get("coin"))]
     last_mids = state.get("last_mids") if isinstance(state.get("last_mids"), dict) else {}
     copycat_nav = safe_float(state.get("copycat_nav"), 100.0)
     btc_nav = safe_float(state.get("btc_nav"), 100.0)
     eth_nav = safe_float(state.get("eth_nav"), 100.0)
     spx_nav = safe_float(state.get("spx_nav"), 100.0)
-    # Hyperliquid/Trade[XYZ] SP500 is shown publicly as S&P 500 on the dashboard,
-    # but the Hyperliquid allMids feed currently exposes the live mid under SPX
-    # with @500 also present as an alternate key.
     spx_symbol = "SPX"
-    for candidate in ("SPX", "@500", "xyz:SP500", "XYZ:SP500", "SP500"):
+    for candidate in ("SPX", "500", "@500", "xyz:SP500", "XYZ:SP500", "SP500"):
         if safe_float(mids.get(candidate)) > 0 or safe_float(last_mids.get(candidate)) > 0:
             spx_symbol = candidate
             break
     movement = 0.0
-    for w in current_weights:
-        coin = str(w.get("coin"))
+    for row in previous_weights:
+        coin = clean_coin(row.get("coin"))
         prev = safe_float(last_mids.get(coin))
         cur = safe_float(mids.get(coin))
         if prev > 0 and cur > 0:
-            movement += safe_float(w.get("signed_weight")) * ((cur / prev) - 1.0)
+            movement += safe_float(row.get("signed_weight")) * ((cur / prev) - 1.0)
     movement = clamp(movement, -0.08, 0.08)
-    copycat_nav = copycat_nav * (1.0 + movement)
-
-    def update_benchmark(symbol: str, nav_value: float) -> float:
+    copycat_nav *= 1.0 + movement
+    def update_benchmark(symbol: str, nav: float) -> float:
         prev = safe_float(last_mids.get(symbol))
         cur = safe_float(mids.get(symbol))
         if prev > 0 and cur > 0:
-            return nav_value * (1.0 + clamp((cur / prev) - 1.0, -0.08, 0.08))
-        return nav_value
-
+            return nav * (1.0 + clamp((cur / prev) - 1.0, -0.08, 0.08))
+        return nav
     btc_nav = update_benchmark("BTC", btc_nav)
     eth_nav = update_benchmark("ETH", eth_nav)
     spx_nav = update_benchmark(spx_symbol, spx_nav)
-    start_ts = int(state.get("start_ts_ms") or now_ms)
+    start_ts = safe_int(state.get("start_ts_ms")) or now_ms
     points = state.get("points") if isinstance(state.get("points"), list) else []
-    point = {
-        "ts_ms": now_ms,
-        "copycat_nav": round(copycat_nav, 6),
-        "btc_nav": round(btc_nav, 6),
-        "eth_nav": round(eth_nav, 6),
-        "spx_nav": round(spx_nav, 6),
-        "copycat_return_pct": round(copycat_nav - 100.0, 6),
-        "btc_return_pct": round(btc_nav - 100.0, 6),
-        "eth_return_pct": round(eth_nav - 100.0, 6),
-        "spx_return_pct": round(spx_nav - 100.0, 6),
-        "live": True,
-    }
-    if not points or int(points[-1].get("ts_ms", 0)) < now_ms - 20_000:
+    point = {"ts_ms": now_ms, "copycat_nav": round(copycat_nav,6), "btc_nav": round(btc_nav,6), "eth_nav": round(eth_nav,6), "spx_nav": round(spx_nav,6), "copycat_return_pct": round(copycat_nav-100.0,6), "btc_return_pct": round(btc_nav-100.0,6), "eth_return_pct": round(eth_nav-100.0,6), "spx_return_pct": round(spx_nav-100.0,6), "live": True}
+    if not points or safe_int(points[-1].get("ts_ms")) < now_ms - 20000:
         points.append(point)
     else:
         points[-1] = point
     points = points[-720:]
     peak = 100.0
     max_dd = 0.0
-    for p in points:
-        nav = safe_float(p.get("copycat_nav"), 100.0)
-        peak = max(peak, nav)
-        if peak:
-            max_dd = min(max_dd, (nav / peak - 1.0) * 100.0)
-
-    next_state = {
-        "start_ts_ms": start_ts,
-        "latest_ts_ms": now_ms,
-        "copycat_nav": copycat_nav,
-        "btc_nav": btc_nav,
-        "eth_nav": eth_nav,
-        "spx_nav": spx_nav,
-        "points": points,
-        "last_mids": {k: v for k, v in mids.items() if k in {"BTC", "ETH", spx_symbol} or any(w.get("coin") == k for w in current_weights)},
-    }
+    for row in points:
+        nav = safe_float(row.get("copycat_nav"),100.0)
+        peak = max(peak,nav)
+        if peak > 0:
+            max_dd = min(max_dd,(nav/peak-1.0)*100.0)
+    symbols = {"BTC","ETH",spx_symbol,*[clean_coin(row.get("coin")) for row in previous_weights+current_weights if clean_coin(row.get("coin"))]}
+    next_state = {"method_version":"copycat_consensus_equity_normalized_v2","start_ts_ms":start_ts,"latest_ts_ms":now_ms,"copycat_nav":copycat_nav,"btc_nav":btc_nav,"eth_nav":eth_nav,"spx_nav":spx_nav,"points":points,"current_weights":current_weights,"last_mids":{k:v for k,v in mids.items() if k in symbols}}
     try:
-        path.write_text(json.dumps(next_state, separators=(",", ":")), encoding="utf-8")
-    except Exception:
-        pass
-
-    return {
-        "status": "ok",
-        "source": "local_snapshot_index_v1",
-        "spx_benchmark_symbol": spx_symbol,
-        "method": "copycat_free_mode_live_signed_exposure_from_publish_time",
-        "method_note": "Free-mode index starts when the local publisher runs. It uses current value-weighted signed exposure from the locally tracked wallets and is not a historical profit backfill.",
-        "start_ts_ms": start_ts,
-        "latest_ts_ms": now_ms,
-        "copycat_nav": round(copycat_nav, 6),
-        "btc_nav": round(btc_nav, 6),
-        "eth_nav": round(eth_nav, 6),
-        "spx_nav": round(spx_nav, 6),
-        "copycat_return_pct": round(copycat_nav - 100.0, 6),
-        "btc_return_pct": round(btc_nav - 100.0, 6),
-        "eth_return_pct": round(eth_nav - 100.0, 6),
-        "spx_return_pct": round(spx_nav - 100.0, 6),
-        "max_drawdown_pct": round(max_dd, 6),
-        "points_count": len(points),
-        "points": points,
-        "current_weights": current_weights[:20],
-        "cache_ttl_ms": config.interval_seconds * 1000,
-        "public_readonly": True,
-        "snapshot_mode": True,
-    }
+        path.write_text(json.dumps(next_state,separators=(",",":")),encoding="utf-8")
+    except Exception as exc:
+        log(f"Warning: could not save performance index state: {exc}")
+    return {"status":"ok","source":"local_snapshot_index_v2","spx_benchmark_symbol":spx_symbol,"method":"copycat_consensus_equity_normalized_v2","method_note":"Wallet positions are normalized by perp equity, higher-ranked wallets receive gentle extra influence, opposing longs and shorts cancel, stablecoins are excluded, and previous-period weights earn the next price move.","start_ts_ms":start_ts,"latest_ts_ms":now_ms,"copycat_nav":round(copycat_nav,6),"btc_nav":round(btc_nav,6),"eth_nav":round(eth_nav,6),"spx_nav":round(spx_nav,6),"copycat_return_pct":round(copycat_nav-100.0,6),"btc_return_pct":round(btc_nav-100.0,6),"eth_return_pct":round(eth_nav-100.0,6),"spx_return_pct":round(spx_nav-100.0,6),"max_drawdown_pct":round(max_dd,6),"points_count":len(points),"points":points,"current_weights":current_weights[:20],"previous_period_weights_used":True,"stablecoins_excluded":True,"minimum_wallets_per_asset":INDEX_MIN_WALLETS,"minimum_consensus_ratio":INDEX_MIN_CONSENSUS,"cache_ttl_ms":config.interval_seconds*1000,"public_readonly":True,"snapshot_mode":True}
 
 # Copycat registry summary counts v1
 def read_registry_summary_counts() -> Dict[str, int]:
@@ -2311,21 +2406,9 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
         )
     signals.sort(key=lambda r: (abs(r["signal"]) * r.get("gross_value_usd", 0), r.get("gross_value_usd", 0)), reverse=True)
 
-    targets: List[Dict[str, Any]] = []
-    total_gross = sum(s.get("gross_value_usd", 0.0) for s in signals) or 1.0
-    for s in signals:
-        gross = s.get("gross_value_usd", 0.0)
-        weight = gross / total_gross
-        direction = "long" if s["signal"] >= 0 else "short"
-        targets.append(
-            {
-                "ts_ms": now_ms,
-                "coin": s["coin"],
-                "target_weight": round(weight, 6),
-                "index_weight": round(weight if direction == "long" else -weight, 6),
-                "direction": direction,
-            }
-        )
+    targets = build_consensus_index_targets(
+        states, wallets, now_ms, mids,
+    )
 
     flow_by_coin: Dict[str, Dict[str, Any]] = {}
     for order in orders:
