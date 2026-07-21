@@ -36,3 +36,49 @@ copycat_wallet_registry/imports/*
 !copycat_wallet_registry/imports/README_IMPORT_WALLETS_HERE.txt
 # Copycat registry hygiene reports
 copycat_wallet_registry/hygiene/
+
+# COPYCAT_PORTFOLIO_SAFETY_START
+# Real environment files and credentials
+.env
+.env.*
+**/.env
+**/.env.*
+**/publisher.env
+!/.env.example
+!**/.env.example
+!**/.env.*.example
+!**/publisher.env.example
+
+# Runtime databases, logs, snapshots and local state
+*.log
+*.out
+*.err
+*.sqlite
+*.sqlite3
+*.db
+copycat_snapshot_out/
+**/scanner_state/
+CopycatDiagnostics/
+CopycatBackups/
+CopycatPersistentState/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/
+
+# Node and Next.js
+node_modules/
+.next/
+dist/
+build/
+
+# Local editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+# COPYCAT_PORTFOLIO_SAFETY_END
