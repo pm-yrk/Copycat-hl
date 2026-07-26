@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -75,7 +75,7 @@ function biasClass(x: any) {
   return String(x || '').toLowerCase().includes('short') || Number(x || 0) < 0 ? 'negative' : 'positive'
 }
 function snapshotBase() {
-  const configured = (process.env.NEXT_PUBLIC_SNAPSHOT_BASE_URL || '').replace(/\/+$/, '')
+  const configured = (process.env.NEXT_PUBLIC_SNAPSHOT_BASE_URL || 'https://pub-b9e0279f5eb0496b99c7fa37329e6b53.r2.dev').replace(/\/+$/, '')
   if (configured) return configured
   if (typeof window !== 'undefined') return `${window.location.origin}/copycat-data`
   return '/copycat-data'
@@ -109,7 +109,7 @@ function tokenFullName(symbol: string) {
 }
 function priceText(n: any) {
   const value = Number(n || 0)
-  if (!value) return '—'
+  if (!value) return 'â€”'
   if (value >= 1000) return '$' + value.toLocaleString(undefined, { maximumFractionDigits: 0 })
   if (value >= 1) return '$' + value.toLocaleString(undefined, { maximumFractionDigits: 2 })
   return '$' + value.toLocaleString(undefined, { maximumSignificantDigits: 4 })
@@ -124,7 +124,7 @@ function AssetName({ coin, details, row }: { coin: any, details: Record<string, 
   const longUsd = Number(row?.value_long_usd || meta?.value_long_usd || 0)
   const shortUsd = Number(row?.value_short_usd || meta?.value_short_usd || 0)
   const gross = Number(row?.gross_exposure_usd || row?.gross_value_usd || meta?.gross_exposure_usd || (longUsd + shortUsd) || row?.notional_usd || row?.value_usd || 0)
-  const tilt = String(meta?.tilt || row?.tilt || row?.signal_label || row?.direction || (longUsd || shortUsd ? (longUsd >= shortUsd ? 'Long' : 'Short') : '—'))
+  const tilt = String(meta?.tilt || row?.tilt || row?.signal_label || row?.direction || (longUsd || shortUsd ? (longUsd >= shortUsd ? 'Long' : 'Short') : 'â€”'))
   const conviction = Number(meta?.conviction_pct || row?.conviction_pct || 0)
   const flowValue = Number(meta?.net_flow_usd || row?.net_value_flow_usd || row?.net_value_usd || row?.delta_value_usd || row?.notional_usd || 0)
   const place = (el: HTMLElement) => {
@@ -136,7 +136,7 @@ function AssetName({ coin, details, row }: { coin: any, details: Record<string, 
   }
   const show = (e: any) => place(e.currentTarget as HTMLElement)
   const hide = () => setAnchor(null)
-  const tooltip = anchor && mounted ? createPortal(<div className="cc-asset-tooltip-portal" style={{ left: anchor.left, top: anchor.top }}><strong>{meta?.name || tokenFullName(symbol)}</strong><em>{symbol} on Hyperliquid</em><dl><dt>Mark price</dt><dd>{priceText(meta?.current_price)}</dd><dt>Tracked tilt</dt><dd className={tilt.toLowerCase().includes('short') ? 'negative' : tilt.toLowerCase().includes('long') ? 'positive' : ''}>{tilt}{conviction ? ` · ${Math.round(conviction)}%` : ''}</dd><dt>Open exposure</dt><dd>{gross ? money(gross) : '—'}</dd>{meta?.max_leverage ? <><dt>Max leverage</dt><dd>{meta.max_leverage}x</dd></> : null}<dt>Wallets</dt><dd>{Number(meta?.wallets_long || row?.wallets_long || 0)} long / {Number(meta?.wallets_short || row?.wallets_short || 0)} short</dd><dt>Recent flow</dt><dd className={flowValue < 0 ? 'negative' : flowValue > 0 ? 'positive' : ''}>{flowValue ? signed(flowValue) : '—'}</dd></dl></div>, document.body) : null
+  const tooltip = anchor && mounted ? createPortal(<div className="cc-asset-tooltip-portal" style={{ left: anchor.left, top: anchor.top }}><strong>{meta?.name || tokenFullName(symbol)}</strong><em>{symbol} on Hyperliquid</em><dl><dt>Mark price</dt><dd>{priceText(meta?.current_price)}</dd><dt>Tracked tilt</dt><dd className={tilt.toLowerCase().includes('short') ? 'negative' : tilt.toLowerCase().includes('long') ? 'positive' : ''}>{tilt}{conviction ? ` Â· ${Math.round(conviction)}%` : ''}</dd><dt>Open exposure</dt><dd>{gross ? money(gross) : 'â€”'}</dd>{meta?.max_leverage ? <><dt>Max leverage</dt><dd>{meta.max_leverage}x</dd></> : null}<dt>Wallets</dt><dd>{Number(meta?.wallets_long || row?.wallets_long || 0)} long / {Number(meta?.wallets_short || row?.wallets_short || 0)} short</dd><dt>Recent flow</dt><dd className={flowValue < 0 ? 'negative' : flowValue > 0 ? 'positive' : ''}>{flowValue ? signed(flowValue) : 'â€”'}</dd></dl></div>, document.body) : null
   return <span className="cc-asset-hover" tabIndex={0} onMouseEnter={show} onMouseMove={show} onMouseLeave={hide} onFocus={show} onBlur={hide}><b>{symbol}</b>{tooltip}</span>
 }
 
@@ -176,7 +176,7 @@ function TokenLogo({ coin, icons }: { coin: string, icons: Record<string, string
   </span>
 }
 function AssetCell({ coin, icons, details, row }: { coin: any, icons: Record<string, string>, details: Record<string, AssetDetail>, row?: any }) {
-  const symbol = displayToken(String(coin || '—'))
+  const symbol = displayToken(String(coin || 'â€”'))
   return <span className="cc-api-asset-cell"><TokenLogo coin={symbol} icons={icons} /><AssetName coin={symbol} details={details} row={row} /></span>
 }
 
@@ -186,7 +186,7 @@ export default function ApiAccessPage() {
   const [tokens, setTokens] = useState<any[]>([])
   const [coverage, setCoverage] = useState<any>({})
   const [orders, setOrders] = useState<any[]>([])
-  const [baseUrl, setBaseUrl] = useState('/copycat-data')
+  const [baseUrl, setBaseUrl] = useState(process.env.NEXT_PUBLIC_SNAPSHOT_BASE_URL || 'https://pub-b9e0279f5eb0496b99c7fa37329e6b53.r2.dev')
   const [icons, setIcons] = useState<Record<string, string>>({})
   const [assetDetails, setAssetDetails] = useState<Record<string, AssetDetail>>({})
 
@@ -273,7 +273,7 @@ export default function ApiAccessPage() {
         <p className="eyebrow live">Copycat Data Intelligence</p>
         <h1>Live Hyperliquid wallet intelligence.</h1>
         <p>Ranked wallet selections, market-level positioning, recent tracked-wallet flow and public snapshot endpoints powering Copycat.</p>
-        <div className="action-row"><a className="primary-btn" href="/dashboard">Open dashboard <span>→</span></a><a className="outline-btn" href="#snapshot-endpoints">View endpoints</a></div>
+        <div className="action-row"><a className="primary-btn" href="/dashboard">Open dashboard <span>â†’</span></a><a className="outline-btn" href="#snapshot-endpoints">View endpoints</a></div>
       </div>
     </section>
 
@@ -315,6 +315,7 @@ export default function ApiAccessPage() {
       </div>
     </section>
 
-    <footer className="cc-warning-banner cc-api-warning"><span className="cc-shield" aria-hidden>♢</span><div className="cc-footer-main"><strong>Market intelligence only.</strong><em>{claim} Not financial advice. Public snapshots are read-only and may be delayed, cached or temporarily stale.</em></div><div className="cc-footer-status"><span className="cc-quality-dot" /> Data quality snapshot · {freshness(updatedAt)}</div></footer>
+    <footer className="cc-warning-banner cc-api-warning"><span className="cc-shield" aria-hidden>â™¢</span><div className="cc-footer-main"><strong>Market intelligence only.</strong><em>{claim} Not financial advice. Public snapshots are read-only and may be delayed, cached or temporarily stale.</em></div><div className="cc-footer-status"><span className="cc-quality-dot" /> Data quality snapshot Â· {freshness(updatedAt)}</div></footer>
   </main></>
 }
+

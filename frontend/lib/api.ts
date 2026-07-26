@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { getApiBaseUrl, getSupabase } from './supabase'
 
@@ -35,7 +35,7 @@ function copycatSnapshotFileForPath(path: string) {
 function copycatSnapshotUrlsForPath(path: string) {
   const file = copycatSnapshotFileForPath(path)
   if (!file) return [] as string[]
-  const configured = (process.env.NEXT_PUBLIC_SNAPSHOT_BASE_URL || '').replace(/\/+$/, '')
+  const configured = (process.env.NEXT_PUBLIC_SNAPSHOT_BASE_URL || 'https://pub-b9e0279f5eb0496b99c7fa37329e6b53.r2.dev').replace(/\/+$/, '')
   const urls: string[] = []
   if (configured) urls.push(`${configured}/${file}`)
   // Always keep the same-origin Cloudflare Pages bundled snapshot as a fallback.
@@ -138,3 +138,4 @@ export async function apiPost(path: string, body: any, options: ApiOptions = {})
     if (timeout) window.clearTimeout(timeout)
   }
 }
+
