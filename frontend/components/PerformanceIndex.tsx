@@ -29,6 +29,7 @@ type PerfData = {
   spx_return_pct?: number
   max_drawdown_pct?: number
   points?: Point[]
+  timeframes?: Partial<Record<TimeframeKey, Point[]>>
   current_weights?: { coin: string; weight: number; direction?: string }[]
   metadata?: any
   stale?: boolean
@@ -107,6 +108,70 @@ function makePath(points: Point[], key: SeriesKey, domain: { min: number; span: 
 }
 
 
+
+type TimeframeKey = '1D' | '1W' | '1M' | 'YTD' | '1Y' | 'ALL'
+const TIMEFRAME_KEYS: TimeframeKey[] = ['1D', '1W', '1M', 'YTD', '1Y', 'ALL']
+
+function fallbackTimeframePoints(data: PerfData, range: TimeframeKey): Point[] {
+  const points = (data.points || []).map(normalisePerfPoint)
+  if (!points.length || range === 'ALL') return points
+  const now = Number(data.latest_ts_ms || points[points.length - 1]?.ts_ms || Date.now())
+  const day = 24 * 60 * 60 * 1000
+  let cutoff = 0
+  if (range === '1D') cutoff = now - day
+  if (range === '1W') cutoff = now - 7 * day
+  if (range === '1M') cutoff = now - 30 * day
+  if (range === '1Y') cutoff = now - 365 * day
+  if (range === 'YTD') {
+    const d = new Date(now)
+    cutoff = Date.UTC(d.getUTCFullYear(), 0, 1)
+  }
+  const filtered = points.filter((p) => p.ts_ms >= cutoff)
+  return filtered.length ? filtered : points
+}
+
+function rebaseTimeframe(data: PerfData, range: TimeframeKey): PerfData {
+  const supplied = Array.isArray(data.timeframes?.[range]) ? data.timeframes?.[range] || [] : []
+  const source = (supplied.length ? supplied : fallbackTimeframePoints(data, range)).map(normalisePerfPoint)
+  if (!source.length) return data
+  const first = source[0]
+  const base = {
+    copycat_nav: Number(first.copycat_nav || 100),
+    btc_nav: Number(first.btc_nav || 100),
+    eth_nav: Number(first.eth_nav || 100),
+    spx_nav: Number(first.spx_nav || 100),
+  }
+  const rebased = source.map((p) => ({
+    ...p,
+    copycat_nav: base.copycat_nav > 0 ? (Number(p.copycat_nav) / base.copycat_nav) * 100 : 100,
+    btc_nav: base.btc_nav > 0 ? (Number(p.btc_nav) / base.btc_nav) * 100 : 100,
+    eth_nav: base.eth_nav > 0 ? (Number(p.eth_nav) / base.eth_nav) * 100 : 100,
+    spx_nav: base.spx_nav > 0 ? (Number(p.spx_nav || 100) / base.spx_nav) * 100 : 100,
+  }))
+  const last = rebased[rebased.length - 1]
+  let peak = 100
+  let maxDrawdown = 0
+  rebased.forEach((p) => {
+    peak = Math.max(peak, Number(p.copycat_nav || 100))
+    if (peak > 0) maxDrawdown = Math.min(maxDrawdown, (Number(p.copycat_nav || 100) / peak - 1) * 100)
+  })
+  return {
+    ...data,
+    points: rebased,
+    start_ts_ms: source[0].ts_ms,
+    latest_ts_ms: source[source.length - 1].ts_ms,
+    copycat_nav: last.copycat_nav,
+    btc_nav: last.btc_nav,
+    eth_nav: last.eth_nav,
+    spx_nav: last.spx_nav,
+    copycat_return_pct: Number(last.copycat_nav) - 100,
+    btc_return_pct: Number(last.btc_nav) - 100,
+    eth_return_pct: Number(last.eth_nav) - 100,
+    spx_return_pct: Number(last.spx_nav || 100) - 100,
+    max_drawdown_pct: maxDrawdown,
+  }
+}
+
 function PerformanceChart({ data, compact = false }: { data: PerfData; compact?: boolean }) {
   const points = (data.points || []).filter((p: any) => Number.isFinite(Number(p.copycat_nav)))
   const domain = chartDomain(points)
@@ -133,6 +198,7 @@ function PerformanceChart({ data, compact = false }: { data: PerfData; compact?:
 export default function PerformanceIndex({ variant = 'dashboard' }: { variant?: 'home' | 'dashboard' }) {
   const [data, setData] = useState<PerfData>({})
   const [err, setErr] = useState('')
+  const [range, setRange] = useState<TimeframeKey>('ALL')
   const inFlight = useRef(false)
   const compact = variant === 'home'
 
@@ -152,7 +218,7 @@ export default function PerformanceIndex({ variant = 'dashboard' }: { variant?: 
         setErr('')
         return
       }
-      const r = await apiGet('/api/performance-index?max_points=240')
+      const r = await apiGet('/api/performance-index?max_points=5000')
       setData({ ...(r || {}), mode: 'live' })
       setErr('')
     } catch (e: any) {
@@ -166,13 +232,16 @@ export default function PerformanceIndex({ variant = 'dashboard' }: { variant?: 
 
   const weights = useMemo(() => (data.current_weights || []).slice(0, 5), [data.current_weights])
   const isBacktest = data.mode === 'backtest' && (data.points || []).length > 0
+  const viewData = isBacktest ? data : rebaseTimeframe(data, range)
   const headline = compact
     ? (isBacktest ? '1Y methodology backtest' : 'Live model performance')
     : 'Copycat Index vs BTC / ETH / S&P 500'
   const eyebrow = compact && isBacktest ? 'Copycat 1Y backtest' : 'Copycat live strategy index'
   const dateLine = isBacktest
-    ? `Backtested from ${shortDate(data.start_ts_ms)} · USDC margin excluded`
-    : `Started ${shortDate(data.start_ts_ms)} · USDC margin excluded · no hindsight`
+    ? `Backtested from ${shortDate(data.start_ts_ms)} | USDC margin excluded`
+    : range === 'ALL'
+      ? `Live history from ${shortDate(data.start_ts_ms)} | protected archive | no hindsight`
+      : `${range} view | rebased to 100 at ${shortDate(viewData.start_ts_ms)} | no hindsight`
 
   return <section className={`cc-index-card ${compact ? 'home' : 'deep cc-index-dashboard-fit'}`}>
     <div className="cc-index-head">
@@ -181,15 +250,18 @@ export default function PerformanceIndex({ variant = 'dashboard' }: { variant?: 
         <h2>{headline}</h2>
         <span>{dateLine}</span>
       </div>
-      <strong className={cls(data.copycat_return_pct)}>{ret(data.copycat_return_pct)}</strong>
+      <strong className={cls(viewData.copycat_return_pct)}>{ret(viewData.copycat_return_pct)}</strong>
     </div>
-    <PerformanceChart data={data} compact={compact} />
+    {!compact ? <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '8px 0 10px' }} aria-label="Performance timeframe">
+      {TIMEFRAME_KEYS.map((key) => <button key={key} type="button" aria-pressed={range === key} onClick={() => setRange(key)} style={{ border: range === key ? '1px solid rgba(35,233,157,.7)' : '1px solid rgba(148,163,184,.28)', background: range === key ? 'rgba(35,233,157,.12)' : 'transparent', color: 'inherit', borderRadius: 999, padding: '5px 10px', cursor: 'pointer', font: 'inherit', fontSize: 12, fontWeight: 700 }}>{key}</button>)}
+    </div> : null}
+    <PerformanceChart data={viewData} compact={compact} />
     <div className="cc-index-metrics">
-      <div><small><LegendDot color={INDEX_COLOURS.copycat} />Copycat</small><b>{nav(data.copycat_nav)}</b><em className={cls(data.copycat_return_pct)}>{ret(data.copycat_return_pct)}</em></div>
-      <div><small><LegendDot color={INDEX_COLOURS.btc} />BTC</small><b>{nav(data.btc_nav)}</b><em className={cls(data.btc_return_pct)}>{ret(data.btc_return_pct)}</em></div>
-      <div><small><LegendDot color={INDEX_COLOURS.eth} />ETH</small><b>{nav(data.eth_nav)}</b><em className={cls(data.eth_return_pct)}>{ret(data.eth_return_pct)}</em></div>
-      <div><small><LegendDot color={INDEX_COLOURS.spx} />S&P 500</small><b>{nav(data.spx_nav)}</b><em className={cls(data.spx_return_pct)}>{ret(data.spx_return_pct)}</em></div>
-      {!compact ? <div><small>Max drawdown</small><b>{ret(data.max_drawdown_pct)}</b><em>live model</em></div> : null}
+      <div><small><LegendDot color={INDEX_COLOURS.copycat} />Copycat</small><b>{nav(viewData.copycat_nav)}</b><em className={cls(viewData.copycat_return_pct)}>{ret(viewData.copycat_return_pct)}</em></div>
+      <div><small><LegendDot color={INDEX_COLOURS.btc} />BTC</small><b>{nav(viewData.btc_nav)}</b><em className={cls(viewData.btc_return_pct)}>{ret(viewData.btc_return_pct)}</em></div>
+      <div><small><LegendDot color={INDEX_COLOURS.eth} />ETH</small><b>{nav(viewData.eth_nav)}</b><em className={cls(viewData.eth_return_pct)}>{ret(viewData.eth_return_pct)}</em></div>
+      <div><small><LegendDot color={INDEX_COLOURS.spx} />S&P 500</small><b>{nav(viewData.spx_nav)}</b><em className={cls(viewData.spx_return_pct)}>{ret(viewData.spx_return_pct)}</em></div>
+      {!compact ? <div><small>Max drawdown</small><b>{ret(viewData.max_drawdown_pct)}</b><em>live model</em></div> : null}
     </div>
     {!compact ? <div className="cc-index-weights"><span>Current model weights</span>{weights.map((w: any) => <i key={w.coin} className={w.direction === 'short' ? 'negative' : 'positive'}>{w.direction === 'short' ? 'SHORT ' : 'LONG '}{w.coin} {(Number(w.weight || 0) * 100).toFixed(0)}%</i>)}</div> : null}
     <p className="cc-index-note">{isBacktest ? 'Simulated historical backtest of the Copycat methodology versus BTC, ETH and an S&P 500 benchmark. USDC margin is excluded. The S&P 500 benchmark is represented by the Hyperliquid Trade[XYZ] SP500 perpetual market for comparison; Copycat is not affiliated with S&P Dow Jones Indices or Trade[XYZ]. Backtested performance is not a reliable indicator of future results.' : "Live model performance from Copycat's signed net exposure allocation. USDC margin is excluded; BTC, ETH and S&P 500 are comparison benchmarks. The S&P 500 benchmark is represented by the Hyperliquid Trade[XYZ] SP500 perpetual market; Copycat is not affiliated with S&P Dow Jones Indices or Trade[XYZ]. Includes a fee/slippage buffer. Past performance is not a reliable indicator of future results."}</p>

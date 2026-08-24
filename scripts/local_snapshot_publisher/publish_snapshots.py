@@ -823,6 +823,222 @@ def clamp(value: float, lo: float, hi: float) -> float:
     return max(lo, min(hi, value))
 
 
+# COPYCAT_PUBLISHER_SINGLETON_HISTORY_V1_START
+import sqlite3
+
+_COPYCAT_PUBLISHER_LOCK_HANDLE = None
+
+def _copycat_acquire_publisher_lock() -> Any:
+    if os.name != "nt":
+        return True
+    try:
+        import msvcrt
+        lock_path = Path(r"C:\CopycatPersistentState\publisher_singleton.lock")
+        lock_path.parent.mkdir(parents=True, exist_ok=True)
+        handle = open(lock_path, "a+b")
+        handle.seek(0, 2)
+        if handle.tell() == 0:
+            handle.write(b"0")
+            handle.flush()
+        handle.seek(0)
+        msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+        return handle
+    except OSError:
+        return None
+    except Exception:
+        return True
+
+def ensure_copycat_publisher_lock() -> None:
+    global _COPYCAT_PUBLISHER_LOCK_HANDLE
+    if _COPYCAT_PUBLISHER_LOCK_HANDLE is not None:
+        return
+    handle = _copycat_acquire_publisher_lock()
+    if handle is None:
+        raise SystemExit(0)
+    _COPYCAT_PUBLISHER_LOCK_HANDLE = handle
+
+def _copycat_state_backup_path(path: Path) -> Path:
+    return path.with_name(path.name + ".bak")
+
+def read_performance_index_state(path: Path) -> Dict[str, Any]:
+    for candidate in (path, _copycat_state_backup_path(path)):
+        try:
+            if not candidate.exists():
+                continue
+            value = json.loads(candidate.read_text(encoding="utf-8"))
+            if isinstance(value, dict):
+                return value
+        except Exception:
+            continue
+    try:
+        db_path = performance_index_history_db_path()
+        if db_path.exists():
+            con = sqlite3.connect(str(db_path), timeout=10)
+            try:
+                first_row = con.execute("SELECT MIN(ts_ms) FROM points").fetchone()
+                last_row = con.execute(
+                    "SELECT ts_ms,copycat_nav,btc_nav,eth_nav,spx_nav FROM points ORDER BY ts_ms DESC LIMIT 1"
+                ).fetchone()
+                if first_row and first_row[0] and last_row:
+                    return {
+                        "start_ts_ms": safe_int(first_row[0]),
+                        "latest_ts_ms": safe_int(last_row[0]),
+                        "copycat_nav": safe_float(last_row[1], 100.0),
+                        "btc_nav": safe_float(last_row[2], 100.0),
+                        "eth_nav": safe_float(last_row[3], 100.0),
+                        "spx_nav": safe_float(last_row[4], 100.0),
+                        "points": [],
+                        "current_weights": [],
+                        "last_mids": {},
+                    }
+            finally:
+                con.close()
+    except Exception:
+        pass
+    return {}
+
+def write_performance_index_state(path: Path, value: Dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    backup = _copycat_state_backup_path(path)
+    temp = path.with_name(path.name + ".tmp")
+    if path.exists():
+        try:
+            backup.write_bytes(path.read_bytes())
+        except Exception:
+            pass
+    temp.write_text(json.dumps(value, separators=(",", ":")), encoding="utf-8")
+    os.replace(str(temp), str(path))
+
+def performance_index_history_db_path() -> Path:
+    configured = os.getenv("COPYCAT_PERFORMANCE_HISTORY_DB", "").strip()
+    if configured:
+        return Path(configured).expanduser()
+    if os.name == "nt":
+        return Path(r"C:\CopycatPersistentState\performance_index_history.sqlite")
+    return SCRIPT_DIR / "scanner_state" / "performance_index_history.sqlite"
+
+def _history_row_to_point(row: Any) -> Dict[str, Any]:
+    return {
+        "ts_ms": safe_int(row[0]),
+        "copycat_nav": round(safe_float(row[1]), 6),
+        "btc_nav": round(safe_float(row[2]), 6),
+        "eth_nav": round(safe_float(row[3]), 6),
+        "spx_nav": round(safe_float(row[4]), 6),
+        "copycat_return_pct": round(safe_float(row[1]) - 100.0, 6),
+        "btc_return_pct": round(safe_float(row[2]) - 100.0, 6),
+        "eth_return_pct": round(safe_float(row[3]) - 100.0, 6),
+        "spx_return_pct": round(safe_float(row[4]) - 100.0, 6),
+        "live": bool(row[5]),
+    }
+
+def _history_series(con: sqlite3.Connection, start_ms: int, bucket_ms: int) -> List[Dict[str, Any]]:
+    where = "WHERE ts_ms >= ?" if start_ms > 0 else ""
+    params = (start_ms,) if start_ms > 0 else ()
+    first = con.execute(
+        f"SELECT ts_ms,copycat_nav,btc_nav,eth_nav,spx_nav,live FROM points {where} ORDER BY ts_ms ASC LIMIT 1",
+        params,
+    ).fetchone()
+    rows = con.execute(
+        f"""
+        SELECT p.ts_ms,p.copycat_nav,p.btc_nav,p.eth_nav,p.spx_nav,p.live
+        FROM points p
+        JOIN (
+            SELECT CAST(ts_ms / ? AS INTEGER) AS bucket_id, MAX(ts_ms) AS max_ts
+            FROM points
+            {where}
+            GROUP BY bucket_id
+        ) b ON p.ts_ms=b.max_ts
+        ORDER BY p.ts_ms ASC
+        """,
+        (bucket_ms,) + params,
+    ).fetchall()
+    merged = {}
+    if first:
+        merged[safe_int(first[0])] = first
+    for row in rows:
+        merged[safe_int(row[0])] = row
+    return [_history_row_to_point(merged[key]) for key in sorted(merged)]
+
+def record_and_build_performance_history(
+    point: Dict[str, Any],
+    start_ts_ms: int,
+    now_ms: int,
+) -> Dict[str, List[Dict[str, Any]]]:
+    db_path = performance_index_history_db_path()
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    con = sqlite3.connect(str(db_path), timeout=30)
+    try:
+        con.execute("PRAGMA journal_mode=WAL")
+        con.execute("PRAGMA synchronous=NORMAL")
+        con.execute(
+            """
+            CREATE TABLE IF NOT EXISTS points (
+                ts_ms INTEGER PRIMARY KEY,
+                copycat_nav REAL NOT NULL,
+                btc_nav REAL NOT NULL,
+                eth_nav REAL NOT NULL,
+                spx_nav REAL NOT NULL,
+                live INTEGER NOT NULL DEFAULT 1
+            )
+            """
+        )
+        if start_ts_ms > 0:
+            con.execute(
+                "INSERT OR IGNORE INTO points(ts_ms,copycat_nav,btc_nav,eth_nav,spx_nav,live) VALUES (?,?,?,?,?,1)",
+                (start_ts_ms, 100.0, 100.0, 100.0, 100.0),
+            )
+        point_ts = safe_int(point.get("ts_ms"))
+        five_min_ms = 5 * 60_000
+        bucket_start = (point_ts // five_min_ms) * five_min_ms if point_ts > 0 else 0
+        if bucket_start > 0:
+            con.execute(
+                "DELETE FROM points WHERE ts_ms>=? AND ts_ms<? AND ts_ms<>?",
+                (bucket_start, bucket_start + five_min_ms, start_ts_ms),
+            )
+        con.execute(
+            """
+            INSERT OR REPLACE INTO points(ts_ms,copycat_nav,btc_nav,eth_nav,spx_nav,live)
+            VALUES (?,?,?,?,?,?)
+            """,
+            (
+                point_ts,
+                safe_float(point.get("copycat_nav"), 100.0),
+                safe_float(point.get("btc_nav"), 100.0),
+                safe_float(point.get("eth_nav"), 100.0),
+                safe_float(point.get("spx_nav"), 100.0),
+                1 if point.get("live", True) else 0,
+            ),
+        )
+        con.commit()
+
+        import datetime as _dt
+        day_ms = 86_400_000
+        dt_now = _dt.datetime.fromtimestamp(now_ms / 1000, tz=_dt.timezone.utc)
+        ytd_start = int(_dt.datetime(dt_now.year, 1, 1, tzinfo=_dt.timezone.utc).timestamp() * 1000)
+        first_ts_row = con.execute("SELECT MIN(ts_ms) FROM points").fetchone()
+        first_ts = safe_int(first_ts_row[0]) if first_ts_row else start_ts_ms
+        span = max(0, now_ms - first_ts)
+        if span <= 7 * day_ms:
+            all_bucket = 15 * 60_000
+        elif span <= 31 * day_ms:
+            all_bucket = 60 * 60_000
+        elif span <= 366 * day_ms:
+            all_bucket = 6 * 60 * 60_000
+        else:
+            all_bucket = day_ms
+
+        return {
+            "1D": _history_series(con, now_ms - day_ms, 5 * 60_000),
+            "1W": _history_series(con, now_ms - 7 * day_ms, 30 * 60_000),
+            "1M": _history_series(con, now_ms - 30 * day_ms, 2 * 60 * 60_000),
+            "YTD": _history_series(con, ytd_start, day_ms),
+            "1Y": _history_series(con, now_ms - 365 * day_ms, day_ms),
+            "ALL": _history_series(con, 0, all_bucket),
+        }
+    finally:
+        con.close()
+# COPYCAT_PUBLISHER_SINGLETON_HISTORY_V1_END
+
 # COPYCAT_CONSENSUS_INDEX_V2_START
 INDEX_STABLECOINS = {
     "USDC", "USDT", "USDT0", "USDE", "SUSDE", "USDH",
@@ -1045,14 +1261,10 @@ def top_conviction_sort_key(
 # COPYCAT_PERSISTENT_INDEX_CONVICTION_V2_END
 
 def build_performance_index_snapshot(now_ms: int, mids: Dict[str, float], signals: List[Dict[str, Any]], targets: List[Dict[str, Any]], config: Config) -> Dict[str, Any]:
+    ensure_copycat_publisher_lock()
     path = performance_index_state_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    try:
-        state = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
-        if not isinstance(state, dict):
-            state = {}
-    except Exception:
-        state = {}
+    state = read_performance_index_state(path)
     current_weights: List[Dict[str, Any]] = []
     for row in targets or []:
         coin = clean_coin(row.get("coin"))
@@ -1100,9 +1312,15 @@ def build_performance_index_snapshot(now_ms: int, mids: Dict[str, float], signal
     else:
         points[-1] = point
     points = points[-720:]
+    history_timeframes = record_and_build_performance_history(point, start_ts, now_ms)
+    _public_history_by_ts = {}
+    for _series in history_timeframes.values():
+        for _history_point in _series:
+            _public_history_by_ts[safe_int(_history_point.get("ts_ms"))] = _history_point
+    public_history_points = [_public_history_by_ts[key] for key in sorted(_public_history_by_ts) if key > 0]
     peak = 100.0
     max_dd = 0.0
-    for row in points:
+    for row in history_timeframes.get("ALL", points):
         nav = safe_float(row.get("copycat_nav"),100.0)
         peak = max(peak,nav)
         if peak > 0:
@@ -1110,10 +1328,10 @@ def build_performance_index_snapshot(now_ms: int, mids: Dict[str, float], signal
     symbols = {"BTC","ETH",spx_symbol,*[clean_coin(row.get("coin")) for row in previous_weights+current_weights if clean_coin(row.get("coin"))]}
     next_state = {"method_version":"copycat_consensus_equity_normalized_v2","start_ts_ms":start_ts,"latest_ts_ms":now_ms,"copycat_nav":copycat_nav,"btc_nav":btc_nav,"eth_nav":eth_nav,"spx_nav":spx_nav,"points":points,"current_weights":current_weights,"last_mids":{k:v for k,v in mids.items() if k in symbols}}
     try:
-        path.write_text(json.dumps(next_state,separators=(",",":")),encoding="utf-8")
+        write_performance_index_state(path, next_state)
     except Exception as exc:
         log(f"Warning: could not save performance index state: {exc}")
-    return {"status":"ok","source":"local_snapshot_index_v2","spx_benchmark_symbol":spx_symbol,"method":"copycat_consensus_equity_normalized_v2","method_note":"Wallet positions are normalized by perp equity, higher-ranked wallets receive gentle extra influence, opposing longs and shorts cancel, stablecoins are excluded, and previous-period weights earn the next price move.","start_ts_ms":start_ts,"latest_ts_ms":now_ms,"copycat_nav":round(copycat_nav,6),"btc_nav":round(btc_nav,6),"eth_nav":round(eth_nav,6),"spx_nav":round(spx_nav,6),"copycat_return_pct":round(copycat_nav-100.0,6),"btc_return_pct":round(btc_nav-100.0,6),"eth_return_pct":round(eth_nav-100.0,6),"spx_return_pct":round(spx_nav-100.0,6),"max_drawdown_pct":round(max_dd,6),"points_count":len(points),"points":points,"current_weights":current_weights[:20],"previous_period_weights_used":True,"stablecoins_excluded":True,"minimum_wallets_per_asset":INDEX_MIN_WALLETS,"minimum_consensus_ratio":INDEX_MIN_CONSENSUS,"cache_ttl_ms":config.interval_seconds*1000,"public_readonly":True,"snapshot_mode":True,"index_state_storage":"persistent_windows_state_v1"}
+    return {"status":"ok","source":"local_snapshot_index_v2","spx_benchmark_symbol":spx_symbol,"method":"copycat_consensus_equity_normalized_v2","method_note":"Wallet positions are normalized by perp equity, higher-ranked wallets receive gentle extra influence, opposing longs and shorts cancel, stablecoins are excluded, and previous-period weights earn the next price move.","start_ts_ms":start_ts,"latest_ts_ms":now_ms,"copycat_nav":round(copycat_nav,6),"btc_nav":round(btc_nav,6),"eth_nav":round(eth_nav,6),"spx_nav":round(spx_nav,6),"copycat_return_pct":round(copycat_nav-100.0,6),"btc_return_pct":round(btc_nav-100.0,6),"eth_return_pct":round(eth_nav-100.0,6),"spx_return_pct":round(spx_nav-100.0,6),"max_drawdown_pct":round(max_dd,6),"points_count":len(public_history_points),"points":public_history_points,"timeframes":history_timeframes,"current_weights":current_weights[:20],"previous_period_weights_used":True,"stablecoins_excluded":True,"minimum_wallets_per_asset":INDEX_MIN_WALLETS,"minimum_consensus_ratio":INDEX_MIN_CONSENSUS,"cache_ttl_ms":config.interval_seconds*1000,"public_readonly":True,"snapshot_mode":True,"index_state_storage":"persistent_windows_state_v1"}
 
 # Copycat registry summary counts v1
 def read_registry_summary_counts() -> Dict[str, int]:

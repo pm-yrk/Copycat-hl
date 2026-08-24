@@ -649,7 +649,7 @@ def main() -> int:
                     time.sleep(600)
             if args.once:
                 return 0
-            time.sleep(max(45, args.interval_seconds))
+            time.sleep(max(10, args.interval_seconds))
     finally:
         con.close()
 
