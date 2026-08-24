@@ -130,48 +130,16 @@ function fallbackTimeframePoints(data: PerfData, range: TimeframeKey): Point[] {
   return filtered.length ? filtered : points
 }
 
-function rebaseTimeframe(data: PerfData, range: TimeframeKey): PerfData {
+function selectTimeframe(data: PerfData, range: TimeframeKey): PerfData {
   const supplied = Array.isArray(data.timeframes?.[range]) ? data.timeframes?.[range] || [] : []
-  const source = (supplied.length ? supplied : fallbackTimeframePoints(data, range)).map(normalisePerfPoint)
-  if (!source.length) return data
-  const first = source[0]
-  const base = {
-    copycat_nav: Number(first.copycat_nav || 100),
-    btc_nav: Number(first.btc_nav || 100),
-    eth_nav: Number(first.eth_nav || 100),
-    spx_nav: Number(first.spx_nav || 100),
-  }
-  const rebased = source.map((p) => ({
-    ...p,
-    copycat_nav: base.copycat_nav > 0 ? (Number(p.copycat_nav) / base.copycat_nav) * 100 : 100,
-    btc_nav: base.btc_nav > 0 ? (Number(p.btc_nav) / base.btc_nav) * 100 : 100,
-    eth_nav: base.eth_nav > 0 ? (Number(p.eth_nav) / base.eth_nav) * 100 : 100,
-    spx_nav: base.spx_nav > 0 ? (Number(p.spx_nav || 100) / base.spx_nav) * 100 : 100,
-  }))
-  const last = rebased[rebased.length - 1]
-  let peak = 100
-  let maxDrawdown = 0
-  rebased.forEach((p) => {
-    peak = Math.max(peak, Number(p.copycat_nav || 100))
-    if (peak > 0) maxDrawdown = Math.min(maxDrawdown, (Number(p.copycat_nav || 100) / peak - 1) * 100)
-  })
+  const points = (supplied.length ? supplied : fallbackTimeframePoints(data, range)).map(normalisePerfPoint)
+  if (!points.length) return data
   return {
     ...data,
-    points: rebased,
-    start_ts_ms: source[0].ts_ms,
-    latest_ts_ms: source[source.length - 1].ts_ms,
-    copycat_nav: last.copycat_nav,
-    btc_nav: last.btc_nav,
-    eth_nav: last.eth_nav,
-    spx_nav: last.spx_nav,
-    copycat_return_pct: Number(last.copycat_nav) - 100,
-    btc_return_pct: Number(last.btc_nav) - 100,
-    eth_return_pct: Number(last.eth_nav) - 100,
-    spx_return_pct: Number(last.spx_nav || 100) - 100,
-    max_drawdown_pct: maxDrawdown,
+    points,
+    latest_ts_ms: points[points.length - 1].ts_ms,
   }
 }
-
 function PerformanceChart({ data, compact = false }: { data: PerfData; compact?: boolean }) {
   const points = (data.points || []).filter((p: any) => Number.isFinite(Number(p.copycat_nav)))
   const domain = chartDomain(points)
@@ -232,7 +200,7 @@ export default function PerformanceIndex({ variant = 'dashboard' }: { variant?: 
 
   const weights = useMemo(() => (data.current_weights || []).slice(0, 5), [data.current_weights])
   const isBacktest = data.mode === 'backtest' && (data.points || []).length > 0
-  const viewData = isBacktest ? data : rebaseTimeframe(data, range)
+  const viewData = isBacktest ? data : selectTimeframe(data, range)
   const headline = compact
     ? (isBacktest ? '1Y methodology backtest' : 'Live model performance')
     : 'Copycat Index vs BTC / ETH / S&P 500'
@@ -241,7 +209,7 @@ export default function PerformanceIndex({ variant = 'dashboard' }: { variant?: 
     ? `Backtested from ${shortDate(data.start_ts_ms)} | USDC margin excluded`
     : range === 'ALL'
       ? `Live history from ${shortDate(data.start_ts_ms)} | protected archive | no hindsight`
-      : `${range} view | rebased to 100 at ${shortDate(viewData.start_ts_ms)} | no hindsight`
+      : `${range} window | same continuous Index scale from inception | no hindsight`
 
   return <section className={`cc-index-card ${compact ? 'home' : 'deep cc-index-dashboard-fit'}`}>
     <div className="cc-index-head">
