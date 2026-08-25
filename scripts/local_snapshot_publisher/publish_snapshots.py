@@ -1260,6 +1260,45 @@ def top_conviction_sort_key(
     )
 # COPYCAT_PERSISTENT_INDEX_CONVICTION_V2_END
 
+# COPYCAT_DIRECT_BENCHMARK_V1_START
+def _copycat_benchmark_post(body: Dict[str, Any], timeout: int = 25) -> Any:
+    import urllib.request as _u
+    req=_u.Request("https://api.hyperliquid.xyz/info",data=json.dumps(body).encode("utf-8"),headers={"Content-Type":"application/json","User-Agent":"CopycatBenchmark/1.0"},method="POST")
+    with _u.urlopen(req,timeout=timeout) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+def _copycat_inception_close(coin: str, start_ts_ms: int) -> float:
+    try:
+        rows=_copycat_benchmark_post({"type":"candleSnapshot","req":{"coin":coin,"interval":"1m","startTime":max(0,start_ts_ms-120000),"endTime":start_ts_ms+120000}})
+        rows=[r for r in rows if isinstance(r,dict)]
+        if not rows: return 0.0
+        row=min(rows,key=lambda r:abs(safe_int(r.get("t"))-start_ts_ms))
+        return safe_float(row.get("c"))
+    except Exception:
+        return 0.0
+
+def _copycat_sp500_mid() -> float:
+    try:
+        rows=_copycat_benchmark_post({"type":"allMids","dex":"xyz"})
+        if isinstance(rows,dict): return safe_float(rows.get("xyz:SP500"))
+    except Exception:
+        pass
+    return 0.0
+
+def copycat_direct_benchmarks(state: Dict[str, Any], start_ts_ms: int, mids: Dict[str,float], old_btc: float, old_eth: float, old_spx: float) -> Tuple[Dict[str,float],float,float,float]:
+    raw=state.get("benchmark_start_prices")
+    starts=dict(raw) if isinstance(raw,dict) else {}
+    for key,coin in (("BTC","BTC"),("ETH","ETH"),("SP500","xyz:SP500")):
+        if safe_float(starts.get(key))<=0:
+            value=_copycat_inception_close(coin,start_ts_ms)
+            if value>0: starts[key]=value
+    current={"BTC":safe_float(mids.get("BTC")),"ETH":safe_float(mids.get("ETH")),"SP500":_copycat_sp500_mid()}
+    def nav(key,current_value,fallback):
+        start=safe_float(starts.get(key))
+        return 100.0*current_value/start if start>0 and current_value>0 else fallback
+    return starts,nav("BTC",current["BTC"],old_btc),nav("ETH",current["ETH"],old_eth),nav("SP500",current["SP500"],old_spx)
+# COPYCAT_DIRECT_BENCHMARK_V1_END
+
 def build_performance_index_snapshot(now_ms: int, mids: Dict[str, float], signals: List[Dict[str, Any]], targets: List[Dict[str, Any]], config: Config) -> Dict[str, Any]:
     ensure_copycat_publisher_lock()
     path = performance_index_state_path()
@@ -1281,11 +1320,8 @@ def build_performance_index_snapshot(now_ms: int, mids: Dict[str, float], signal
     btc_nav = safe_float(state.get("btc_nav"), 100.0)
     eth_nav = safe_float(state.get("eth_nav"), 100.0)
     spx_nav = safe_float(state.get("spx_nav"), 100.0)
-    spx_symbol = "SPX"
-    for candidate in ("SPX", "500", "@500", "xyz:SP500", "XYZ:SP500", "SP500"):
-        if safe_float(mids.get(candidate)) > 0 or safe_float(last_mids.get(candidate)) > 0:
-            spx_symbol = candidate
-            break
+    spx_symbol = "xyz:SP500"
+    benchmark_start_ts = safe_int(state.get("start_ts_ms")) or now_ms
     movement = 0.0
     for row in previous_weights:
         coin = clean_coin(row.get("coin"))
@@ -1295,15 +1331,9 @@ def build_performance_index_snapshot(now_ms: int, mids: Dict[str, float], signal
             movement += safe_float(row.get("signed_weight")) * ((cur / prev) - 1.0)
     movement = clamp(movement, -0.08, 0.08)
     copycat_nav *= 1.0 + movement
-    def update_benchmark(symbol: str, nav: float) -> float:
-        prev = safe_float(last_mids.get(symbol))
-        cur = safe_float(mids.get(symbol))
-        if prev > 0 and cur > 0:
-            return nav * (1.0 + clamp((cur / prev) - 1.0, -0.08, 0.08))
-        return nav
-    btc_nav = update_benchmark("BTC", btc_nav)
-    eth_nav = update_benchmark("ETH", eth_nav)
-    spx_nav = update_benchmark(spx_symbol, spx_nav)
+    benchmark_start_prices, btc_nav, eth_nav, spx_nav = copycat_direct_benchmarks(
+        state, benchmark_start_ts, mids, btc_nav, eth_nav, spx_nav
+    )
     start_ts = safe_int(state.get("start_ts_ms")) or now_ms
     points = state.get("points") if isinstance(state.get("points"), list) else []
     point = {"ts_ms": now_ms, "copycat_nav": round(copycat_nav,6), "btc_nav": round(btc_nav,6), "eth_nav": round(eth_nav,6), "spx_nav": round(spx_nav,6), "copycat_return_pct": round(copycat_nav-100.0,6), "btc_return_pct": round(btc_nav-100.0,6), "eth_return_pct": round(eth_nav-100.0,6), "spx_return_pct": round(spx_nav-100.0,6), "live": True}
@@ -1326,7 +1356,7 @@ def build_performance_index_snapshot(now_ms: int, mids: Dict[str, float], signal
         if peak > 0:
             max_dd = min(max_dd,(nav/peak-1.0)*100.0)
     symbols = {"BTC","ETH",spx_symbol,*[clean_coin(row.get("coin")) for row in previous_weights+current_weights if clean_coin(row.get("coin"))]}
-    next_state = {"method_version":"copycat_consensus_equity_normalized_v2","start_ts_ms":start_ts,"latest_ts_ms":now_ms,"copycat_nav":copycat_nav,"btc_nav":btc_nav,"eth_nav":eth_nav,"spx_nav":spx_nav,"points":points,"current_weights":current_weights,"last_mids":{k:v for k,v in mids.items() if k in symbols}}
+    next_state = {"method_version":"copycat_consensus_equity_normalized_v2","start_ts_ms":start_ts,"latest_ts_ms":now_ms,"copycat_nav":copycat_nav,"btc_nav":btc_nav,"eth_nav":eth_nav,"spx_nav":spx_nav,"points":points,"current_weights":current_weights,"last_mids":{k:v for k,v in mids.items() if k in symbols},"benchmark_start_prices":benchmark_start_prices}
     try:
         write_performance_index_state(path, next_state)
     except Exception as exc:
