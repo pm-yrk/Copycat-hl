@@ -2176,7 +2176,7 @@ def _catalyst_select_events(
     current_ms = safe_int(now_ms) or int(time.time() * 1000)
     signal_assets = {
         _market_text(row.get("coin")).upper()
-        for row in (signals or [])[:80]
+        for row in (signals or [])
         if isinstance(row, dict) and _market_text(row.get("coin"))
     }
 
@@ -2822,7 +2822,7 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
 
     feed = {
         "summary": summary,
-        "signals": signals[:80],
+        "signals": signals,
         "targets": targets[:80],
         "flow": flow[:80],
         "orders": orders,

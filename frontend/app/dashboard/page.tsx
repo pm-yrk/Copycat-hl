@@ -184,7 +184,7 @@ function orderKey(o: any) {
 function ago(ms: any) { const m = Math.max(0, Math.round((Date.now() - Number(ms || Date.now())) / 60000)); if (m < 1) return 'just now'; if (m < 60) return `${m}m ago`; return `${Math.round(m / 60)}h ago` }
 function fmtTime(ms: any) {
   if (!ms) return 'Awaiting first refresh'
-  return new Date(Number(ms)).toLocaleString(undefined, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', '')
+  return new Date(Number(ms)).toLocaleString(undefined, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }).replace(',', '')
 }
 function maskWallet(w: string) {
   const wallet = String(w || '').trim()
@@ -879,9 +879,9 @@ export default function Dashboard() {
       const cached = localStorage.getItem(cacheKey)
       if (cached) setIcons(JSON.parse(cached))
     } catch {}
-    const visibleSymbols = symbolKey.split(',').slice(0, 80).join(',')
+    const visibleSymbols = symbolKey
     const timer = window.setTimeout(() => {
-      apiGet('/api/token-icons?limit=80&symbols=' + encodeURIComponent(visibleSymbols), { timeoutMs: 3500 }).then((r: any) => {
+      apiGet('/api/token-icons?limit=250&symbols=' + encodeURIComponent(visibleSymbols), { timeoutMs: 3500 }).then((r: any) => {
         const nextIcons = r.icons || {}
         setIcons(nextIcons)
         try { localStorage.setItem(cacheKey, JSON.stringify(nextIcons)) } catch {}
@@ -1035,9 +1035,9 @@ export default function Dashboard() {
 
 <section className="cc-kpi-grid cc-kpi-grid-tight">
       <article><small>Copycat-ranked wallets</small><RollingInteger value={summary.qualified_wallets || 0} /><span>{walletUniverseCaption(summary)}</span></article>
-      <article className="cc-tracked-value-card"><small>Tracked wallet value</small><RollingMoney value={summary.tracked_total_wallet_value_usd ?? summary.tracked_account_value_usd} /><span>same live 50-wallet cohort as API</span>{summary.tracked_account_value_usd ? <em>Perp equity: {money(summary.tracked_account_value_usd)}</em> : null}</article>
+      <article className="cc-tracked-value-card"><small>Tracked wallet value</small><RollingMoney value={summary.tracked_total_wallet_value_usd ?? summary.tracked_account_value_usd} /><span>{Number(summary.wallets_with_complete_total_value || 0)}/{Number(summary.selected_wallet_count || summary.live_wallets || 50)} fully valued | same live cohort as API</span>{summary.tracked_account_value_usd ? <em>Perp equity: {money(summary.tracked_account_value_usd)}</em> : null}</article>
       <article className="cc-open-position-card"><small>Open position value</small><RollingMoney value={summary.tracked_open_position_value_usd} /><span>{summary.open_positions || 0} live positions</span>{grossLeverageValue ? <em>{leverageText(grossLeverageValue)}</em> : null}</article>
-      <article><small>Assets with signals</small><RollingInteger value={signals.length || summary.assets_with_signals || 0} /><span>{summary.markets_monitored ? `${summary.markets_monitored} price markets available` : 'cross-asset breadth'}</span></article>
+      <article><small>Assets with signals</small><RollingInteger value={summary.assets_with_signals || signals.length || 0} /><span>{summary.markets_monitored ? `${summary.markets_monitored} price markets available` : 'cross-asset breadth'}</span></article>
     </section>
 
 
@@ -1073,6 +1073,6 @@ export default function Dashboard() {
     </section>
 
 
-    <footer className="cc-warning-banner"><span className="cc-shield" aria-hidden><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5.2c0 4.5-2.7 8.4-7 9.8-4.3-1.4-7-5.3-7-9.8V6l7-3z"/><path d="M9.2 12.1l1.7 1.7 3.9-4.1"/></svg></span><div className="cc-footer-main"><strong>Market intelligence only.</strong><em>Not financial advice. {rankingScope}. {claimReady ? 'Broad-index threshold met.' : 'Not claiming all-Hyperliquid top 50 yet.'}</em><small>Live coverage: {liveCoverageText}  |  {summary.snapshot_wallets || 0} fallback  |  Sync: <b className={`cc-audit-${auditStatus}`}>{auditStatus}</b>  |  {audit?.message || 'Checking dashboard consistency'}</small></div><div className={`cc-footer-meta ${dataHealthy ? 'healthy' : 'checking'}`}><span className="cc-footer-quality"><span className="cc-pulse-dot" /><b>{dataHealthy ? (claimReady ? 'Live data and ranking verified' : 'Live feed healthy  |  ranking verification in progress') : 'Data quality checking'}</b></span><small>Signal refresh: {fmtTime(summary.latest_signal_ts_ms)} UTC  |  {summary.live_state_active ? `Live state: ${fmtTime(summary.latest_live_state_ts_ms)} UTC` : 'Snapshot mode'}  |  Snapshot/cache refresh</small></div><nav className="cc-legal-links" aria-label="Legal links" style={{ flexBasis: '100%', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 6, margin: '4px 0 0 41px', padding: 0, fontSize: 11, lineHeight: 1.25, color: 'rgba(247,251,255,.62)' }}><span style={{ color: 'rgba(247,251,255,.42)' }}>Legal:</span><a href="/terms" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>Terms</a><span aria-hidden="true" style={{ color: 'rgba(247,251,255,.42)' }}> | </span><a href="/privacy" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>Privacy</a><span aria-hidden="true" style={{ color: 'rgba(247,251,255,.42)' }}> | </span><a href="/risk-disclaimer" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>Risk disclaimer</a><span aria-hidden="true" style={{ color: 'rgba(247,251,255,.42)' }}> | </span><a href="/external-links" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>External links</a></nav></footer>
+    <footer className="cc-warning-banner"><span className="cc-shield" aria-hidden><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5.2c0 4.5-2.7 8.4-7 9.8-4.3-1.4-7-5.3-7-9.8V6l7-3z"/><path d="M9.2 12.1l1.7 1.7 3.9-4.1"/></svg></span><div className="cc-footer-main"><strong>Market intelligence only.</strong><em>Not financial advice. {rankingScope}. {claimReady ? 'Broad-index threshold met.' : 'Not claiming all-Hyperliquid top 50 yet.'}</em><small>Live coverage: {liveCoverageText}  |  {summary.snapshot_wallets || 0} fallback  |  Sync: <b className={`cc-audit-${summary.data_quality_status === 'healthy' ? 'pass' : 'checking'}`}>{summary.data_quality_status === 'healthy' ? 'live' : 'checking'}</b>  |  {summary.data_quality_message || 'Waiting for live feed'}</small></div><div className={`cc-footer-meta ${dataHealthy ? 'healthy' : 'checking'}`}><span className="cc-footer-quality"><span className="cc-pulse-dot" /><b>{dataHealthy ? (claimReady ? 'Live data and ranking verified' : 'Live feed healthy') : 'Data quality checking'}</b></span><small>Signal refresh: {fmtTime(summary.latest_signal_ts_ms)} UTC  |  {summary.live_state_active ? `Live state: ${fmtTime(summary.latest_live_state_ts_ms)} UTC` : 'Snapshot mode'}  |  Snapshot/cache refresh</small></div><nav className="cc-legal-links" aria-label="Legal links" style={{ flexBasis: '100%', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 6, margin: '4px 0 0 41px', padding: 0, fontSize: 11, lineHeight: 1.25, color: 'rgba(247,251,255,.62)' }}><span style={{ color: 'rgba(247,251,255,.42)' }}>Legal:</span><a href="/terms" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>Terms</a><span aria-hidden="true" style={{ color: 'rgba(247,251,255,.42)' }}> | </span><a href="/privacy" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>Privacy</a><span aria-hidden="true" style={{ color: 'rgba(247,251,255,.42)' }}> | </span><a href="/risk-disclaimer" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>Risk disclaimer</a><span aria-hidden="true" style={{ color: 'rgba(247,251,255,.42)' }}> | </span><a href="/external-links" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>External links</a></nav></footer>
   </main></>
 }
