@@ -1,5 +1,7 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
+
 type Point = { x: number; y: number }
 
 function spline(points: Point[]) {
@@ -47,8 +49,40 @@ function ribbonPath(index: number, count: number, variant: 'primary' | 'cross') 
 }
 
 export default function PublicMeshBackdrop({ variant = 'default' }: { variant?: 'home' | 'pricing' | 'login' | 'api' | 'default' }) {
+  const backdropRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const node = backdropRef.current
+    if (!node) return
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+
+    let frame = 0
+    const updatePosition = () => {
+      frame = 0
+      const pageRange = Math.max(1, document.documentElement.scrollHeight - window.innerHeight)
+      const progress = Math.min(1, Math.max(0, window.scrollY / pageRange))
+      node.style.setProperty('--mesh-scroll-y', `${(progress * 38).toFixed(2)}px`)
+      node.style.setProperty('--mesh-scroll-x', `${(Math.sin(progress * Math.PI) * 9).toFixed(2)}px`)
+      node.style.setProperty('--mesh-scroll-tilt', `${((progress - .5) * .42).toFixed(3)}deg`)
+    }
+    const schedulePosition = () => {
+      if (!frame) frame = window.requestAnimationFrame(updatePosition)
+    }
+
+    updatePosition()
+    window.addEventListener('scroll', schedulePosition, { passive: true })
+    window.addEventListener('resize', schedulePosition)
+    return () => {
+      window.removeEventListener('scroll', schedulePosition)
+      window.removeEventListener('resize', schedulePosition)
+      if (frame) window.cancelAnimationFrame(frame)
+    }
+  }, [])
+
   const primaryCount = 46
   const crossCount = 30
+  const strandGroups = 6
   const primary = Array.from({ length: primaryCount }, (_, i) => ({
     d: ribbonPath(i, primaryCount, 'primary'),
     opacity: .08 + .33 * Math.pow(Math.sin((i / (primaryCount - 1)) * Math.PI), 1.35),
@@ -58,7 +92,7 @@ export default function PublicMeshBackdrop({ variant = 'default' }: { variant?: 
     opacity: .045 + .19 * Math.pow(Math.sin((i / (crossCount - 1)) * Math.PI), 1.5),
   }))
 
-  return <div className={`public-mesh public-mesh-${variant}`} aria-hidden="true">
+  return <div ref={backdropRef} className={`public-mesh public-mesh-${variant} public-mesh-is-animated`} aria-hidden="true">
     <svg viewBox="0 0 1680 860" preserveAspectRatio="none">
       <defs>
         <linearGradient id={`meshFade-${variant}`} x1="0" x2="1" y1="0" y2="0">
@@ -77,10 +111,14 @@ export default function PublicMeshBackdrop({ variant = 'default' }: { variant?: 
       </defs>
 
       <g mask={`url(#meshMask-${variant})`} className="public-mesh-cross">
-        {cross.map((line, i) => <path key={`c-${i}`} d={line.d} style={{ opacity: line.opacity }}/>) }
+        {Array.from({ length: strandGroups }, (_, group) => <g key={`cross-group-${group}`} className={`public-mesh-strand-group public-mesh-strand-${group}`}>
+          {cross.map((line, i) => i % strandGroups === group ? <path key={`c-${i}`} d={line.d} style={{ opacity: line.opacity }}/> : null)}
+        </g>)}
       </g>
       <g mask={`url(#meshMask-${variant})`} className="public-mesh-ribbon">
-        {primary.map((line, i) => <path key={`p-${i}`} d={line.d} style={{ opacity: line.opacity }}/>) }
+        {Array.from({ length: strandGroups }, (_, group) => <g key={`primary-group-${group}`} className={`public-mesh-strand-group public-mesh-strand-${group}`}>
+          {primary.map((line, i) => i % strandGroups === group ? <path key={`p-${i}`} d={line.d} style={{ opacity: line.opacity }}/> : null)}
+        </g>)}
       </g>
       <g mask={`url(#meshMask-${variant})`} className="public-mesh-glow" filter={`url(#meshGlow-${variant})`}>
         <path d={ribbonPath(Math.floor(primaryCount * .47), primaryCount, 'primary')}/>
