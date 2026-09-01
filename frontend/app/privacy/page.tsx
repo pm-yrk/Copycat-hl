@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import PublicNav from '../../components/PublicNav'
 
 export const metadata = {
   title: 'Privacy Policy | Copycat',
@@ -7,7 +8,9 @@ export const metadata = {
 
 export default function Page() {
   return (
-    <main className="cc-legal-page">
+    <div className="public-redesign-root">
+      <PublicNav />
+      <main className="cc-legal-page">
       <section className="cc-legal-wrap">
         <Link className="cc-legal-back" href="/">← Back to Copycat</Link>
         <div className="cc-legal-kicker">Copycat privacy</div>
@@ -35,6 +38,7 @@ export default function Page() {
         <p>For privacy questions, contact the Copycat operator using the contact details provided on the site or product support channel.</p>
         <div className="cc-legal-note">Before adding logins, email capture, payments, analytics, or user alerts, update this page to match the exact tools used.</div>
       </section>
-    </main>
+      </main>
+    </div>
   )
 }
