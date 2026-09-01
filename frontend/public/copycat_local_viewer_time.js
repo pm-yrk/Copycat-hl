@@ -49,6 +49,13 @@
   }
 
   function ensureClock() {
+    // Public redesign pages have their own navigation and must not receive the legacy floating clock.
+    // Keep the existing dashboard clock behavior unchanged.
+    if (document.querySelector(".public-redesign-root")) {
+      var existing = document.getElementById("copycat-local-viewer-time");
+      if (existing) existing.remove();
+      return;
+    }
     var menu = findMenuButton();
     if (!menu || !menu.parentElement) return;
 
