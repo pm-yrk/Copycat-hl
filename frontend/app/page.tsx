@@ -114,15 +114,30 @@ export default function Home() {
   const symbol = String(btc?.coin || 'BTC').toUpperCase()
 
   const allocation = useMemo(() => {
-    if (!targets.length) return [] as { coin: string; signed: number; abs: number }[]
+    if (!targets.length) return [] as { coin: string; signed: number; abs: number; mixed?: boolean }[]
     const sorted = targets.map((t: any) => ({ coin: String(t.coin || '').toUpperCase(), signed: Number(t.index_weight ?? (String(t.direction).toLowerCase() === 'short' ? -Math.abs(Number(t.target_weight || 0)) : Math.abs(Number(t.target_weight || 0)))) }))
       .filter((t: any) => t.coin && Number.isFinite(t.signed))
       .sort((a: any, b: any) => Math.abs(b.signed) - Math.abs(a.signed))
-    const top = sorted.slice(0, 4).map((t: any) => ({ ...t, abs: Math.abs(t.signed) }))
+    const top = sorted.slice(0, 4).map((t: any) => ({ ...t, abs: Math.abs(t.signed), mixed: false }))
     const rest = sorted.slice(4)
-    if (rest.length) top.push({ coin: 'Other', signed: rest.reduce((a: number, t: any) => a + t.signed, 0), abs: rest.reduce((a: number, t: any) => a + Math.abs(t.signed), 0) })
+    if (rest.length) {
+      const restLong = rest.reduce((a: number, t: any) => a + Math.max(t.signed, 0), 0)
+      const restShort = rest.reduce((a: number, t: any) => a + Math.abs(Math.min(t.signed, 0)), 0)
+      top.push({ coin: 'Other', signed: restLong - restShort, abs: restLong + restShort, mixed: restLong > 0 && restShort > 0 })
+    }
     return top
   }, [targets])
+
+  const allocationRows = useMemo(() => {
+    if (!allocation.length) return [] as (typeof allocation[number] & { percent: number })[]
+    const total = allocation.reduce((a, x) => a + x.abs, 0) || 1
+    const rawTenths = allocation.map(x => (x.abs / total) * 1000)
+    const tenths = rawTenths.map(Math.floor)
+    let remaining = 1000 - tenths.reduce((a, n) => a + n, 0)
+    const order = rawTenths.map((n, i) => ({ i, fraction: n - Math.floor(n) })).sort((a, b) => b.fraction - a.fraction)
+    for (let i = 0; i < remaining; i++) tenths[order[i % order.length].i] += 1
+    return allocation.map((x, i) => ({ ...x, percent: tenths[i] / 10 }))
+  }, [allocation])
 
   const donutStyle = useMemo(() => {
     if (!allocation.length) return {}
@@ -190,9 +205,9 @@ export default function Home() {
             </div> : <div className="public-data-empty"><b>Waiting for a fresh performance snapshot.</b><span>No bundled performance number is substituted.</span></div>}
           </article>
           <article className="public-allocation-card">
-            <header><div><span>Current allocation</span><small>Signed net exposure</small></div><em className={feedLive ? 'live' : ''}>{feedLive ? 'LIVE' : 'UNAVAILABLE'}</em></header>
-            {feedLive && allocation.length ? <div className="public-allocation-body"><div className="public-donut" style={donutStyle}><i><span>MODEL</span><b>{compact(selected)}</b><small>wallets</small></i></div><div className="public-allocation-list">{allocation.map((x, i) => <div key={x.coin}><i data-n={i}/><b>{x.coin}</b><span className={x.signed < 0 ? 'negative' : 'positive'}>{x.signed >= 0 ? '+' : ''}{(x.signed * 100).toFixed(1)}%</span></div>)}</div></div> : <div className="public-data-empty"><b>Waiting for fresh allocation data.</b><span>Negative means short. Positive means long.</span></div>}
-            <p>Negative = short <span>•</span> Positive = long</p>
+            <header><div><span>Current allocation</span><small>Signed allocation • 100% gross</small></div><em className={feedLive ? 'live' : ''}>{feedLive ? 'LIVE' : 'UNAVAILABLE'}</em></header>
+            {feedLive && allocationRows.length ? <div className="public-allocation-body"><div className="public-donut" style={donutStyle}><i><span>MODEL</span><b>{compact(selected)}</b><small>wallets</small></i></div><div className="public-allocation-list">{allocationRows.map((x, i) => <div key={x.coin}><i data-n={i}/><b>{x.coin}</b><span className={x.mixed ? '' : x.signed < 0 ? 'negative' : 'positive'}>{x.mixed ? `${x.percent.toFixed(1)}% gross` : `${x.signed < 0 ? '-' : '+'}${x.percent.toFixed(1)}%`}</span></div>)}</div></div> : <div className="public-data-empty"><b>Waiting for fresh allocation data.</b><span>Negative means short. Positive means long.</span></div>}
+            <p>Absolute weights total 100% <span>•</span> Negative = short <span>•</span> Positive = long</p>
           </article>
         </div>
       </section>
