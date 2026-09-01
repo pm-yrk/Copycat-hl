@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import PublicNav from '../../components/PublicNav'
 
 export const metadata = {
   title: 'Terms of Service | Copycat',
@@ -7,7 +8,9 @@ export const metadata = {
 
 export default function Page() {
   return (
-    <main className="cc-legal-page">
+    <div className="public-redesign-root">
+      <PublicNav />
+      <main className="cc-legal-page">
       <section className="cc-legal-wrap">
         <Link className="cc-legal-back" href="/">← Back to Copycat</Link>
         <div className="cc-legal-kicker">Copycat legal</div>
@@ -36,6 +39,7 @@ export default function Page() {
         <p>Some jurisdictions do not allow certain limitations, so parts of this section may not apply to you.</p>
         <div className="cc-legal-note">These terms are a practical commercial starting point and should be reviewed by a qualified lawyer before heavy paid launch.</div>
       </section>
-    </main>
+      </main>
+    </div>
   )
 }
