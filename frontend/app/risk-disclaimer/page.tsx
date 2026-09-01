@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import PublicNav from '../../components/PublicNav'
 
 export const metadata = {
   title: 'Risk Disclaimer | Copycat',
@@ -7,7 +8,9 @@ export const metadata = {
 
 export default function Page() {
   return (
-    <main className="cc-legal-page">
+    <div className="public-redesign-root">
+      <PublicNav />
+      <main className="cc-legal-page">
       <section className="cc-legal-wrap">
         <Link className="cc-legal-back" href="/">← Back to Copycat</Link>
         <div className="cc-legal-kicker">Market risk</div>
@@ -33,6 +36,7 @@ export default function Page() {
         <p>Do not trade with money you cannot afford to lose.</p>
         <div className="cc-legal-note">Copycat is market intelligence only. It is not a broker, exchange, advisor, custodian, or trading system.</div>
       </section>
-    </main>
+      </main>
+    </div>
   )
 }
