@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import PublicNav from '../../components/PublicNav'
 
 export const metadata = {
   title: 'External Links Notice | Copycat',
@@ -7,7 +8,9 @@ export const metadata = {
 
 export default function Page() {
   return (
-    <main className="cc-legal-page">
+    <div className="public-redesign-root">
+      <PublicNav />
+      <main className="cc-legal-page">
       <section className="cc-legal-wrap">
         <Link className="cc-legal-back" href="/">← Back to Copycat</Link>
         <div className="cc-legal-kicker">Third-party links</div>
@@ -30,6 +33,7 @@ export default function Page() {
         <p>If Copycat later adds deeper integrations, they should be reviewed separately.</p>
         <div className="cc-legal-note">External explorer links are provided for convenience only. Copycat is not affiliated with HypurrScan or any external explorer unless expressly stated.</div>
       </section>
-    </main>
+      </main>
+    </div>
   )
 }
