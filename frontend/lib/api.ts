@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { getApiBaseUrl, getSupabase } from './supabase'
 
@@ -42,6 +42,14 @@ function copycatSnapshotUrlsForPath(path: string) {
   // This avoids blank/zero dashboards when R2 CORS, R2 upload paths, or env vars are wrong.
   urls.push(`/copycat-data/${file}`)
   return Array.from(new Set(urls))
+}
+
+
+function copycatFreshSnapshotUrlsForPath(path: string) {
+  const file = copycatSnapshotFileForPath(path)
+  if (!file) return [] as string[]
+  const configured = (process.env.NEXT_PUBLIC_SNAPSHOT_BASE_URL || 'https://pub-b9e0279f5eb0496b99c7fa37329e6b53.r2.dev').replace(/\/+$/, '')
+  return configured ? [`${configured}/${file}`] : []
 }
 
 function copycatPrefersSnapshot(path: string) {
@@ -123,6 +131,48 @@ export async function apiPost(path: string, body: any, options: ApiOptions = {})
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
+      signal,
+    })
+    if (!res.ok) {
+      const text = await res.text().catch(() => '')
+      throw new Error(text || `Request failed: ${res.status}`)
+    }
+    return res.json()
+  } catch (err: any) {
+    if (err?.name === 'AbortError') throw new Error('Live data request timed out')
+    if (err instanceof TypeError) throw new Error('Live data temporarily unavailable')
+    throw err
+  } finally {
+    if (timeout) window.clearTimeout(timeout)
+  }
+}
+
+/**
+ * Fresh public-data fetch used by the redesigned public pages.
+ * Unlike apiGet(), this deliberately does not fall back to the bundled
+ * /public/copycat-data files because those can be old at deploy time.
+ * If R2 and the live API are both unavailable, callers should render an
+ * unavailable/stale state rather than presenting an old number as live.
+ */
+export async function apiGetFresh(path: string, options: ApiOptions = {}) {
+  const snapshotUrls = copycatFreshSnapshotUrlsForPath(path)
+  for (const url of snapshotUrls) {
+    try {
+      return await copycatFetchJson(url, options, 'no-store')
+    } catch {
+      // Fall through to the authenticated/live API below.
+    }
+  }
+
+  const token = await authToken()
+  const apiBase = await getApiBaseUrl()
+  const controller = options.signal ? null : new AbortController()
+  const signal = options.signal || controller?.signal
+  const timeout = controller ? window.setTimeout(() => controller.abort(), options.timeoutMs || 12000) : null
+  try {
+    const res = await fetch(`${apiBase}${path}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store',
       signal,
     })
     if (!res.ok) {
