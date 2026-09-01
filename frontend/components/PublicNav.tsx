@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import '../app/public-polish.css'
 
 export default function PublicNav() {
   const path = usePathname()
