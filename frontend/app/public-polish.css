@@ -666,3 +666,40 @@
   display:none!important;
   animation:none!important;
 }
+
+
+/* ==========================================================================
+   Copycat water-physics ribbon v5 — composited inertia without scroll flashing
+   ========================================================================== */
+.public-mesh-is-animated{
+  --mesh-physics-x:0px;
+  --mesh-physics-y:0px;
+  --mesh-physics-tilt:0deg;
+}
+@media(min-width:821px) and (hover:hover) and (pointer:fine){
+  .public-mesh-is-animated.public-mesh-home,
+  .public-mesh-is-animated.public-mesh-pricing,
+  .public-mesh-is-animated.public-mesh-api,
+  .public-mesh-is-animated.public-mesh-login,
+  .public-mesh-is-animated.public-mesh-default{
+    transform:
+      translate3d(var(--mesh-physics-x),var(--mesh-physics-y),0)
+      rotate(calc(-2.4deg + var(--mesh-physics-tilt)));
+    will-change:transform;
+    backface-visibility:hidden;
+    -webkit-backface-visibility:hidden;
+    contain:layout style paint;
+  }
+  .public-mesh-is-animated svg{
+    transform:translate3d(0,0,0) scale(1.025)!important;
+    transition:none!important;
+    will-change:auto!important;
+    backface-visibility:hidden;
+    -webkit-backface-visibility:hidden;
+  }
+  .public-mesh-is-animated .public-mesh-strand-group{
+    animation:none!important;
+    transform:none!important;
+    will-change:auto!important;
+  }
+}
