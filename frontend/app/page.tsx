@@ -224,6 +224,18 @@ export default function Home() {
   const btcPath = sparkPath(perf24hPoints, 'btc_nav')
   const ethPath = sparkPath(perf24hPoints, 'eth_nav')
 
+  const flows = feedLive && Array.isArray(feed?.flow) ? feed.flow : []
+  const topAccumulation = [...flows].filter((row: any) => Number(row?.net_value_flow_usd || 0) > 0).sort((a: any, b: any) => Number(b?.net_value_flow_usd || 0) - Number(a?.net_value_flow_usd || 0))[0]
+  const topDistribution = [...flows].filter((row: any) => Number(row?.net_value_flow_usd || 0) < 0).sort((a: any, b: any) => Number(a?.net_value_flow_usd || 0) - Number(b?.net_value_flow_usd || 0))[0]
+  const telegramLongValue = signals.reduce((sum: number, row: any) => sum + Math.max(0, Number(row?.value_long_usd || 0)), 0)
+  const telegramShortValue = signals.reduce((sum: number, row: any) => sum + Math.max(0, Number(row?.value_short_usd || 0)), 0)
+  const telegramTotalValue = telegramLongValue + telegramShortValue
+  const telegramIsLong = telegramLongValue >= telegramShortValue
+  const telegramBias = telegramIsLong ? 'LONG' : 'SHORT'
+  const telegramBiasShare = telegramTotalValue > 0 ? Math.round((Math.max(telegramLongValue, telegramShortValue) / telegramTotalValue) * 100) : 0
+  const telegramStories = feedLive && Array.isArray(feed?.market_narrative?.stories) ? feed.market_narrative.stories : []
+  const telegramStory = telegramStories[0]
+
   return <div className="public-redesign-root">
     <PublicNav />
     <main className="public-redesign-shell public-home">
@@ -299,6 +311,33 @@ export default function Home() {
             <div className="public-shot-orders"><header><b>Most recent orders</b><span>same live cohort as dashboard</span></header><div>{orders.slice(0,3).map((row:any,index:number)=><span key={`${row.wallet}-${row.ts_ms}-${index}`}><PublicTokenIcon symbol={row.coin || row.asset}/><b>{row.coin || row.asset}</b><em className={String(row.side).toLowerCase().includes('short')?'negative':'positive'}>{row.side || 'Order'}</em><small>{String(row.wallet_label || row.wallet || 'Wallet').replace(/^(.{8}).*(.{4})$/, '$1…$2')}</small><strong>{money(row.delta_value_usd || row.position_value_usd)}</strong></span>)}</div></div>
           </div> : <div className="public-data-empty"><b>Fresh dashboard snapshot unavailable.</b><span>The preview never substitutes made-up data.</span></div>}
         </div>
+        <div className="public-telegram-preview">
+          <div className="public-telegram-copy">
+            <p className="public-eyebrow"><span/> Telegram intelligence</p>
+            <h3>The market comes to you.</h3>
+            <p>Get one clean hourly pulse, then immediate alerts only when the smart-wallet data, large orders, news or catalysts genuinely change.</p>
+            <div className="public-telegram-points">
+              <span><i>🕐</i><b>Hourly market pulse</b><small>The important positioning, signals and flows in one message.</small></span>
+              <span><i>⚡</i><b>Meaningful instant alerts</b><small>Large moves and breaking events—not constant notification noise.</small></span>
+              <span><i>🐋</i><b>Built from the live dashboard</b><small>The same Copycat intelligence, formatted for Telegram.</small></span>
+            </div>
+          </div>
+          <div className="public-telegram-window">
+            <header><span className="public-telegram-avatar">C</span><div><b>Copycat Intelligence</b><small>Telegram alert preview</small></div><em>•••</em></header>
+            <div className="public-telegram-chat">
+              {feedLive && rankedSignals.length ? <article className="public-telegram-bubble">
+                <strong>🐈 COPYCAT MARKET PULSE</strong>
+                {telegramTotalValue > 0 ? <section><b>📊 MARKET POSITIONING</b><span className={telegramIsLong ? 'positive' : 'negative'}>{telegramIsLong ? '🟢' : '🔴'} {telegramBiasShare}% {telegramBias} by tracked value</span><small>🟢 Long {money(telegramLongValue)}&nbsp;&nbsp;·&nbsp;&nbsp;🔴 Short {money(telegramShortValue)}</small></section> : null}
+                <section><b>🎯 STRONGEST SIGNALS</b>{rankedSignals.slice(0,3).map((row:any)=>{const value=displaySignalValue(row);return <span key={row.coin} className={value < 0 ? 'negative' : 'positive'}>{value < 0 ? '🔴' : '🟢'} {row.coin} — {value < 0 ? 'SHORT' : 'LONG'} {Math.round(Math.abs(value)*100)}%</span>})}</section>
+                {topAccumulation || topDistribution ? <section><b>🐋 SMART-WALLET FLOWS</b>{topAccumulation ? <span>🟢 {topAccumulation.coin}: {Math.max(0,Number(topAccumulation.net_buyer_count||0))} more wallets buying · +{money(Math.abs(Number(topAccumulation.net_value_flow_usd||0)))}</span> : null}{topDistribution ? <span>🔴 {topDistribution.coin}: {Math.abs(Math.min(0,Number(topDistribution.net_buyer_count||0)))} more wallets selling · {money(Number(topDistribution.net_value_flow_usd||0))}</span> : null}</section> : null}
+                {allocationRows.length ? <section><b>🧭 COPYCAT ALLOCATION</b><span>{allocationRows.slice(0,3).map(row=>`${row.coin} ${row.signed < 0 ? '-' : '+'}${row.percent.toFixed(1)}%`).join('  ·  ')}</span></section> : null}
+                {telegramStory ? <section><b>🗞️ MARKET NEWS</b><span>{telegramStory.source || 'Market source'} — {String(telegramStory.title || '').slice(0,120)}</span></section> : null}
+              </article> : <article className="public-telegram-bubble public-telegram-empty"><strong>🐈 COPYCAT MARKET PULSE</strong><span>Live alert example will appear with the next dashboard snapshot.</span></article>}
+            </div>
+            <footer><i/><span>Live example using the current Copycat dashboard feed</span></footer>
+          </div>
+        </div>
+
         <div className="public-feature-list">
           <div><i><MiniIcon type="position"/></i><span><b>Market positioning</b><small>See where tracked wallets are long, short, and by how much.</small></span></div>
           <div><i><MiniIcon type="allocation"/></i><span><b>Copycat allocation</b><small>Understand the exact live model portfolio and net exposure.</small></span></div>
