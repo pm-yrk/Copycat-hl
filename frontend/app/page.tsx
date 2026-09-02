@@ -56,6 +56,25 @@ function displaySignalValue(row: any) {
   if (total <= 0) return Number(row?.signal || 0)
   return longUsd >= shortUsd ? longUsd / total : -(shortUsd / total)
 }
+function rankSignalsLikeDashboard(rows: any[]) {
+  const confidenceRank: Record<string, number> = { high: 3, medium: 2, med: 2, low: 1, reserve: 0 }
+  const parts = (row: any) => ({
+    confidence: confidenceRank[String(row?.confidence || '').toLowerCase()] ?? 0,
+    strength: Math.abs(displaySignalValue(row)),
+    wallets: Number(row?.wallets_long || 0) + Number(row?.wallets_short || 0),
+    net: Math.abs(Number(row?.net_value_usd || 0)),
+    gross: Number(row?.value_long_usd || 0) + Number(row?.value_short_usd || 0),
+  })
+  return [...(rows || [])].sort((a: any, b: any) => {
+    const av = parts(a)
+    const bv = parts(b)
+    return (bv.confidence - av.confidence)
+      || (bv.strength - av.strength)
+      || (bv.wallets - av.wallets)
+      || (bv.net - av.net)
+      || (bv.gross - av.gross)
+  })
+}
 function performanceWindow(points: any[], hours = 24) {
   const sorted = [...(points || [])]
     .map((point: any) => ({ ...point, ts_ms: Number(point?.ts_ms || point?.time || 0) }))
@@ -142,11 +161,7 @@ export default function Home() {
   const orders = feedLive && Array.isArray(feed?.orders) ? feed.orders : []
   const selected = Number(summary.qualified_wallets || summary.selected_wallet_count || summary.tracked_active_wallets || 0)
   const indexed = Number(summary.indexed_wallets || summary.known_wallet_candidates || summary.registry_wallets || summary.owned_wallets_indexed || summary.scanner_candidate_wallets_scored || 0)
-  const rankedSignals = useMemo(() => [...signals].sort((a: any, b: any) => {
-    const strength = Math.abs(displaySignalValue(b)) - Math.abs(displaySignalValue(a))
-    if (strength) return strength
-    return Math.abs(Number(b.net_value_usd || 0)) - Math.abs(Number(a.net_value_usd || 0))
-  }), [signals])
+  const rankedSignals = useMemo(() => rankSignalsLikeDashboard(signals), [signals])
   const btc = signals.find((r: any) => String(r?.coin).toUpperCase() === 'BTC') || rankedSignals[0]
   const btcSignal = displaySignalValue(btc)
   const conviction = btc ? Math.round(Math.abs(btcSignal) * 100) : 0
