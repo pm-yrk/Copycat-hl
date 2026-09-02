@@ -145,77 +145,104 @@ def catalyst_key(event: dict[str, Any]) -> str:
     return "|".join([str(event.get("source") or ""), str(event.get("title") or ""), str(event.get("event_at_ms") or "")])
 
 def build_test_message(feed: dict[str, Any]) -> str:
-    summary = feed.get("summary") or {}
-    signals = feed.get("signals") or []
-    top = signals[0] if signals else {}
-    lines = [
-        "Copycat Telegram intelligence is connected ✅",
-        "Schedule: one hourly brief + meaningful trigger/news alerts",
-        f"Live cohort: {as_int(summary.get('live_wallets')):,}/{as_int(summary.get('qualified_wallets')):,} qualified",
-        f"Data quality: {str(summary.get('data_quality_status') or 'unknown').lower()}",
-        "Candidate-count milestone spam: disabled",
-    ]
-    if isinstance(top, dict) and top:
-        value = signal_value(top)
-        lines.append(f"Lead signal: {top.get('coin', '?')} {signal_direction(value)} {abs(value) * 100:.0f}% · {signal_confidence(top)}")
-    return "\n".join(lines)
-
-def build_hourly_brief(feed: dict[str, Any], feed_age_seconds: float | None) -> str:
-    summary = feed.get("summary") or {}
     signals = [row for row in (feed.get("signals") or []) if isinstance(row, dict)]
-    flows = [row for row in (feed.get("flow") or []) if isinstance(row, dict)]
-    targets = [row for row in (feed.get("targets") or []) if isinstance(row, dict)]
-    long_total = sum(max(0.0, as_float(row.get("value_long_usd"))) for row in signals)
-    short_total = sum(max(0.0, as_float(row.get("value_short_usd"))) for row in signals)
-    total = long_total + short_total
-    if total > 0:
-        bias = "LONG" if long_total >= short_total else "SHORT"
-        share = max(long_total, short_total) / total
-        positioning = f"Positioning: {bias} {share * 100:.0f}% by value ({money(long_total)} long / {money(short_total)} short)"
-    else:
-        positioning = "Positioning: warming up — no signed totals yet"
     lines = [
-        "🧭 Copycat hourly intelligence brief",
-        utc_label(),
-        f"Cohort: {as_int(summary.get('live_wallets') or summary.get('selected_wallet_count')):,} live · {as_int(summary.get('qualified_wallets')):,} qualified · data {str(summary.get('data_quality_status') or 'unknown').lower()}",
-        positioning,
+        "✅ COPYCAT TELEGRAM IS CONNECTED",
+        "",
+        "🕐 Hourly market pulse",
+        "⚡ Instant smart-wallet behaviour alerts",
+        "📰 Breaking market news and catalysts",
     ]
-    if feed_age_seconds is not None:
-        lines.insert(3, f"Feed: {age_label(feed_age_seconds)}")
     if signals:
         lead = signals[0]
         value = signal_value(lead)
-        lines.append(f"Lead conviction: {lead.get('coin', '?')} {signal_direction(value)} {abs(value) * 100:.0f}% · {signal_confidence(lead)}")
-        runners = [f"{row.get('coin', '?')} {signal_direction(signal_value(row))} {abs(signal_value(row)) * 100:.0f}%" for row in signals[1:3]]
-        if runners:
-            lines.append("Next strongest: " + " · ".join(runners))
-    positive = sorted([row for row in flows if as_float(row.get("net_value_flow_usd")) > 0], key=lambda row: as_float(row.get("net_value_flow_usd")), reverse=True)
-    negative = sorted([row for row in flows if as_float(row.get("net_value_flow_usd")) < 0], key=lambda row: as_float(row.get("net_value_flow_usd")))
-    if positive:
-        row = positive[0]
-        lines.append(f"Accumulation: {row.get('coin', '?')} +{as_int(row.get('net_buyer_count'))} net buyers · {signed_money(row.get('net_value_flow_usd'))}")
-    if negative:
-        row = negative[0]
-        lines.append(f"Distribution: {row.get('coin', '?')} {as_int(row.get('net_buyer_count'))} net buyers · {signed_money(row.get('net_value_flow_usd'))}")
+        emoji = "🟢" if value >= 0 else "🔴"
+        lines.extend([
+            "",
+            "🎯 CURRENT LEAD SIGNAL",
+            f"{emoji} {lead.get('coin', '?')} — {signal_direction(value)} {abs(value) * 100:.0f}% · {signal_confidence(lead)} confidence",
+        ])
+    return "\n".join(lines)
+
+def build_hourly_brief(feed: dict[str, Any]) -> str:
+    signals = [row for row in (feed.get("signals") or []) if isinstance(row, dict)]
+    flows = [row for row in (feed.get("flow") or []) if isinstance(row, dict)]
+    targets = [row for row in (feed.get("targets") or []) if isinstance(row, dict)]
+
+    long_total = sum(max(0.0, as_float(row.get("value_long_usd"))) for row in signals)
+    short_total = sum(max(0.0, as_float(row.get("value_short_usd"))) for row in signals)
+    total = long_total + short_total
+
+    lines = ["🐈 COPYCAT MARKET PULSE"]
+
+    if total > 0:
+        is_long = long_total >= short_total
+        bias = "LONG" if is_long else "SHORT"
+        emoji = "🟢" if is_long else "🔴"
+        share = max(long_total, short_total) / total
+        lines.extend([
+            "",
+            "📊 MARKET POSITIONING",
+            f"{emoji} {share * 100:.0f}% {bias} by tracked value",
+            f"🟢 Long {money(long_total)}  ·  🔴 Short {money(short_total)}",
+        ])
+
+    if signals:
+        lines.extend(["", "🎯 STRONGEST SIGNALS"])
+        for row in signals[:3]:
+            value = signal_value(row)
+            emoji = "🟢" if value >= 0 else "🔴"
+            lines.append(f"{emoji} {row.get('coin', '?')} — {signal_direction(value)} {abs(value) * 100:.0f}% · {signal_confidence(row)} confidence")
+
+    positive = sorted(
+        [row for row in flows if as_float(row.get("net_value_flow_usd")) > 0],
+        key=lambda row: as_float(row.get("net_value_flow_usd")),
+        reverse=True,
+    )
+    negative = sorted(
+        [row for row in flows if as_float(row.get("net_value_flow_usd")) < 0],
+        key=lambda row: as_float(row.get("net_value_flow_usd")),
+    )
+    if positive or negative:
+        lines.extend(["", "🐋 SMART-WALLET FLOWS"])
+        if positive:
+            row = positive[0]
+            buyers = max(0, as_int(row.get("net_buyer_count")))
+            lines.append(f"🟢 {row.get('coin', '?')}: {buyers} more wallets buying · {signed_money(row.get('net_value_flow_usd'))}")
+        if negative:
+            row = negative[0]
+            sellers = abs(min(0, as_int(row.get("net_buyer_count"))))
+            lines.append(f"🔴 {row.get('coin', '?')}: {sellers} more wallets selling · {signed_money(row.get('net_value_flow_usd'))}")
+
     allocations = sorted(targets, key=lambda row: abs(signed_target(row)), reverse=True)
     if allocations:
-        lines.append("Model allocation: " + " · ".join(f"{row.get('coin', '?')} {signed_target(row) * 100:+.1f}%" for row in allocations[:3]))
+        lines.extend([
+            "",
+            "🧭 COPYCAT ALLOCATION",
+            "  ·  ".join(f"{row.get('coin', '?')} {signed_target(row) * 100:+.1f}%" for row in allocations[:3]),
+        ])
+
     stories = [row for row in ((feed.get("market_narrative") or {}).get("stories") or []) if isinstance(row, dict)]
     if stories:
-        lines.append("News watch:")
-        for row in stories[:2]:
+        lines.extend(["", "🗞️ MARKET NEWS"])
+        for index, row in enumerate(stories[:2], start=1):
             title = " ".join(str(row.get("title") or "").split())
-            if len(title) > 125:
-                title = title[:122].rstrip() + "…"
-            lines.append(f"• {row.get('source') or 'Market source'}: {title}")
-            url = str(row.get("url") or row.get("link") or "").strip()
-            if url:
-                lines.append(url)
+            if len(title) > 118:
+                title = title[:115].rstrip() + "…"
+            number = "1️⃣" if index == 1 else "2️⃣"
+            lines.append(f"{number} {row.get('source') or 'Market source'} — {title}")
+
     events = [row for row in ((feed.get("catalyst_watch") or {}).get("events") or []) if isinstance(row, dict)]
     if events:
         row = sorted(events, key=lambda item: as_int(item.get("event_at_ms"), 2**62))[0]
-        when = utc_label(row.get("event_at_ms")) if row.get("event_at_ms") else "time TBC"
-        lines.append(f"Catalyst watch: {row.get('asset') or row.get('badge') or 'Market'} · {when} · {row.get('title')}")
+        lines.extend([
+            "",
+            "📅 CATALYST WATCH",
+            f"• {row.get('asset') or row.get('badge') or 'Market'} — {row.get('title')}",
+        ])
+        if row.get("event_at_ms"):
+            lines.append(f"⏰ {utc_label(row.get('event_at_ms'))}")
+
     return "\n".join(lines)
 
 def collect_alerts(feed_path: Path, feed: dict[str, Any], state: dict[str, Any], env: dict[str, str]) -> list[str]:
@@ -230,37 +257,13 @@ def collect_alerts(feed_path: Path, feed: dict[str, Any], state: dict[str, Any],
     first_observation = not bool(state.get("baseline_seeded"))
 
     if not state.get("started_sent"):
-        alerts.append("Copycat Telegram intelligence is now watching ✅\nOne hourly brief, plus meaningful cohort, order, news and catalyst triggers.")
+        alerts.append("✅ COPYCAT ALERTS ARE LIVE\n\n🕐 Market pulse every hour\n⚡ Instant alerts when smart-wallet behaviour changes")
         state["started_sent"] = True
-
-    feed_age_seconds: float | None = None
-    stale_minutes = max(1, as_int(env.get("COPYCAT_TELEGRAM_STALE_MINUTES"), 10))
-    try:
-        feed_age_seconds = max(0.0, now - feed_path.stat().st_mtime)
-        was_stale = bool(state.get("feed_was_stale"))
-        if feed_age_seconds > stale_minutes * 60 and not was_stale:
-            alerts.append(f"⚠️ Copycat feed looks stale: dashboard-feed.json is {int(feed_age_seconds // 60)} minutes old.")
-            state["feed_was_stale"] = True
-        elif feed_age_seconds <= stale_minutes * 60:
-            if was_stale:
-                alerts.append("✅ Copycat feed freshness recovered.")
-            state["feed_was_stale"] = False
-    except Exception as exc:
-        alerts.append(f"⚠️ Could not check Copycat feed freshness: {exc}")
-
-    quality = str(summary.get("data_quality_status") or "unknown").lower()
-    previous_quality = str(state.get("last_data_quality_status") or "")
-    if quality != previous_quality:
-        if quality not in {"healthy", "ok"}:
-            alerts.append(f"⚠️ Copycat data quality: {quality}\n{summary.get('data_quality_message') or 'Dashboard data quality needs attention.'}")
-        elif previous_quality and previous_quality not in {"healthy", "ok"}:
-            alerts.append("✅ Copycat data quality recovered.")
-        state["last_data_quality_status"] = quality
 
     brief_interval = max(5, as_int(env.get("COPYCAT_TELEGRAM_BRIEF_INTERVAL_MINUTES"), 60)) * 60
     last_brief = as_float(state.get("last_brief_sent_at"))
     if not last_brief or now - last_brief >= brief_interval:
-        alerts.append(build_hourly_brief(feed, feed_age_seconds))
+        alerts.append(build_hourly_brief(feed))
         state["last_brief_sent_at"] = now
 
     cooldown = max(5, as_int(env.get("COPYCAT_TELEGRAM_EVENT_COOLDOWN_MINUTES"), 60)) * 60
@@ -302,9 +305,9 @@ def collect_alerts(feed_path: Path, feed: dict[str, Any], state: dict[str, Any],
         strengthened = direction and direction == old_direction and abs(value) >= max(min_flow, old_value * 1.5) and abs(buyers) >= abs(as_int(previous.get("buyers"))) + 2
         if direction and (direction != old_direction or strengthened):
             if direction > 0:
-                add_trigger(f"🟢 Cohort accumulation: {coin}\nNet buyers: +{buyers}\nNet value flow: {signed_money(value)}", f"flow:{coin}:buy")
+                add_trigger(f"🐋 SMART-WALLET ACCUMULATION\n\n🪙 {coin}\n👛 {buyers} more wallets buying\n💵 Net flow {signed_money(value)}", f"flow:{coin}:buy")
             else:
-                add_trigger(f"🔴 Cohort distribution: {coin}\nNet buyers: {buyers}\nNet value flow: {signed_money(value)}", f"flow:{coin}:sell")
+                add_trigger(f"🐋 SMART-WALLET DISTRIBUTION\n\n🪙 {coin}\n👛 {abs(buyers)} more wallets selling\n💵 Net flow {signed_money(value)}", f"flow:{coin}:sell")
     state["last_flow_snapshot"] = current_flows
 
     previous_signals = state.get("last_signal_snapshot")
@@ -323,7 +326,7 @@ def collect_alerts(feed_path: Path, feed: dict[str, Any], state: dict[str, Any],
         previous = previous_signals.get(coin)
         old = maybe_float(previous.get("signal")) if isinstance(previous, dict) else maybe_float(previous)
         if old is not None and abs(current - old) >= shift and gross >= min_gross:
-            add_trigger(f"⚡ Signal shift: {coin}\n{signal_direction(old)} {old * 100:+.0f}% → {signal_direction(current)} {current * 100:+.0f}%\nGross tracked value: {money(gross)}", f"signal:{coin}")
+            add_trigger(f"⚡ SIGNAL SHIFT\n\n🪙 {coin}\n{signal_direction(old)} {abs(old) * 100:.0f}%  →  {signal_direction(current)} {abs(current) * 100:.0f}%\n💰 Tracked value {money(gross)}", f"signal:{coin}")
     state["last_signal_snapshot"] = current_signals
 
     previous_targets = state.get("last_target_snapshot")
@@ -339,7 +342,7 @@ def collect_alerts(feed_path: Path, feed: dict[str, Any], state: dict[str, Any],
         current_targets[coin] = current
         old = maybe_float(previous_targets.get(coin))
         if old is not None and abs(current - old) >= allocation_shift:
-            add_trigger(f"📊 Model allocation shift: {coin}\n{old * 100:+.1f}% → {current * 100:+.1f}%", f"allocation:{coin}")
+            add_trigger(f"🧭 COPYCAT ALLOCATION CHANGE\n\n🪙 {coin}\n{old * 100:+.1f}%  →  {current * 100:+.1f}%", f"allocation:{coin}")
     state["last_target_snapshot"] = current_targets
 
     order_threshold = max(0.0, as_float(env.get("COPYCAT_TELEGRAM_LARGE_ORDER_USD"), 250_000))
@@ -356,7 +359,7 @@ def collect_alerts(feed_path: Path, feed: dict[str, Any], state: dict[str, Any],
             continue
         wallet = order.get("wallet")
         url = f"https://hypurrscan.io/address/{wallet}" if isinstance(wallet, str) and wallet.startswith("0x") else ""
-        message = f"🐋 Large Copycat order\n{order.get('side', '?')} {order.get('coin', '?')} · {money(value)}\nWallet: {order.get('wallet_label') or short_wallet(wallet)}"
+        message = f"🐋 LARGE SMART-WALLET ORDER\n\n🪙 {order.get('coin', '?')} · {order.get('side', '?')}\n💵 {money(value)}\n👛 {order.get('wallet_label') or short_wallet(wallet)}"
         if url:
             message += f"\n{url}"
         if add_trigger(message, f"order:{key}"):
@@ -380,7 +383,7 @@ def collect_alerts(feed_path: Path, feed: dict[str, Any], state: dict[str, Any],
         title = " ".join(str(story.get("title") or "").split())
         if len(title) > 160:
             title = title[:157].rstrip() + "…"
-        message = f"📰 New market headline · {story.get('source') or 'Market source'}\n{title}"
+        message = f"🗞️ BREAKING MARKET NEWS\n\n{story.get('source') or 'Market source'}\n{title}"
         url = str(story.get("url") or story.get("link") or "").strip()
         if url:
             message += f"\n{url}"
@@ -408,7 +411,7 @@ def collect_alerts(feed_path: Path, feed: dict[str, Any], state: dict[str, Any],
             title = title[:157].rstrip() + "…"
         asset = str(event.get("asset") or event.get("tracked_asset") or event.get("badge") or "Market")
         when = utc_label(event_at) if event_at else "time TBC"
-        message = f"🗓️ New catalyst watch · {asset}\n{title}\nWhen: {when}"
+        message = f"📅 NEW CATALYST\n\n🪙 {asset}\n{title}\n⏰ {when}"
         url = str(event.get("url") or event.get("link") or event.get("source_url") or "").strip()
         if url:
             message += f"\n{url}"
