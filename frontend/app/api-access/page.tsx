@@ -52,6 +52,25 @@ function signalText(row: any) {
   const value = displaySignalValue(row)
   return `${Math.round(Math.abs(value) * 100)}% ${value < 0 ? 'Short' : 'Long'}`
 }
+function rankSignalsLikeDashboard(rows: any[]) {
+  const confidenceRank: Record<string, number> = { high: 3, medium: 2, med: 2, low: 1, reserve: 0 }
+  const parts = (row: any) => ({
+    confidence: confidenceRank[String(row?.confidence || '').toLowerCase()] ?? 0,
+    strength: Math.abs(displaySignalValue(row)),
+    wallets: Number(row?.wallets_long || 0) + Number(row?.wallets_short || 0),
+    net: Math.abs(Number(row?.net_value_usd || 0)),
+    gross: Number(row?.value_long_usd || 0) + Number(row?.value_short_usd || 0),
+  })
+  return [...(rows || [])].sort((a: any, b: any) => {
+    const av = parts(a)
+    const bv = parts(b)
+    return (bv.confidence - av.confidence)
+      || (bv.strength - av.strength)
+      || (bv.wallets - av.wallets)
+      || (bv.net - av.net)
+      || (bv.gross - av.gross)
+  })
+}
 function endpointBase() {
   return (process.env.NEXT_PUBLIC_SNAPSHOT_BASE_URL || 'https://pub-b9e0279f5eb0496b99c7fa37329e6b53.r2.dev').replace(/\/+$/, '')
 }
@@ -121,7 +140,7 @@ export default function ApiAccessPage() {
     || 0
   )
   const wallets = boardLive ? (leaderboard?.rows || leaderboard?.data || []) : []
-  const dashboardMarkets = feedLive && Array.isArray(feed?.signals) ? feed.signals : []
+  const dashboardMarkets = feedLive && Array.isArray(feed?.signals) ? rankSignalsLikeDashboard(feed.signals) : []
   const markets = dashboardMarkets.length ? dashboardMarkets : (marketLive ? (screener?.rows || screener?.data || []) : [])
   const activity = feedLive ? (feed?.orders || feed?.recent_orders || []) : []
   const marketDataTs = dashboardMarkets.length ? feedTs : marketTs
