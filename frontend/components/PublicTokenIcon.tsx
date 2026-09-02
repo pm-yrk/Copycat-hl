@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { apiGetFresh } from '../lib/api'
 
 const STATIC_LOGOS: Record<string, string> = {
   BTC: 'https://cryptologos.cc/logos/bitcoin-btc-logo.svg?v=040',
@@ -38,6 +39,23 @@ const TOKEN_COLOURS: Record<string, string> = {
 
 const USDC_LOGO = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxMjggMTI4Jz48Y2lyY2xlIGN4PSc2NCcgY3k9JzY0JyByPSc2NCcgZmlsbD0nIzI3NzVDQScvPjxwYXRoIGQ9J000MiAzMGE0MiA0MiAwIDAgMCAwIDY4JyBmaWxsPSdub25lJyBzdHJva2U9JyNmZmYnIHN0cm9rZS13aWR0aD0nOCcgc3Ryb2tlLWxpbmVjYXA9J3JvdW5kJy8+PHBhdGggZD0nTTg2IDMwYTQyIDQyIDAgMCAxIDAgNjgnIGZpbGw9J25vbmUnIHN0cm9rZT0nI2ZmZicgc3Ryb2tlLXdpZHRoPSc4JyBzdHJva2UtbGluZWNhcD0ncm91bmQnLz48dGV4dCB4PSc2NCcgeT0nODQnIHRleHQtYW5jaG9yPSdtaWRkbGUnIGZvbnQtZmFtaWx5PSdBcmlhbCxIZWx2ZXRpY2Esc2Fucy1zZXJpZicgZm9udC1zaXplPSc1OCcgZm9udC13ZWlnaHQ9JzgwMCcgZmlsbD0nI2ZmZic+JDwvdGV4dD48L3N2Zz4='
 
+
+let sharedIconMap: Record<string, string> = {}
+let sharedIconRequest: Promise<Record<string, string>> | null = null
+
+function dashboardTokenIcons() {
+  if (Object.keys(sharedIconMap).length) return Promise.resolve(sharedIconMap)
+  if (!sharedIconRequest) {
+    sharedIconRequest = apiGetFresh('/api/token-icons?limit=250', { timeoutMs: 5000 })
+      .then((response: any) => {
+        sharedIconMap = response?.icons || {}
+        return sharedIconMap
+      })
+      .catch(() => ({}))
+  }
+  return sharedIconRequest
+}
+
 export function canonicalPublicToken(symbol: string) {
   const clean = String(symbol || '').toUpperCase().trim()
   if (clean === 'USDC/CASH' || clean === 'USDCCASH' || clean === 'USDCASH' || clean === 'CASH') return 'USDC'
@@ -47,20 +65,30 @@ export function canonicalPublicToken(symbol: string) {
 export default function PublicTokenIcon({ symbol, className = '' }: { symbol: string; className?: string }) {
   const canonical = canonicalPublicToken(symbol)
   const [sourceIndex, setSourceIndex] = useState(0)
+  const [dashboardSource, setDashboardSource] = useState('')
   const sources = useMemo(() => {
     if (!canonical || canonical === 'OTHER') return []
     if (canonical === 'USDC') return [USDC_LOGO]
     const lower = canonical.toLowerCase()
     return [
+      dashboardSource,
       STATIC_LOGOS[canonical],
       `https://assets.coincap.io/assets/icons/${lower}@2x.png`,
       `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/svg/color/${lower}.svg`,
       `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/128/color/${lower}.png`,
       `https://s3-symbol-logo.tradingview.com/crypto/XTVC${canonical}.svg`,
     ].filter(Boolean) as string[]
-  }, [canonical])
+  }, [canonical, dashboardSource])
 
-  useEffect(() => setSourceIndex(0), [canonical])
+  useEffect(() => {
+    let active = true
+    setSourceIndex(0)
+    setDashboardSource('')
+    dashboardTokenIcons().then(icons => {
+      if (active) setDashboardSource(icons[canonical] || '')
+    })
+    return () => { active = false }
+  }, [canonical])
   const source = sources[sourceIndex]
   const label = canonical === 'OTHER' ? 'Other assets' : `${canonical || symbol} logo`
 
