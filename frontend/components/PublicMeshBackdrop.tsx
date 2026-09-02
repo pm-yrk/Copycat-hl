@@ -42,7 +42,7 @@ const RIBBON_THEMES: Record<PublicVariant, RibbonTheme> = {
     primary: [[0, 'rgba(57,239,181,0)'], [.075, 'rgba(57,239,181,.25)'], [.18, 'rgba(63,244,188,.94)'], [.58, 'rgba(77,242,192,1)'], [.88, 'rgba(55,224,174,.72)'], [1, 'rgba(55,224,174,0)']],
     cross: [[0, 'rgba(44,205,171,0)'], [.11, 'rgba(44,205,171,.36)'], [.48, 'rgba(52,226,184,.76)'], [.9, 'rgba(43,196,169,.34)'], [1, 'rgba(43,196,169,0)']],
     particle: 'rgb(83,239,185)',
-    density: 0,
+    density: .72,
   },
   home: {
     primary: [[0, 'rgba(47,228,166,0)'], [.07, 'rgba(47,228,166,.3)'], [.2, 'rgba(69,246,186,.96)'], [.56, 'rgba(91,250,204,1)'], [.88, 'rgba(52,224,176,.74)'], [1, 'rgba(52,224,176,0)']],
@@ -107,7 +107,7 @@ const VARIANT_SEEDS: Record<PublicVariant, number> = {
 }
 
 function createParticles(variant: PublicVariant, count: number) {
-  if (variant === 'login' || count <= 0) return [] as Particle[]
+  if (count <= 0) return [] as Particle[]
   let state = VARIANT_SEEDS[variant] >>> 0
   const random = () => {
     state = (Math.imul(state, 1664525) + 1013904223) >>> 0
@@ -116,7 +116,6 @@ function createParticles(variant: PublicVariant, count: number) {
   return Array.from({ length: count }, () => {
     const driftX = (random() - .5) * 4.2
     const driftY = -1.5 - random() * 4.3
-    const bright = random() > .88
     return {
       x: random() * VIEW_WIDTH,
       y: random() * VIEW_HEIGHT,
@@ -124,8 +123,8 @@ function createParticles(variant: PublicVariant, count: number) {
       vy: driftY,
       driftX,
       driftY,
-      size: bright ? 1.35 + random() * .75 : .45 + random() * .9,
-      alpha: bright ? .62 + random() * .2 : .2 + random() * .38,
+      size: .28 + random() * .58,
+      alpha: .14 + random() * .3,
     }
   })
 }
@@ -412,10 +411,6 @@ export default function PublicMeshBackdrop({ variant = 'default' }: { variant?: 
       if (!particles.length) return
       context.fillStyle = theme.particle
       for (const particle of particles) {
-        context.globalAlpha = particle.alpha * .13
-        context.beginPath()
-        context.arc(particle.x, particle.y, particle.size * 3.2, 0, Math.PI * 2)
-        context.fill()
         context.globalAlpha = particle.alpha
         context.beginPath()
         context.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2)
