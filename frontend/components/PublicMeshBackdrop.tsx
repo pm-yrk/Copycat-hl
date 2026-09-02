@@ -57,6 +57,14 @@ export default function PublicMeshBackdrop({ variant = 'default' }: { variant?: 
 
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
 
+    const mobileMotion = window.matchMedia('(max-width: 820px), (hover: none) and (pointer: coarse)')
+    if (mobileMotion.matches) {
+      node.style.setProperty('--mesh-scroll-y', '0px')
+      node.style.setProperty('--mesh-scroll-x', '0px')
+      node.style.setProperty('--mesh-scroll-tilt', '0deg')
+      return
+    }
+
     let frame = 0
     const updatePosition = () => {
       frame = 0
