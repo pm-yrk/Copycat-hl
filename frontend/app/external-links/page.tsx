@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import PublicNav from '../../components/PublicNav'
+import PublicMeshBackdrop from '../../components/PublicMeshBackdrop'
 
 export const metadata = {
   title: 'External Links Notice | Copycat',
@@ -11,6 +12,7 @@ export default function Page() {
     <div className="public-redesign-root">
       <PublicNav />
       <main className="cc-legal-page">
+      <PublicMeshBackdrop variant="links"/>
       <section className="cc-legal-wrap">
         <Link className="cc-legal-back" href="/">← Back to Copycat</Link>
         <div className="cc-legal-kicker">Third-party links</div>
