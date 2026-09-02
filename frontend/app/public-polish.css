@@ -586,3 +586,68 @@
   75%{transform:translate3d(0,-7px,0) rotate(0deg) scale(1.03,1.026)}
   87.5%{transform:translate3d(-8px,-5px,0) rotate(-.05deg) scale(1.032,1.028)}
 }
+
+
+/* ==========================================================================
+   Copycat thick-water ribbon v3 — stable light with a very slow glow cycle
+   ========================================================================== */
+.public-mesh-is-animated{
+  filter:none!important;
+  mix-blend-mode:normal;
+}
+.public-mesh-is-animated path{
+  stroke:#42ebb2;
+  stroke-width:1.05;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+  vector-effect:non-scaling-stroke;
+}
+.public-mesh-is-animated .public-mesh-glow{
+  display:none!important;
+  animation:none!important;
+}
+.public-mesh-is-animated .public-mesh-highlight path{
+  stroke:#6ff2c5;
+  stroke-width:1.35;
+  opacity:.42;
+}
+
+@media(min-width:821px) and (hover:hover) and (pointer:fine){
+  .public-mesh-is-animated .public-mesh-ribbon,
+  .public-mesh-is-animated .public-mesh-highlight{
+    animation:copycat-ribbon-continuous 34s linear infinite!important;
+  }
+  .public-mesh-is-animated .public-mesh-cross{
+    animation:copycat-cross-continuous 48s linear -17s infinite!important;
+  }
+  .public-mesh-is-animated .public-mesh-strand-group{
+    animation-name:copycat-strand-thick-water!important;
+    animation-timing-function:linear!important;
+    animation-iteration-count:infinite!important;
+    animation-direction:normal!important;
+  }
+  .public-mesh-is-animated .public-mesh-strand-0{animation-duration:42s!important;animation-delay:-3s!important}
+  .public-mesh-is-animated .public-mesh-strand-1{animation-duration:47s!important;animation-delay:-17s!important}
+  .public-mesh-is-animated .public-mesh-strand-2{animation-duration:52s!important;animation-delay:-9s!important}
+  .public-mesh-is-animated .public-mesh-strand-3{animation-duration:44s!important;animation-delay:-23s!important}
+  .public-mesh-is-animated .public-mesh-strand-4{animation-duration:56s!important;animation-delay:-31s!important}
+  .public-mesh-is-animated .public-mesh-strand-5{animation-duration:49s!important;animation-delay:-14s!important}
+  .public-mesh-is-animated::before{
+    animation:copycat-ambient-breathe-thick-water 72s cubic-bezier(.45,0,.55,1) -18s infinite!important;
+  }
+}
+
+@keyframes copycat-strand-thick-water{
+  0%,100%{transform:translate3d(-1.8px,0,0) rotate(-.045deg)}
+  12.5%{transform:translate3d(-1.25px,.75px,0) rotate(-.03deg)}
+  25%{transform:translate3d(0,1.1px,0) rotate(0deg)}
+  37.5%{transform:translate3d(1.25px,.75px,0) rotate(.03deg)}
+  50%{transform:translate3d(1.8px,0,0) rotate(.045deg)}
+  62.5%{transform:translate3d(1.25px,-.75px,0) rotate(.03deg)}
+  75%{transform:translate3d(0,-1.1px,0) rotate(0deg)}
+  87.5%{transform:translate3d(-1.25px,-.75px,0) rotate(-.03deg)}
+}
+@keyframes copycat-ambient-breathe-thick-water{
+  0%,100%{opacity:.48;transform:translate3d(-.35%,.25%,0) scale(.985)}
+  50%{opacity:.62;transform:translate3d(.35%,-.25%,0) scale(1.02)}
+}
