@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import PublicNav from '../components/PublicNav'
 import PublicMeshBackdrop from '../components/PublicMeshBackdrop'
+import PublicTokenIcon, { canonicalPublicToken } from '../components/PublicTokenIcon'
 import { apiGetFresh } from '../lib/api'
 
 const MAX_LIVE_AGE_MS = Number(process.env.NEXT_PUBLIC_PUBLIC_LIVE_MAX_AGE_MS || 5 * 60 * 1000)
@@ -48,6 +49,30 @@ function signalLabel(signal: any) {
   const strength = a >= .75 ? 'Strong' : a >= .45 ? 'Moderate' : 'Light'
   return `${strength} ${v >= 0 ? 'Long' : 'Short'}`
 }
+function displaySignalValue(row: any) {
+  const longUsd = Number(row?.value_long_usd || 0)
+  const shortUsd = Number(row?.value_short_usd || 0)
+  const total = longUsd + shortUsd
+  if (total <= 0) return Number(row?.signal || 0)
+  return longUsd >= shortUsd ? longUsd / total : -(shortUsd / total)
+}
+function performanceWindow(points: any[], hours = 24) {
+  const sorted = [...(points || [])]
+    .map((point: any) => ({ ...point, ts_ms: Number(point?.ts_ms || point?.time || 0) }))
+    .filter((point: any) => point.ts_ms && Number.isFinite(Number(point.copycat_nav)))
+    .sort((a: any, b: any) => a.ts_ms - b.ts_ms)
+  if (!sorted.length) return []
+  const latest = sorted[sorted.length - 1].ts_ms
+  const cutoff = latest - hours * 60 * 60 * 1000
+  const windowed = sorted.filter((point: any) => point.ts_ms >= cutoff)
+  return windowed.length >= 2 ? windowed : sorted.slice(-2)
+}
+function performanceReturn(points: any[], key: string) {
+  if (points.length < 2) return NaN
+  const first = Number(points[0]?.[key])
+  const last = Number(points[points.length - 1]?.[key])
+  return Number.isFinite(first) && Number.isFinite(last) && first !== 0 ? ((last / first) - 1) * 100 : NaN
+}
 function sparkPath(points: any[], key: string, width = 260, height = 72) {
   const rows = (points || []).slice(-90).map((p: any) => Number(p?.[key])).filter(Number.isFinite)
   if (rows.length < 2) return ''
@@ -59,6 +84,15 @@ function sparkPath(points: any[], key: string, width = 260, height = 72) {
     const y = height - ((v - lo) / span) * height
     return `${i ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)}`
   }).join(' ')
+}
+function publicTokenColour(symbol: string, index: number) {
+  const colours: Record<string, string> = {
+    HYPE:'#43e8d0', ETH:'#627eea', BTC:'#f7931a', SOL:'#14f195', ZEC:'#f4b728',
+    NEAR:'#00ec97', AAVE:'#8b7dff', TRX:'#ff4b4b', XRP:'#4b9fff', USDC:'#2775ca',
+    PUMP:'#61c685', LIT:'#35d0b4', BNB:'#f3ba2f', XLM:'#44bdec',
+  }
+  const palette = ['#43e8d0','#8057ff','#44bdec','#ffb020','#25d366','#f35ea6','#a6e22e','#ff5b72','#38bdf8','#f97316','#8190a7','#d7a785','#4b9fff']
+  return colours[canonicalPublicToken(symbol)] || palette[index % palette.length]
 }
 
 function MiniIcon({ type }: { type: 'users' | 'search' | 'pulse' | 'layers' | 'bell' | 'position' | 'allocation' | 'activity' | 'narrative' }) {
@@ -106,56 +140,74 @@ export default function Home() {
   const signals = feedLive && Array.isArray(feed?.signals) ? feed.signals : []
   const targets = feedLive && Array.isArray(feed?.targets) ? feed.targets : []
   const orders = feedLive && Array.isArray(feed?.orders) ? feed.orders : []
-  const selected = Number(summary.selected_wallet_count || summary.qualified_wallets || summary.tracked_active_wallets || 0)
-  const indexed = Number(summary.indexed_wallets || summary.known_wallet_candidates || summary.scanner_candidate_wallets_scored || 0)
-  const btc = signals.find((r: any) => String(r?.coin).toUpperCase() === 'BTC') || signals[0]
-  const conviction = btc ? Math.round(Math.abs(Number(btc.signal || 0)) * 100) : 0
-  const isShort = Number(btc?.signal || 0) < 0
+  const selected = Number(summary.qualified_wallets || summary.selected_wallet_count || summary.tracked_active_wallets || 0)
+  const indexed = Number(summary.indexed_wallets || summary.known_wallet_candidates || summary.registry_wallets || summary.owned_wallets_indexed || summary.scanner_candidate_wallets_scored || 0)
+  const rankedSignals = useMemo(() => [...signals].sort((a: any, b: any) => {
+    const strength = Math.abs(displaySignalValue(b)) - Math.abs(displaySignalValue(a))
+    if (strength) return strength
+    return Math.abs(Number(b.net_value_usd || 0)) - Math.abs(Number(a.net_value_usd || 0))
+  }), [signals])
+  const btc = signals.find((r: any) => String(r?.coin).toUpperCase() === 'BTC') || rankedSignals[0]
+  const btcSignal = displaySignalValue(btc)
+  const conviction = btc ? Math.round(Math.abs(btcSignal) * 100) : 0
+  const isShort = btcSignal < 0
   const symbol = String(btc?.coin || 'BTC').toUpperCase()
 
   const allocation = useMemo(() => {
-    if (!targets.length) return [] as { coin: string; signed: number; abs: number; mixed?: boolean }[]
-    const sorted = targets.map((t: any) => ({ coin: String(t.coin || '').toUpperCase(), signed: Number(t.index_weight ?? (String(t.direction).toLowerCase() === 'short' ? -Math.abs(Number(t.target_weight || 0)) : Math.abs(Number(t.target_weight || 0)))) }))
-      .filter((t: any) => t.coin && Number.isFinite(t.signed))
-      .sort((a: any, b: any) => Math.abs(b.signed) - Math.abs(a.signed))
-    const top = sorted.slice(0, 4).map((t: any) => ({ ...t, abs: Math.abs(t.signed), mixed: false }))
-    const rest = sorted.slice(4)
+    const rows = [...targets]
+      .map((target: any) => {
+        const coin = canonicalPublicToken(target.coin)
+        const weight = Math.abs(Number(target.target_weight ?? target.index_weight ?? 0))
+        const direction = String(target.direction || (Number(target.index_weight || 0) < 0 ? 'short' : 'long')).toLowerCase()
+        return { coin, signed: direction === 'short' ? -weight : weight, abs: weight, mixed: false }
+      })
+      .filter((row: any) => row.coin && row.coin !== 'USDC' && row.abs > 0)
+      .sort((a: any, b: any) => b.abs - a.abs)
+
+    const top = rows.slice(0, 12)
+    const rest = rows.slice(12)
     if (rest.length) {
-      const restLong = rest.reduce((a: number, t: any) => a + Math.max(t.signed, 0), 0)
-      const restShort = rest.reduce((a: number, t: any) => a + Math.abs(Math.min(t.signed, 0)), 0)
-      top.push({ coin: 'Other', signed: restLong - restShort, abs: restLong + restShort, mixed: restLong > 0 && restShort > 0 })
+      const restLong = rest.reduce((sum: number, row: any) => sum + Math.max(row.signed, 0), 0)
+      const restShort = rest.reduce((sum: number, row: any) => sum + Math.abs(Math.min(row.signed, 0)), 0)
+      top.push({ coin: 'OTHER', signed: restLong - restShort, abs: restLong + restShort, mixed: true })
     }
     return top
   }, [targets])
 
   const allocationRows = useMemo(() => {
     if (!allocation.length) return [] as (typeof allocation[number] & { percent: number })[]
-    const total = allocation.reduce((a, x) => a + x.abs, 0) || 1
-    const rawTenths = allocation.map(x => (x.abs / total) * 1000)
+    const total = allocation.reduce((sum, row) => sum + row.abs, 0) || 1
+    const rawTenths = allocation.map(row => (row.abs / total) * 1000)
     const tenths = rawTenths.map(Math.floor)
-    let remaining = 1000 - tenths.reduce((a, n) => a + n, 0)
-    const order = rawTenths.map((n, i) => ({ i, fraction: n - Math.floor(n) })).sort((a, b) => b.fraction - a.fraction)
-    for (let i = 0; i < remaining; i++) tenths[order[i % order.length].i] += 1
-    return allocation.map((x, i) => ({ ...x, percent: tenths[i] / 10 }))
+    let remaining = 1000 - tenths.reduce((sum, value) => sum + value, 0)
+    const order = rawTenths.map((value, index) => ({ index, fraction: value - Math.floor(value) })).sort((a, b) => b.fraction - a.fraction)
+    for (let i = 0; i < remaining; i++) tenths[order[i % order.length].index] += 1
+    return allocation.map((row, index) => ({ ...row, percent: tenths[index] / 10 }))
   }, [allocation])
 
   const donutStyle = useMemo(() => {
     if (!allocation.length) return {}
-    const total = allocation.reduce((a, x) => a + x.abs, 0) || 1
-    const colors = ['#ff6178', '#7d75ff', '#23e99d', '#39dce8', '#8190a7']
+    const total = allocation.reduce((sum, row) => sum + row.abs, 0) || 1
     let cursor = 0
-    const stops = allocation.map((x, i) => {
+    const stops = allocation.map((row, index) => {
       const start = cursor
-      cursor += (x.abs / total) * 100
-      return `${colors[i % colors.length]} ${start.toFixed(2)}% ${cursor.toFixed(2)}%`
+      cursor += (row.abs / total) * 100
+      return `${publicTokenColour(row.coin, index)} ${start.toFixed(2)}% ${cursor.toFixed(2)}%`
     })
     return { background: `conic-gradient(${stops.join(',')})` }
   }, [allocation])
 
   const perfPoints = perfLive && Array.isArray(perf?.points) ? perf.points : []
-  const copycatPath = sparkPath(perfPoints, 'copycat_nav')
-  const btcPath = sparkPath(perfPoints, 'btc_nav')
-  const ethPath = sparkPath(perfPoints, 'eth_nav')
+  const perf24hPoints = useMemo(() => performanceWindow(perfPoints, 24), [perfPoints])
+  const perf24hReturns = useMemo(() => ({
+    copycat: performanceReturn(perf24hPoints, 'copycat_nav'),
+    btc: performanceReturn(perf24hPoints, 'btc_nav'),
+    eth: performanceReturn(perf24hPoints, 'eth_nav'),
+  }), [perf24hPoints])
+  const perfReady = perfLive && perf24hPoints.length >= 2
+  const copycatPath = sparkPath(perf24hPoints, 'copycat_nav')
+  const btcPath = sparkPath(perf24hPoints, 'btc_nav')
+  const ethPath = sparkPath(perf24hPoints, 'eth_nav')
 
   return <div className="public-redesign-root">
     <PublicNav />
@@ -177,7 +229,7 @@ export default function Home() {
         <aside className={`public-signal-card ${feedLive && btc ? '' : 'is-unavailable'}`}>
           <header><span>What top wallets are doing</span><em className={feedLive ? 'live' : ''}>{feedLive ? 'LIVE' : 'UNAVAILABLE'}</em></header>
           {feedLive && btc ? <>
-            <div className="public-signal-title"><div className={`public-token-mark ${symbol === 'BTC' ? 'btc' : ''}`}>{symbol.slice(0, 1)}</div><h2>{symbol}</h2><span className={isShort ? 'short' : 'long'}>{signalLabel(btc.signal)}</span></div>
+            <div className="public-signal-title"><PublicTokenIcon symbol={symbol} className="public-token-icon-large"/><h2>{symbol}</h2><span className={isShort ? 'short' : 'long'}>{signalLabel(btcSignal)}</span></div>
             <div className="public-signal-metrics"><div><span>Long</span><b className="positive">{compact(btc.wallets_long)}</b></div><div><span>Short</span><b className="negative">{compact(btc.wallets_short)}</b></div><div><span>Net positioning</span><b className={Number(btc.net_value_usd || 0) < 0 ? 'negative' : 'positive'}>{money(btc.net_value_usd)}</b></div></div>
             <div className="public-bias-row"><div><span>{isShort ? 'Short' : 'Long'} bias</span><b className={isShort ? 'negative' : 'positive'}>{conviction}% {isShort ? 'Short' : 'Long'}</b></div><em>{conviction}%</em></div>
             <div className="public-bias-track"><i className={isShort ? 'short' : 'long'} style={{ width: `${Math.max(2, conviction)}%` }} /></div>
@@ -197,30 +249,40 @@ export default function Home() {
         <div className="public-section-heading"><p className="public-eyebrow"><span/> Copycat model</p><h2>One portfolio. Based on {feedLive && selected ? `all ${compact(selected)} wallets.` : 'the tracked cohort.'}</h2><p>The Copycat Index converts signed net exposure into a model portfolio. USDC margin is excluded from allocation.</p></div>
         <div className="public-portfolio-grid">
           <article className="public-performance-card">
-            <header><div><span>Model performance</span><small>{perfLive ? freshness(perfTs) : 'Fresh index data unavailable'}</small></div><em className={perfLive ? 'live' : ''}>{perfLive ? 'LIVE' : 'UNAVAILABLE'}</em></header>
-            {perfLive ? <div className="public-perf-tiles">
-              <div><span>Copycat Index</span><b className={Number(perf.copycat_return_pct) >= 0 ? 'positive' : 'negative'}>{pct(perf.copycat_return_pct)}</b><svg viewBox="0 0 260 72" preserveAspectRatio="none"><path d={copycatPath}/></svg></div>
-              <div><span>BTC</span><b className={Number(perf.btc_return_pct) >= 0 ? 'positive' : 'negative'}>{pct(perf.btc_return_pct)}</b><svg viewBox="0 0 260 72" preserveAspectRatio="none"><path d={btcPath}/></svg></div>
-              <div><span>ETH</span><b className={Number(perf.eth_return_pct) >= 0 ? 'positive' : 'negative'}>{pct(perf.eth_return_pct)}</b><svg viewBox="0 0 260 72" preserveAspectRatio="none"><path d={ethPath}/></svg></div>
-            </div> : <div className="public-data-empty"><b>Waiting for a fresh performance snapshot.</b><span>No bundled performance number is substituted.</span></div>}
+            <header><div><span>Model performance</span><small>Last 24 hours • {perfLive ? freshness(perfTs) : 'Fresh index data unavailable'}</small></div><em className={perfReady ? 'live' : ''}>{perfReady ? '24H LIVE' : 'UNAVAILABLE'}</em></header>
+            {perfReady ? <div className="public-perf-tiles">
+              <div><span><i className="public-index-mark">◇</i>Copycat Index</span><b className={perf24hReturns.copycat >= 0 ? 'positive' : 'negative'}>{pct(perf24hReturns.copycat)}</b><svg viewBox="0 0 260 72" preserveAspectRatio="none"><path d={copycatPath}/></svg><small className="public-perf-axis"><em>24h ago</em><em>Now</em></small></div>
+              <div><span><PublicTokenIcon symbol="BTC"/>BTC</span><b className={perf24hReturns.btc >= 0 ? 'positive' : 'negative'}>{pct(perf24hReturns.btc)}</b><svg viewBox="0 0 260 72" preserveAspectRatio="none"><path d={btcPath}/></svg><small className="public-perf-axis"><em>24h ago</em><em>Now</em></small></div>
+              <div><span><PublicTokenIcon symbol="ETH"/>ETH</span><b className={perf24hReturns.eth >= 0 ? 'positive' : 'negative'}>{pct(perf24hReturns.eth)}</b><svg viewBox="0 0 260 72" preserveAspectRatio="none"><path d={ethPath}/></svg><small className="public-perf-axis"><em>24h ago</em><em>Now</em></small></div>
+            </div> : <div className="public-data-empty"><b>Waiting for a complete 24-hour performance window.</b><span>No unclear all-time percentage is substituted.</span></div>}
           </article>
           <article className="public-allocation-card">
-            <header><div><span>Current allocation</span><small>Signed allocation • 100% gross</small></div><em className={feedLive ? 'live' : ''}>{feedLive ? 'LIVE' : 'UNAVAILABLE'}</em></header>
-            {feedLive && allocationRows.length ? <div className="public-allocation-body"><div className="public-donut" style={donutStyle}><i><span>MODEL</span><b>{compact(selected)}</b><small>wallets</small></i></div><div className="public-allocation-list">{allocationRows.map((x, i) => <div key={x.coin}><i data-n={i}/><b>{x.coin}</b><span className={x.mixed ? '' : x.signed < 0 ? 'negative' : 'positive'}>{x.mixed ? `${x.percent.toFixed(1)}% gross` : `${x.signed < 0 ? '-' : '+'}${x.percent.toFixed(1)}%`}</span></div>)}</div></div> : <div className="public-data-empty"><b>Waiting for fresh allocation data.</b><span>Negative means short. Positive means long.</span></div>}
-            <p>Absolute weights total 100% <span>•</span> Negative = short <span>•</span> Positive = long</p>
+            <header><div><span>Current allocation</span><small>Same live targets as dashboard • 100% gross</small></div><em className={feedLive ? 'live' : ''}>{feedLive ? 'LIVE' : 'UNAVAILABLE'}</em></header>
+            {feedLive && allocationRows.length ? <div className="public-allocation-body"><div className="public-donut" style={donutStyle}><i><span>MODEL</span><b>{compact(selected)}</b><small>wallets</small></i></div><div className="public-allocation-list">{allocationRows.map((row, index) => <div key={row.coin}><i data-n={index} style={{ background: publicTokenColour(row.coin, index) }}/><PublicTokenIcon symbol={row.coin}/><b>{row.coin === 'OTHER' ? 'Other' : row.coin}</b><span className={row.mixed ? '' : row.signed < 0 ? 'negative' : 'positive'}>{row.mixed ? `${row.percent.toFixed(1)}% mixed` : `${row.signed < 0 ? '-' : '+'}${row.percent.toFixed(1)}%`}</span></div>)}</div></div> : <div className="public-data-empty"><b>Waiting for fresh allocation data.</b><span>Negative means short. Positive means long.</span></div>}
+            <p>Exact dashboard target weights <span>•</span> USDC margin excluded <span>•</span> Absolute weights total 100%</p>
           </article>
         </div>
       </section>
 
       <section className="public-product-preview">
-        <div className="public-product-copy"><p className="public-eyebrow"><span/> Live dashboard</p><h2>Everything important. One screen.</h2><p>Get the full picture without needing to decode raw wallet activity yourself.</p></div>
+        <div className="public-product-copy"><p className="public-eyebrow"><span/> Live dashboard</p><h2>Everything important. One screen.</h2><p>A high-fidelity live preview using the same dashboard feed—not invented sales-demo figures.</p></div>
         <div className="public-dashboard-mini">
-          <header><b>Copycat</b><span>Overview&nbsp;&nbsp; Positions&nbsp;&nbsp; Activity</span><em className={feedLive ? 'live' : ''}>{feedLive ? 'LIVE' : 'UNAVAILABLE'}</em></header>
-          {feedLive && signals.length ? <div className="public-mini-content">
-            <div className="public-mini-position"><span>Market positioning</span><b>{symbol}</b><strong className={isShort ? 'negative' : 'positive'}>{signalLabel(btc.signal)}</strong><div className="public-mini-bar"><i style={{ width: `${conviction}%` }}/></div><small>{compact(btc.wallets_long)} long / {compact(btc.wallets_short)} short&nbsp;&nbsp; • &nbsp;&nbsp;Net {money(btc.net_value_usd)}</small></div>
-            <div className="public-mini-movers"><span>Top conviction</span>{signals.slice(0,3).map((r:any)=><div key={r.coin}><b>{r.coin}</b><em className={Number(r.signal)<0?'negative':'positive'}>{Math.round(Math.abs(Number(r.signal))*100)}% {Number(r.signal)<0?'Short':'Long'}</em><strong>{money(r.net_value_usd)}</strong></div>)}</div>
-            <div className="public-mini-activity"><span>Recent wallet activity</span>{orders.slice(0,2).map((r:any,i:number)=><div key={`${r.wallet}-${r.ts_ms}-${i}`}><b>{String(r.wallet_label || r.wallet || 'Wallet').replace(/^(.{8}).*(.{4})$/, '$1…$2')}</b><em className={String(r.side).toLowerCase().includes('short')?'negative':'positive'}>{r.side || 'Order'}</em><strong>{r.coin || r.asset}</strong><small>{money(r.delta_value_usd || r.position_value_usd)}</small></div>)}</div>
-          </div> : <div className="public-data-empty"><b>Fresh dashboard snapshot unavailable.</b><span>The preview does not fall back to deploy-time demo figures.</span></div>}
+          <div className="public-dashboard-framebar"><span><i/><i/><i/></span><b>Copycat dashboard preview</b><em className={feedLive ? 'live' : ''}>{feedLive ? 'LIVE DATA' : 'UNAVAILABLE'}</em></div>
+          {feedLive && signals.length ? <div className="public-dashboard-shot">
+            <header className="public-shot-nav"><b><span>Copy</span><em>cat</em></b><nav>Overview&nbsp;&nbsp; Positions&nbsp;&nbsp; Activity&nbsp;&nbsp; Performance</nav><small>{freshness(feedTs)}</small></header>
+            <div className="public-shot-kpis">
+              <article><small>Copycat-ranked wallets</small><b>{compact(selected)}</b><span>{compact(indexed)} indexed</span></article>
+              <article><small>Tracked wallet value</small><b>{money(summary.tracked_total_wallet_value_usd ?? summary.tracked_account_value_usd)}</b><span>{compact(summary.wallets_with_complete_total_value || 0)}/{compact(selected)} fully valued</span></article>
+              <article><small>Open position value</small><b>{money(summary.tracked_open_position_value_usd)}</b><span>{compact(summary.open_positions || 0)} live positions</span></article>
+              <article><small>Assets with signals</small><b>{compact(summary.assets_with_signals || signals.length)}</b><span>cross-asset breadth</span></article>
+            </div>
+            <div className="public-shot-grid">
+              <article className="public-shot-allocation"><header><b>Portfolio allocation</b><span>USDC excluded</span></header><div><div className="public-shot-donut" style={donutStyle}><i>100%</i></div><div className="public-shot-allocation-list">{allocationRows.slice(0,5).map((row,index)=><span key={row.coin}><PublicTokenIcon symbol={row.coin}/><b>{row.coin}</b><em className={row.signed < 0 ? 'negative' : 'positive'}>{row.signed < 0 ? 'short' : 'long'} {row.percent.toFixed(0)}%</em></span>)}</div></div></article>
+              <article className="public-shot-signals"><header><b>Asset signal board</b><span>live conviction</span></header><div>{rankedSignals.slice(0,5).map((row:any,index:number)=>{const value=displaySignalValue(row);return <span key={row.coin}><i>{index+1}</i><PublicTokenIcon symbol={row.coin}/><b>{row.coin}</b><em className={value < 0 ? 'negative' : 'positive'}>{Math.round(Math.abs(value)*100)}% {value < 0 ? 'Short' : 'Long'}</em><small>{money(row.net_value_usd)}</small></span>})}</div></article>
+              <article className="public-shot-performance"><header><b>Model performance</b><span>Last 24 hours</span></header>{perfReady ? <><div className="public-shot-chart"><svg viewBox="0 0 260 72" preserveAspectRatio="none"><path d={copycatPath}/></svg></div><div className="public-shot-performance-legend"><span><i className="public-index-mark">◇</i>Copycat <b className={perf24hReturns.copycat < 0 ? 'negative' : 'positive'}>{pct(perf24hReturns.copycat)}</b></span><span><PublicTokenIcon symbol="BTC"/>BTC <b className={perf24hReturns.btc < 0 ? 'negative' : 'positive'}>{pct(perf24hReturns.btc)}</b></span><span><PublicTokenIcon symbol="ETH"/>ETH <b className={perf24hReturns.eth < 0 ? 'negative' : 'positive'}>{pct(perf24hReturns.eth)}</b></span></div></> : <div className="public-data-empty"><b>24h window warming up.</b></div>}</article>
+            </div>
+            <div className="public-shot-orders"><header><b>Most recent orders</b><span>same live cohort as dashboard</span></header><div>{orders.slice(0,3).map((row:any,index:number)=><span key={`${row.wallet}-${row.ts_ms}-${index}`}><PublicTokenIcon symbol={row.coin || row.asset}/><b>{row.coin || row.asset}</b><em className={String(row.side).toLowerCase().includes('short')?'negative':'positive'}>{row.side || 'Order'}</em><small>{String(row.wallet_label || row.wallet || 'Wallet').replace(/^(.{8}).*(.{4})$/, '$1…$2')}</small><strong>{money(row.delta_value_usd || row.position_value_usd)}</strong></span>)}</div></div>
+          </div> : <div className="public-data-empty"><b>Fresh dashboard snapshot unavailable.</b><span>The preview never substitutes made-up data.</span></div>}
         </div>
         <div className="public-feature-list">
           <div><i><MiniIcon type="position"/></i><span><b>Market positioning</b><small>See where tracked wallets are long, short, and by how much.</small></span></div>
