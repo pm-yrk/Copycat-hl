@@ -1021,3 +1021,73 @@
     transition:none!important;
   }
 }
+
+/* ==========================================================================
+   Copycat page-specific ribbon and reactive stardust v8
+   ========================================================================== */
+.public-mesh-is-animated.public-mesh-home{--mesh-page-rotate:-1.15deg;--mesh-mobile-rotate:-1deg}
+.public-mesh-is-animated.public-mesh-pricing{--mesh-page-rotate:.35deg;--mesh-mobile-rotate:.2deg}
+.public-mesh-is-animated.public-mesh-api{--mesh-page-rotate:1.15deg;--mesh-mobile-rotate:.85deg}
+.public-mesh-is-animated.public-mesh-login{--mesh-page-rotate:-2.4deg;--mesh-mobile-rotate:-2deg}
+.public-mesh-is-animated.public-mesh-default{--mesh-page-rotate:-.55deg;--mesh-mobile-rotate:-.4deg}
+.public-mesh-is-animated.public-mesh-terms{--mesh-page-rotate:.25deg;--mesh-mobile-rotate:.15deg}
+.public-mesh-is-animated.public-mesh-privacy{--mesh-page-rotate:-1deg;--mesh-mobile-rotate:-.7deg}
+.public-mesh-is-animated.public-mesh-risk{--mesh-page-rotate:1.45deg;--mesh-mobile-rotate:1deg}
+.public-mesh-is-animated.public-mesh-links{--mesh-page-rotate:-.15deg;--mesh-mobile-rotate:-.1deg}
+
+.public-mesh-is-animated.public-mesh-terms,
+.public-mesh-is-animated.public-mesh-privacy,
+.public-mesh-is-animated.public-mesh-risk,
+.public-mesh-is-animated.public-mesh-links{
+  inset:auto;
+  left:-14vw;
+  right:auto;
+  top:-9vh;
+  width:128vw;
+  height:116vh;
+  transform:rotate(var(--mesh-page-rotate));
+}
+.cc-legal-page>.public-mesh-is-animated{
+  z-index:0;
+}
+.cc-legal-page>.cc-legal-wrap{
+  z-index:1;
+}
+.cc-legal-page::after{
+  animation:none!important;
+  opacity:.16;
+}
+
+@media(min-width:821px) and (hover:hover) and (pointer:fine){
+  .public-mesh-is-animated.public-mesh-home,
+  .public-mesh-is-animated.public-mesh-pricing,
+  .public-mesh-is-animated.public-mesh-api,
+  .public-mesh-is-animated.public-mesh-login,
+  .public-mesh-is-animated.public-mesh-default,
+  .public-mesh-is-animated.public-mesh-terms,
+  .public-mesh-is-animated.public-mesh-privacy,
+  .public-mesh-is-animated.public-mesh-risk,
+  .public-mesh-is-animated.public-mesh-links{
+    transform:
+      translate3d(var(--mesh-physics-x),var(--mesh-physics-y),0)
+      rotate(calc(var(--mesh-page-rotate) + var(--mesh-physics-tilt)));
+  }
+}
+@media(max-width:820px), (hover:none) and (pointer:coarse){
+  .public-mesh-is-animated.public-mesh-home,
+  .public-mesh-is-animated.public-mesh-pricing,
+  .public-mesh-is-animated.public-mesh-api,
+  .public-mesh-is-animated.public-mesh-login,
+  .public-mesh-is-animated.public-mesh-default,
+  .public-mesh-is-animated.public-mesh-terms,
+  .public-mesh-is-animated.public-mesh-privacy,
+  .public-mesh-is-animated.public-mesh-risk,
+  .public-mesh-is-animated.public-mesh-links{
+    left:-18vw;
+    top:-7vh;
+    width:136vw;
+    height:114vh;
+    transform:rotate(var(--mesh-mobile-rotate));
+  }
+}
+
