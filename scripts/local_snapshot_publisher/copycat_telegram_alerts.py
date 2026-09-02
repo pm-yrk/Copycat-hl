@@ -145,24 +145,7 @@ def catalyst_key(event: dict[str, Any]) -> str:
     return "|".join([str(event.get("source") or ""), str(event.get("title") or ""), str(event.get("event_at_ms") or "")])
 
 def build_test_message(feed: dict[str, Any]) -> str:
-    signals = [row for row in (feed.get("signals") or []) if isinstance(row, dict)]
-    lines = [
-        "✅ COPYCAT TELEGRAM IS CONNECTED",
-        "",
-        "🕐 Hourly market pulse",
-        "⚡ Instant smart-wallet behaviour alerts",
-        "📰 Breaking market news and catalysts",
-    ]
-    if signals:
-        lead = signals[0]
-        value = signal_value(lead)
-        emoji = "🟢" if value >= 0 else "🔴"
-        lines.extend([
-            "",
-            "🎯 CURRENT LEAD SIGNAL",
-            f"{emoji} {lead.get('coin', '?')} — {signal_direction(value)} {abs(value) * 100:.0f}% · {signal_confidence(lead)} confidence",
-        ])
-    return "\n".join(lines)
+    return "✅ NEW COPYCAT ALERT FORMAT IS LIVE\n\n" + build_hourly_brief(feed)
 
 def build_hourly_brief(feed: dict[str, Any]) -> str:
     signals = [row for row in (feed.get("signals") or []) if isinstance(row, dict)]
