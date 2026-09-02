@@ -55,35 +55,114 @@ export default function PublicMeshBackdrop({ variant = 'default' }: { variant?: 
     const node = backdropRef.current
     if (!node) return
 
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const resetPhysics = () => {
+      node.style.setProperty('--mesh-physics-x', '0px')
+      node.style.setProperty('--mesh-physics-y', '0px')
+      node.style.setProperty('--mesh-physics-tilt', '0deg')
+    }
 
-    const mobileMotion = window.matchMedia('(max-width: 820px), (hover: none) and (pointer: coarse)')
-    if (mobileMotion.matches) {
-      node.style.setProperty('--mesh-scroll-y', '0px')
-      node.style.setProperty('--mesh-scroll-x', '0px')
-      node.style.setProperty('--mesh-scroll-tilt', '0deg')
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      resetPhysics()
       return
     }
 
-    let frame = 0
-    const updatePosition = () => {
-      frame = 0
-      const pageRange = Math.max(1, document.documentElement.scrollHeight - window.innerHeight)
-      const progress = Math.min(1, Math.max(0, window.scrollY / pageRange))
-      node.style.setProperty('--mesh-scroll-y', `${(progress * 38).toFixed(2)}px`)
-      node.style.setProperty('--mesh-scroll-x', `${(Math.sin(progress * Math.PI) * 9).toFixed(2)}px`)
-      node.style.setProperty('--mesh-scroll-tilt', `${((progress - .5) * .42).toFixed(3)}deg`)
-    }
-    const schedulePosition = () => {
-      if (!frame) frame = window.requestAnimationFrame(updatePosition)
+    const mobileMotion = window.matchMedia('(max-width: 820px), (hover: none) and (pointer: coarse)')
+    if (mobileMotion.matches) {
+      resetPhysics()
+      return
     }
 
-    updatePosition()
-    window.addEventListener('scroll', schedulePosition, { passive: true })
-    window.addEventListener('resize', schedulePosition)
+    const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
+    let frame = 0
+    let lastFrameAt = 0
+    let lastScrollY = window.scrollY
+    let pointerX = 0
+    let pointerY = 0
+    let scrollPull = 0
+    let x = 0
+    let y = 0
+    let tilt = 0
+    let velocityX = 0
+    let velocityY = 0
+    let velocityTilt = 0
+
+    const write = () => {
+      node.style.setProperty('--mesh-physics-x', `${x.toFixed(2)}px`)
+      node.style.setProperty('--mesh-physics-y', `${y.toFixed(2)}px`)
+      node.style.setProperty('--mesh-physics-tilt', `${tilt.toFixed(3)}deg`)
+    }
+
+    const animate = (now: number) => {
+      const elapsed = lastFrameAt ? clamp((now - lastFrameAt) / 16.667, .5, 2) : 1
+      lastFrameAt = now
+      scrollPull *= Math.pow(.965, elapsed)
+
+      const targetX = pointerX
+      const targetY = pointerY + scrollPull
+      const targetTilt = pointerX * .018
+
+      velocityX = (velocityX + (targetX - x) * .035 * elapsed) * Math.pow(.86, elapsed)
+      velocityY = (velocityY + (targetY - y) * .032 * elapsed) * Math.pow(.86, elapsed)
+      velocityTilt = (velocityTilt + (targetTilt - tilt) * .03 * elapsed) * Math.pow(.86, elapsed)
+
+      x += velocityX * elapsed
+      y += velocityY * elapsed
+      tilt += velocityTilt * elapsed
+      write()
+
+      const moving = Math.abs(targetX - x) + Math.abs(targetY - y) + Math.abs(targetTilt - tilt)
+        + Math.abs(velocityX) + Math.abs(velocityY) + Math.abs(velocityTilt) + Math.abs(scrollPull)
+      if (moving > .035) {
+        frame = window.requestAnimationFrame(animate)
+      } else {
+        x = targetX
+        y = targetY
+        tilt = targetTilt
+        write()
+        frame = 0
+        lastFrameAt = 0
+      }
+    }
+
+    const wake = () => {
+      if (!frame) frame = window.requestAnimationFrame(animate)
+    }
+    const onScroll = () => {
+      const nextScrollY = window.scrollY
+      const delta = clamp(nextScrollY - lastScrollY, -120, 120)
+      lastScrollY = nextScrollY
+      scrollPull = clamp(scrollPull - delta * .12, -22, 22)
+      wake()
+    }
+    const onPointerMove = (event: PointerEvent) => {
+      const nx = clamp((event.clientX / Math.max(1, window.innerWidth) - .5) * 2, -1, 1)
+      const ny = clamp((event.clientY / Math.max(1, window.innerHeight) - .5) * 2, -1, 1)
+      pointerX = nx * 8
+      pointerY = ny * 4
+      wake()
+    }
+    const releasePointer = () => {
+      pointerX = 0
+      pointerY = 0
+      wake()
+    }
+    const onResize = () => {
+      lastScrollY = window.scrollY
+      releasePointer()
+    }
+
+    resetPhysics()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('pointermove', onPointerMove, { passive: true })
+    window.addEventListener('pointerleave', releasePointer)
+    window.addEventListener('blur', releasePointer)
+    window.addEventListener('resize', onResize)
     return () => {
-      window.removeEventListener('scroll', schedulePosition)
-      window.removeEventListener('resize', schedulePosition)
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('pointermove', onPointerMove)
+      window.removeEventListener('pointerleave', releasePointer)
+      window.removeEventListener('blur', releasePointer)
+      window.removeEventListener('resize', onResize)
       if (frame) window.cancelAnimationFrame(frame)
     }
   }, [])
@@ -113,9 +192,6 @@ export default function PublicMeshBackdrop({ variant = 'default' }: { variant?: 
         <mask id={`meshMask-${variant}`}>
           <rect width="1680" height="860" fill={`url(#meshFade-${variant})`}/>
         </mask>
-        <filter id={`meshGlow-${variant}`} x="-25%" y="-25%" width="150%" height="150%">
-          <feGaussianBlur stdDeviation="5" result="blur"/>
-        </filter>
       </defs>
 
       <g mask={`url(#meshMask-${variant})`} className="public-mesh-cross">
@@ -127,14 +203,6 @@ export default function PublicMeshBackdrop({ variant = 'default' }: { variant?: 
         {Array.from({ length: strandGroups }, (_, group) => <g key={`primary-group-${group}`} className={`public-mesh-strand-group public-mesh-strand-${group}`}>
           {primary.map((line, i) => i % strandGroups === group ? <path key={`p-${i}`} d={line.d} style={{ opacity: line.opacity }}/> : null)}
         </g>)}
-      </g>
-      <g mask={`url(#meshMask-${variant})`} className="public-mesh-glow" filter={`url(#meshGlow-${variant})`}>
-        <path d={ribbonPath(Math.floor(primaryCount * .47), primaryCount, 'primary')}/>
-        <path d={ribbonPath(Math.floor(primaryCount * .54), primaryCount, 'primary')}/>
-      </g>
-      <g mask={`url(#meshMask-${variant})`} className="public-mesh-highlight">
-        <path d={ribbonPath(Math.floor(primaryCount * .49), primaryCount, 'primary')}/>
-        <path d={ribbonPath(Math.floor(primaryCount * .52), primaryCount, 'primary')}/>
       </g>
     </svg>
   </div>
