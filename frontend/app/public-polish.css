@@ -651,3 +651,18 @@
   0%,100%{opacity:.48;transform:translate3d(-.35%,.25%,0) scale(.985)}
   50%{opacity:.62;transform:translate3d(.35%,-.25%,0) scale(1.02)}
 }
+
+
+/* ==========================================================================
+   Copycat ribbon lighting v4 — static brightness, movement only
+   ========================================================================== */
+.public-mesh-is-animated::before{
+  animation:none!important;
+  opacity:.54!important;
+  transform:translate3d(0,0,0) scale(1)!important;
+  will-change:auto!important;
+}
+.public-mesh-is-animated .public-mesh-highlight{
+  display:none!important;
+  animation:none!important;
+}
