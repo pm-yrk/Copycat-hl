@@ -213,7 +213,9 @@ def build_hourly_brief(feed: dict[str, Any]) -> str:
             if len(title) > 118:
                 title = title[:115].rstrip() + "…"
             number = "1️⃣" if index == 1 else "2️⃣"
-            lines.append(f"{number} {row.get('source') or 'Market source'} — {title}")
+            lean = str(row.get("sentiment") or "neutral").lower()
+            lean_mark = "🟢" if lean == "bullish" else ("🔴" if lean == "bearish" else "⚪")
+            lines.append(f"{number} {lean_mark} {row.get('source') or 'Market source'} — {title}")
 
     events = [row for row in ((feed.get("catalyst_watch") or {}).get("events") or []) if isinstance(row, dict)]
     if events:
@@ -366,7 +368,10 @@ def collect_alerts(feed_path: Path, feed: dict[str, Any], state: dict[str, Any],
         title = " ".join(str(story.get("title") or "").split())
         if len(title) > 160:
             title = title[:157].rstrip() + "…"
-        message = f"🗞️ BREAKING MARKET NEWS\n\n{story.get('source') or 'Market source'}\n{title}"
+        lean = str(story.get("sentiment") or "neutral").lower()
+        lean_mark = "🟢" if lean == "bullish" else ("🔴" if lean == "bearish" else "⚪")
+        lean_label = lean.upper() if lean in {"bullish", "bearish"} else "NEUTRAL"
+        message = f"🗞️ BREAKING MARKET NEWS\n\n{lean_mark} {lean_label} LEAN\n{story.get('source') or 'Market source'}\n{title}"
         url = str(story.get("url") or story.get("link") or "").strip()
         if url:
             message += f"\n{url}"
