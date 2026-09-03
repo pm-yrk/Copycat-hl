@@ -240,7 +240,7 @@
 
 .cc-dashboard-primary-grid{
   display:grid;
-  grid-template-columns:minmax(520px,1.65fr) minmax(280px,.78fr) minmax(310px,.9fr);
+  grid-template-columns:minmax(500px,1.45fr) minmax(280px,.72fr) minmax(380px,1fr);
   gap:11px;
   margin-bottom:11px;
 }
