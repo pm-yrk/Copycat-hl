@@ -815,6 +815,33 @@ function SignalFlowMap({ rows, icons }: { rows: any[]; icons: Record<string, str
     .slice(0, 6)
   const maxFlow = Math.max(1, ...candidates.map((row: any) => Math.abs(Number(row?.net_value_flow_usd || 0))))
   const maxGross = Math.max(1, ...candidates.map((row: any) => Number(row?.value_long_usd || 0) + Number(row?.value_short_usd || 0)))
+  const placed: Array<{ left: number; top: number; size: number }> = []
+  const bubbleLayout = candidates.map((row: any, index: number) => {
+    const signal = Math.max(-1, Math.min(1, displaySignalValue(row)))
+    const flowValue = Number(row?.net_value_flow_usd || 0)
+    const gross = Number(row?.value_long_usd || 0) + Number(row?.value_short_usd || 0)
+    const flowStrength = flowValue ? Math.sign(flowValue) * (Math.log1p(Math.abs(flowValue)) / Math.log1p(maxFlow)) : 0
+    const baseLeft = 50 + signal * 38
+    const baseTop = flowValue ? 50 - flowStrength * 36 : 50 + ((index % 3) - 1) * 9
+    const size = 50 + Math.sqrt(Math.max(0, gross) / maxGross) * 54
+    const xBounds: [number, number] = signal < -.02 ? [10, 46] : signal > .02 ? [54, 90] : [45, 55]
+    const yBounds: [number, number] = flowValue < 0 ? [54, 88] : flowValue > 0 ? [12, 46] : [43, 57]
+    const clamp = (value: number, bounds: [number, number]) => Math.max(bounds[0], Math.min(bounds[1], value))
+    const offsets = [[0, 0], [12, 0], [-12, 0], [0, -18], [0, 18], [12, -18], [-12, 18], [12, 18], [-12, -18], [22, 0], [-22, 0], [22, -18], [-22, 18], [0, -30], [0, 30]]
+    let best = { left: clamp(baseLeft, xBounds), top: clamp(baseTop, yBounds), score: -Infinity }
+    for (const [offsetX, offsetY] of offsets) {
+      const left = clamp(baseLeft + offsetX, xBounds)
+      const top = clamp(baseTop + offsetY, yBounds)
+      const score = placed.length ? Math.min(...placed.map((prior) => {
+        const distance = Math.hypot((left - prior.left) * 11, (top - prior.top) * 4.55)
+        return distance - ((size + prior.size) / 2 + 14)
+      })) : 999
+      if (score > best.score) best = { left, top, score }
+      if (score >= 0) break
+    }
+    placed.push({ left: best.left, top: best.top, size })
+    return { row, index, signal, flowValue, gross, size, left: best.left, top: best.top }
+  })
 
   return <section className="cc-card cc-signal-flow-card">
     <div className="cc-panel-title cc-signal-flow-head">
@@ -839,17 +866,10 @@ function SignalFlowMap({ rows, icons }: { rows: any[]; icons: Record<string, str
         <span className="cc-quadrant-note q-br"><b>↘</b> Longs reducing<br/>possible weakness</span>
         {[-100, -50, 0, 50, 100].map((tick) => <span className="cc-axis-tick x" style={{ left: `${50 + tick * .39}%` }} key={`x-${tick}`}>{tick}%</span>)}
         {[100, 50, 0, -50, -100].map((tick) => <span className="cc-axis-tick y" style={{ top: `${50 - tick * .37}%` }} key={`y-${tick}`}>{tick}%</span>)}
-        {candidates.map((row: any, index: number) => {
-          const signal = Math.max(-1, Math.min(1, displaySignalValue(row)))
-          const flowValue = Number(row?.net_value_flow_usd || 0)
-          const gross = Number(row?.value_long_usd || 0) + Number(row?.value_short_usd || 0)
-          const left = Math.max(12, Math.min(88, 50 + signal * 38 + ((index % 3) - 1) * 1.2))
-          const fallbackBand = ((index % 6) - 2.5) * 10
-          const top = Math.max(12, Math.min(88, flowValue ? 50 - (flowValue / maxFlow) * 36 : 50 + fallbackBand))
-          const size = 50 + Math.sqrt(Math.max(0, gross) / maxGross) * 54
+        {bubbleLayout.map(({ row, index, signal, flowValue, size, left, top }) => {
           return <span
             key={String(row.coin)}
-            className={`cc-flow-bubble ${signal < 0 ? 'negative' : 'positive'} ${left > 72 ? 'label-left' : ''}`}
+            className={`cc-flow-bubble ${signal < 0 ? 'negative' : 'positive'} ${left > 72 || (left > 28 && index % 2 === 1) ? 'label-left' : ''}`}
             data-coin={displayToken(row.coin)}
             title={`${displayToken(row.coin)}: ${displaySignalMagnitudePct(row)} ${displaySignalDirection(row)}, ${compactMoney(flowValue)} recent net flow`}
             style={{ left: `${left}%`, top: `${top}%`, ['--bubble-size' as any]: `${size}px` }}
@@ -1403,3 +1423,5 @@ export default function Dashboard() {
   </div>
 
 }
+
+
