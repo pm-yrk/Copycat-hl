@@ -4,8 +4,8 @@ import PublicMeshBackdrop from '../../components/PublicMeshBackdrop'
 
 const tiers = [
   { title: 'Free', price: '£0', desc: 'Explore Copycat with no commitment.', items: ['Delayed dashboard preview', 'Short API preview endpoints', 'Risk warnings and methodology notes', 'No credit card required'], cta: 'Coming soon', href: '/login', icon: '◇' },
-  { title: 'Copycat Pro', price: '£49', unit: '/month', desc: 'Live dashboard access and advanced market intelligence.', items: ['Live dashboard access', 'Top 50 Copycat-ranked wallet cohort', 'Asset signal board and buyer/seller pressure', 'Portfolio allocation and Copycat Index', 'Market intelligence updates'], cta: 'Start Pro', href: '/login', featured: true, icon: '⌁' },
-  { title: 'Copycat Pro + Alerts', price: '£99', unit: '/month', desc: 'Everything in Pro, plus alerts when the market moves.', items: ['Everything in Copycat Pro', '15-minute Telegram digests', 'Major conviction change alerts', 'Large accumulation/distribution alerts', 'Priority alert channels later'], cta: 'Start alerts', href: '/login', icon: '◷' },
+  { title: 'Copycat Pro', price: '£14.99', unit: '/month', desc: 'Live dashboard access and advanced market intelligence.', items: ['Live dashboard access', 'Top 50 Copycat-ranked wallet cohort', 'Asset signal board and buyer/seller pressure', 'Portfolio allocation and Copycat Index', 'Market intelligence updates'], cta: 'Start Pro', href: '/login', featured: true, icon: '⌁' },
+  { title: 'Copycat Pro + Alerts', price: '£19.99', unit: '/month', desc: 'Everything in Pro, plus alerts when the market moves.', items: ['Everything in Copycat Pro', '15-minute Telegram digests', 'Major conviction change alerts', 'Large accumulation/distribution alerts', 'Priority alert channels later'], cta: 'Start alerts', href: '/login', icon: '◷' },
 ]
 
 const comparison = [
@@ -46,7 +46,7 @@ export default function Pricing() {
 
       <section className="public-api-offer">
         <div className="public-api-offer-copy"><i>&lt;/&gt;</i><div><p className="public-eyebrow"><span/> Developer access</p><h2>Building with Copycat?</h2><p>Programmatic access to ranked wallet data, positions, fills, market signals and historical intelligence.</p></div></div>
-        <div className="public-api-price"><span>Developer API</span><b>£249<small>/month</small></b></div>
+        <div className="public-api-price"><span>Developer API</span><b>£40<small>/month</small></b></div>
         <ul><li>✓ API key access</li><li>✓ Leaderboard, signals and flow endpoints</li><li>✓ Coverage and freshness metadata</li><li>✓ Usage logging and rate limits</li></ul>
         <div className="public-api-offer-actions"><Link className="public-primary" href="/api-access">Explore API <span>→</span></Link><a href="mailto:paulmurrin13@gmail.com?subject=Copycat%20API%20access">Request access →</a></div>
       </section>

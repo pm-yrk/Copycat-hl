@@ -812,39 +812,53 @@ function SignalFlowMap({ rows, icons }: { rows: any[]; icons: Record<string, str
       const flowDifference = flowPressureScore(b) - flowPressureScore(a)
       return flowDifference || (bGross - aGross)
     })
-    .slice(0, 7)
+    .slice(0, 6)
   const maxFlow = Math.max(1, ...candidates.map((row: any) => Math.abs(Number(row?.net_value_flow_usd || 0))))
   const maxGross = Math.max(1, ...candidates.map((row: any) => Number(row?.value_long_usd || 0) + Number(row?.value_short_usd || 0)))
 
   return <section className="cc-card cc-signal-flow-card">
-    <div className="cc-panel-title">
-      <h3>Signal × Flow</h3>
-      <span>Positioning conviction against {candidates.some((row: any) => Number(row?.net_value_flow_usd || 0)) ? 'recent capital flow' : 'current exposure'}</span>
+    <div className="cc-panel-title cc-signal-flow-head">
+      <div>
+        <h3>Signal × Flow</h3>
+        <span>Where top wallets are positioned vs what they are doing now</span>
+      </div>
+      <span className="cc-bubble-key">Bubble size = tracked exposure <i aria-hidden>i</i></span>
     </div>
-    <div className="cc-signal-flow-plot" role="img" aria-label="Asset signal and recent flow map">
-      <i className="cc-signal-flow-axis-x" aria-hidden />
-      <i className="cc-signal-flow-axis-y" aria-hidden />
-      <span className="cc-plot-label top">Accumulation</span>
-      <span className="cc-plot-label bottom">Distribution</span>
-      <span className="cc-plot-label left">Short</span>
-      <span className="cc-plot-label right">Long</span>
-      {candidates.map((row: any, index: number) => {
-        const signal = Math.max(-1, Math.min(1, displaySignalValue(row)))
-        const flowValue = Number(row?.net_value_flow_usd || 0)
-        const gross = Number(row?.value_long_usd || 0) + Number(row?.value_short_usd || 0)
-        const baseLeft = 50 + signal * 42
-        const left = Math.max(7, Math.min(93, baseLeft + (flowValue ? 0 : ((index % 3) - 1) * 2.8)))
-        const fallbackBand = ((index % 7) - 3) * 9
-        const top = Math.max(9, Math.min(91, flowValue ? 50 - (flowValue / maxFlow) * 40 : 50 + fallbackBand))
-        const size = 22 + Math.sqrt(Math.max(0, gross) / maxGross) * 12
-        return <span
-          key={String(row.coin)}
-          className={`cc-flow-bubble ${signal < 0 ? 'negative' : 'positive'}`}
-          data-coin={displayToken(row.coin)}
-          title={`${displayToken(row.coin)}: ${displaySignalMagnitudePct(row)} ${displaySignalDirection(row)}, ${compactMoney(flowValue)} recent net flow`}
-          style={{ left: `${left}%`, top: `${top}%`, ['--bubble-size' as any]: `${size}px` }}
-        ><TokenLogo coin={row.coin} icons={icons} /></span>
-      })}
+    <div className="cc-signal-flow-stage">
+      <div className="cc-signal-flow-plot" role="img" aria-label="Asset signal and recent flow map">
+        <i className="cc-signal-flow-axis-x" aria-hidden />
+        <i className="cc-signal-flow-axis-y" aria-hidden />
+        <span className="cc-axis-title y-positive">Buying now</span>
+        <span className="cc-axis-title y-negative">Selling now</span>
+        <span className="cc-axis-title x-negative">Short positioning</span>
+        <span className="cc-axis-title x-neutral">Neutral</span>
+        <span className="cc-axis-title x-positive">Long positioning</span>
+        <span className="cc-quadrant-note q-tl"><b>↻</b> Shorts being covered<br/>possible reversal</span>
+        <span className="cc-quadrant-note q-tr"><b>↗</b> Bullish continuation</span>
+        <span className="cc-quadrant-note q-bl"><b>↘</b> Bearish continuation</span>
+        <span className="cc-quadrant-note q-br"><b>↘</b> Longs reducing<br/>possible weakness</span>
+        {[-100, -50, 0, 50, 100].map((tick) => <span className="cc-axis-tick x" style={{ left: `${50 + tick * .39}%` }} key={`x-${tick}`}>{tick}%</span>)}
+        {[100, 50, 0, -50, -100].map((tick) => <span className="cc-axis-tick y" style={{ top: `${50 - tick * .37}%` }} key={`y-${tick}`}>{tick}%</span>)}
+        {candidates.map((row: any, index: number) => {
+          const signal = Math.max(-1, Math.min(1, displaySignalValue(row)))
+          const flowValue = Number(row?.net_value_flow_usd || 0)
+          const gross = Number(row?.value_long_usd || 0) + Number(row?.value_short_usd || 0)
+          const left = Math.max(12, Math.min(88, 50 + signal * 38 + ((index % 3) - 1) * 1.2))
+          const fallbackBand = ((index % 6) - 2.5) * 10
+          const top = Math.max(12, Math.min(88, flowValue ? 50 - (flowValue / maxFlow) * 36 : 50 + fallbackBand))
+          const size = 50 + Math.sqrt(Math.max(0, gross) / maxGross) * 54
+          return <span
+            key={String(row.coin)}
+            className={`cc-flow-bubble ${signal < 0 ? 'negative' : 'positive'} ${left > 72 ? 'label-left' : ''}`}
+            data-coin={displayToken(row.coin)}
+            title={`${displayToken(row.coin)}: ${displaySignalMagnitudePct(row)} ${displaySignalDirection(row)}, ${compactMoney(flowValue)} recent net flow`}
+            style={{ left: `${left}%`, top: `${top}%`, ['--bubble-size' as any]: `${size}px` }}
+          >
+            <span className="cc-flow-bubble-core"><TokenLogo coin={row.coin} icons={icons} /></span>
+            <b>{displayToken(row.coin)}</b>
+          </span>
+        })}
+      </div>
     </div>
   </section>
 }
@@ -871,38 +885,101 @@ function PositioningChanges({ rows, icons, details, windowLabel }: { rows: any[]
   </section>
 }
 
-type QuickChartWindow = '24H' | '7D'
-type QuickChartAsset = 'BTC' | 'ETH'
+type QuickChartWindow = '24H' | '7D' | '30D'
+type PriceCandle = { ts_ms: number; price: number }
+type PositioningChartPoint = { ts_ms: number; position: number; price: number }
 
-function quickChartPoints(data: any, windowKey: QuickChartWindow, asset: QuickChartAsset) {
-  const suppliedKey = windowKey === '24H' ? '1D' : '1W'
+function quickChartWindowMs(windowKey: QuickChartWindow) {
+  if (windowKey === '7D') return 7 * 24 * 60 * 60 * 1000
+  if (windowKey === '30D') return 30 * 24 * 60 * 60 * 1000
+  return 24 * 60 * 60 * 1000
+}
+
+function quickChartInterval(windowKey: QuickChartWindow) {
+  if (windowKey === '30D') return '4h'
+  if (windowKey === '7D') return '1h'
+  return '15m'
+}
+
+function benchmarkPriceFallback(data: any, windowKey: QuickChartWindow, asset: string, currentPrice: number): PriceCandle[] {
+  const suppliedKey = windowKey === '24H' ? '1D' : windowKey === '7D' ? '1W' : '1M'
   const supplied = Array.isArray(data?.timeframes?.[suppliedKey]) ? data.timeframes[suppliedKey] : []
   const all = supplied.length ? supplied : (Array.isArray(data?.points) ? data.points : [])
   const latest = Number(data?.latest_ts_ms || all[all.length - 1]?.ts_ms || Date.now())
-  const cutoff = latest - (windowKey === '24H' ? 24 : 24 * 7) * 60 * 60 * 1000
-  const priceKey = asset === 'ETH' ? 'eth_nav' : 'btc_nav'
-  const priceFallback = asset === 'ETH' ? 'eth' : 'btc'
-  const normalised = all.map((row: any) => ({
-    ts_ms: Number(row?.ts_ms || row?.time || 0),
-    model: Number(row?.copycat_nav ?? row?.copycat ?? 100),
-    price: Number(row?.[priceKey] ?? row?.[priceFallback] ?? 100),
-  })).filter((row: any) => row.ts_ms > 0 && Number.isFinite(row.model) && Number.isFinite(row.price))
-  const filtered = normalised.filter((row: any) => row.ts_ms >= cutoff)
-  return filtered.length >= 2 ? filtered : normalised
+  const cutoff = latest - quickChartWindowMs(windowKey)
+  const key = canonicalToken(asset) === 'ETH' ? 'eth_nav' : canonicalToken(asset) === 'BTC' ? 'btc_nav' : ''
+  if (!key) return []
+  const rows = all.map((row: any) => ({ ts_ms: Number(row?.ts_ms || row?.time || 0), nav: Number(row?.[key] || 0) }))
+    .filter((row: any) => row.ts_ms >= cutoff && row.nav > 0)
+  const latestNav = Number(rows[rows.length - 1]?.nav || 0)
+  if (!latestNav) return []
+  return rows.map((row: any) => ({ ts_ms: row.ts_ms, price: currentPrice > 0 ? currentPrice * row.nav / latestNav : row.nav }))
 }
 
-function quickChartPath(points: any[], key: 'model' | 'price', minimum: number, span: number) {
-  return points.map((row: any, index: number) => {
-    const x = points.length === 1 ? 0 : (index / (points.length - 1)) * 680
-    const y = 220 - ((Number(row[key]) - minimum) / span) * 220
+function signedOrderDelta(order: any) {
+  const side = String(order?.side || order?.direction || '').toLowerCase()
+  const amount = Math.abs(Number(order?.delta_value_usd || order?.position_value_usd || order?.notional_usd || 0))
+  if (!amount) return 0
+  if (side.includes('open long') || side.includes('close short') || side === 'b' || side === 'buy') return amount
+  if (side.includes('open short') || side.includes('close long') || side === 's' || side === 'sell') return -amount
+  return 0
+}
+
+function buildPositioningSeries(candles: PriceCandle[], orders: any[], asset: string, currentNet: number): PositioningChartPoint[] {
+  const selectedOrders = (orders || [])
+    .filter((order: any) => canonicalToken(String(order?.coin || '')) === canonicalToken(asset))
+    .map((order: any) => ({ ts_ms: Number(order?.ts_ms || 0), delta: signedOrderDelta(order) }))
+    .filter((order: any) => order.ts_ms > 0 && order.delta)
+    .sort((a: any, b: any) => a.ts_ms - b.ts_ms)
+
+  return candles.map((candle) => {
+    const laterDelta = selectedOrders.reduce((sum: number, order: any) => order.ts_ms > candle.ts_ms ? sum + order.delta : sum, 0)
+    return { ...candle, position: currentNet - laterDelta }
+  })
+}
+
+function chartPath(points: PositioningChartPoint[], key: 'position' | 'price', minimum: number, span: number) {
+  return points.map((row, index) => {
+    const x = points.length === 1 ? 0 : (index / (points.length - 1)) * 760
+    const y = 250 - ((Number(row[key]) - minimum) / span) * 250
     return `${index ? 'L' : 'M'} ${x.toFixed(2)} ${y.toFixed(2)}`
   }).join(' ')
 }
 
-function PricePositioningChart({ icons }: { icons: Record<string, string> }) {
+function chartTimeLabel(timestamp: number, windowKey: QuickChartWindow) {
+  const date = new Date(timestamp)
+  if (windowKey === '24H') return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  return date.toLocaleDateString([], { day: '2-digit', month: 'short' })
+}
+
+function PricePositioningChart({ icons, signals, orders, details }: { icons: Record<string, string>; signals: any[]; orders: any[]; details: Record<string, AssetDetail> }) {
   const [data, setData] = useState<any>(null)
   const [windowKey, setWindowKey] = useState<QuickChartWindow>('24H')
-  const [asset, setAsset] = useState<QuickChartAsset>('BTC')
+  const [asset, setAsset] = useState('BTC')
+  const [liveCandles, setLiveCandles] = useState<PriceCandle[]>([])
+  const [priceLoading, setPriceLoading] = useState(false)
+
+  const assetOptions = useMemo(() => {
+    const seen = new Set<string>()
+    return [...(signals || [])]
+      .filter((row: any) => row?.coin && Number(row?.value_long_usd || 0) + Number(row?.value_short_usd || 0) > 0)
+      .sort((a: any, b: any) => (Number(b?.value_long_usd || 0) + Number(b?.value_short_usd || 0)) - (Number(a?.value_long_usd || 0) + Number(a?.value_short_usd || 0)))
+      .filter((row: any) => {
+        const key = canonicalToken(String(row.coin))
+        if (!key || seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+      .map((row: any) => String(row.coin))
+  }, [signals])
+
+  useEffect(() => {
+    if (!assetOptions.length) return
+    if (!assetOptions.some((coin) => canonicalToken(coin) === canonicalToken(asset))) {
+      const preferred = assetOptions.find((coin) => canonicalToken(coin) === 'BTC') || assetOptions[0]
+      setAsset(preferred)
+    }
+  }, [assetOptions, asset])
 
   useEffect(() => {
     let alive = true
@@ -914,49 +991,104 @@ function PricePositioningChart({ icons }: { icons: Record<string, string> }) {
     return () => { alive = false; window.clearInterval(timer) }
   }, [])
 
-  const points = useMemo(() => quickChartPoints(data, windowKey, asset), [data, windowKey, asset])
-  const values = points.flatMap((row: any) => [Number(row.model), Number(row.price)]).filter((value: number) => Number.isFinite(value))
-  const rawMin = values.length ? Math.min(...values) : 98
-  const rawMax = values.length ? Math.max(...values) : 102
-  const padding = Math.max(.25, (rawMax - rawMin) * .12)
-  const minimum = rawMin - padding
-  const span = Math.max(.5, rawMax + padding - minimum)
-  const modelPath = quickChartPath(points, 'model', minimum, span)
-  const pricePath = quickChartPath(points, 'price', minimum, span)
+  useEffect(() => {
+    if (!asset) return
+    let alive = true
+    const controller = new AbortController()
+    const now = Date.now()
+    setPriceLoading(true)
+    fetch('https://api.hyperliquid.xyz/info', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'candleSnapshot',
+        req: { coin: asset, interval: quickChartInterval(windowKey), startTime: now - quickChartWindowMs(windowKey), endTime: now },
+      }),
+      signal: controller.signal,
+    })
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error('price history unavailable')))
+      .then((rows: any[]) => {
+        if (!alive) return
+        const candles = (Array.isArray(rows) ? rows : [])
+          .map((row: any) => ({ ts_ms: Number(row?.t || row?.T || row?.ts_ms || 0), price: Number(row?.c || row?.close || 0) }))
+          .filter((row: PriceCandle) => row.ts_ms > 0 && row.price > 0)
+          .sort((a: PriceCandle, b: PriceCandle) => a.ts_ms - b.ts_ms)
+        setLiveCandles(candles)
+      })
+      .catch(() => { if (alive) setLiveCandles([]) })
+      .finally(() => { if (alive) setPriceLoading(false) })
+    return () => { alive = false; controller.abort() }
+  }, [asset, windowKey])
+
+  const selectedSignal = useMemo(() => (signals || []).find((row: any) => canonicalToken(String(row?.coin || '')) === canonicalToken(asset)) || null, [signals, asset])
+  const currentNet = Number(selectedSignal?.net_value_usd ?? (Number(selectedSignal?.value_long_usd || 0) - Number(selectedSignal?.value_short_usd || 0)))
+  const assetDetail = details?.[canonicalToken(asset)] || details?.[asset] || {}
+  const currentPrice = Number(assetDetail?.current_price || (assetDetail as any)?.price_usd || 0)
+  const fallbackCandles = useMemo(() => benchmarkPriceFallback(data, windowKey, asset, currentPrice), [data, windowKey, asset, currentPrice])
+  const candles = liveCandles.length >= 2 ? liveCandles : fallbackCandles
+  const points = useMemo(() => buildPositioningSeries(candles, orders, asset, currentNet), [candles, orders, asset, currentNet])
+
+  const positionValues = points.map((row) => row.position).filter(Number.isFinite)
+  const priceValues = points.map((row) => row.price).filter(Number.isFinite)
+  const positionRawMin = positionValues.length ? Math.min(...positionValues) : -1
+  const positionRawMax = positionValues.length ? Math.max(...positionValues) : 1
+  const positionPadding = Math.max(1, Math.abs(positionRawMax - positionRawMin) * .14, Math.abs(currentNet) * .035)
+  const positionMin = positionRawMin - positionPadding
+  const positionMax = positionRawMax + positionPadding
+  const priceRawMin = priceValues.length ? Math.min(...priceValues) : 0
+  const priceRawMax = priceValues.length ? Math.max(...priceValues) : 1
+  const pricePadding = Math.max(.000001, (priceRawMax - priceRawMin) * .1)
+  const priceMin = Math.max(0, priceRawMin - pricePadding)
+  const priceMax = priceRawMax + pricePadding
+  const positionPath = chartPath(points, 'position', positionMin, Math.max(1, positionMax - positionMin))
+  const pricePath = chartPath(points, 'price', priceMin, Math.max(.000001, priceMax - priceMin))
+
   const first = points[0]
   const last = points[points.length - 1]
-  const modelMove = first ? ((Number(last?.model || 100) / Number(first.model || 100)) - 1) * 100 : 0
-  const priceMove = first ? ((Number(last?.price || 100) / Number(first.price || 100)) - 1) * 100 : 0
+  const positionMove = first ? Number(last?.position || 0) - Number(first.position || 0) : 0
+  const priceMove = first?.price ? ((Number(last?.price || 0) / Number(first.price)) - 1) * 100 : 0
+  const divergence = Math.abs(positionMove) > Math.max(1, Math.abs(currentNet) * .01) && Math.abs(priceMove) >= .15 && Math.sign(positionMove) !== Math.sign(priceMove)
+  const timeTicks = points.length >= 2 ? [0, .25, .5, .75, 1].map((ratio) => points[Math.min(points.length - 1, Math.round((points.length - 1) * ratio))]?.ts_ms) : []
 
   return <section className="cc-card cc-price-positioning-card">
     <div className="cc-panel-title cc-price-chart-head">
-      <div><h3>Price vs Smart-Wallet Positioning</h3><span>Copycat model compared with {asset} price</span></div>
-      <div className="cc-chart-toolbar">
-        <div className="cc-chart-asset-tabs" aria-label="Comparison asset">
-          {(['BTC', 'ETH'] as QuickChartAsset[]).map((key) => <button type="button" className={asset === key ? 'active' : ''} onClick={() => setAsset(key)} key={key}><TokenLogo coin={key} icons={icons} />{key}</button>)}
-        </div>
-        <div className="cc-chart-window-tabs" aria-label="Chart timeframe">
-          {(['24H', '7D'] as QuickChartWindow[]).map((key) => <button type="button" className={windowKey === key ? 'active' : ''} onClick={() => setWindowKey(key)} key={key}>{key}</button>)}
-        </div>
+      <div><h3>Price vs Smart-Wallet Positioning</h3><span>Top 50 wallet net position against live market price</span></div>
+      <div className="cc-chart-window-tabs" aria-label="Chart timeframe">
+        {(['24H', '7D', '30D'] as QuickChartWindow[]).map((key) => <button type="button" className={windowKey === key ? 'active' : ''} onClick={() => setWindowKey(key)} key={key}>{key}</button>)}
       </div>
     </div>
+    <div className="cc-price-control-row">
+      <label className="cc-asset-select">
+        <TokenLogo coin={asset} icons={icons} />
+        <select value={asset} onChange={(event) => setAsset(event.target.value)} aria-label="Select asset">
+          {assetOptions.map((coin) => <option value={coin} key={coin}>{displayToken(coin)}</option>)}
+        </select>
+      </label>
+      {divergence ? <div className="cc-divergence-callout"><b>Divergence detected</b><span>{positionMove > 0 ? 'Top wallets building longs' : 'Top wallets reducing exposure'} while price {priceMove >= 0 ? 'rises' : 'falls'}</span></div> : <span className="cc-chart-observation">Live top-50 positioning · {priceLoading ? 'updating price history…' : displayToken(asset) + ' selected'}</span>}
+    </div>
     <div className="cc-chart-legend">
-      <span><i className="model" />Smart-wallet model <b className={cls(modelMove)}>{modelMove >= 0 ? '+' : ''}{modelMove.toFixed(2)}%</b></span>
-      <span><i className="price" />{asset} price <b className={cls(priceMove)}>{priceMove >= 0 ? '+' : ''}{priceMove.toFixed(2)}%</b></span>
+      <span><i className="model" />Top 50 wallet net position <b className={cls(currentNet)}>{compactMoney(currentNet)}</b></span>
+      <span><i className="price" />{displayToken(asset)} price <b>{points.length ? priceText(points[points.length - 1]?.price) : '—'}</b></span>
     </div>
-    <div className="cc-price-line-chart">
-      {points.length >= 2 ? <svg viewBox="0 0 680 220" preserveAspectRatio="none" role="img" aria-label={`Copycat smart-wallet model and ${asset} price over ${windowKey}`}>
-        <defs>
-          <linearGradient id="ccModelArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#36e8aa" stopOpacity=".22" /><stop offset="1" stopColor="#36e8aa" stopOpacity="0" /></linearGradient>
-        </defs>
-        <path className="cc-model-area" d={`${modelPath} L 680 220 L 0 220 Z`} />
-        <path className="cc-model-line" d={modelPath} />
-        <path className="cc-price-line" d={pricePath} />
-      </svg> : <div className="cc-chart-empty">Collecting the live comparison…</div>}
+    <div className="cc-price-chart-frame">
+      <div className="cc-y-axis cc-y-axis-left"><span>{compactMoney(positionMax)}</span><span>{compactMoney((positionMax + positionMin) / 2)}</span><span>{compactMoney(positionMin)}</span></div>
+      <div className="cc-y-axis-title left">Net position (USD)</div>
+      <div className="cc-price-line-chart">
+        {points.length >= 2 ? <svg viewBox="0 0 760 250" preserveAspectRatio="none" role="img" aria-label={'Top 50 wallet net position and ' + displayToken(asset) + ' price over ' + windowKey}>
+          <defs>
+            <linearGradient id="ccPositionArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#36e8aa" stopOpacity=".2" /><stop offset="1" stopColor="#36e8aa" stopOpacity="0" /></linearGradient>
+          </defs>
+          <path className="cc-model-area" d={positionPath + ' L 760 250 L 0 250 Z'} />
+          <path className="cc-model-line" d={positionPath} />
+          <path className="cc-price-line" d={pricePath} />
+        </svg> : <div className="cc-chart-empty">{priceLoading ? 'Loading ' + displayToken(asset) + ' price history…' : 'Price history is not available for ' + displayToken(asset) + ' yet.'}</div>}
+      </div>
+      <div className="cc-y-axis cc-y-axis-right"><span>{priceText(priceMax)}</span><span>{priceText((priceMax + priceMin) / 2)}</span><span>{priceText(priceMin)}</span></div>
+      <div className="cc-y-axis-title right">Price (USD)</div>
     </div>
+    {timeTicks.length ? <div className="cc-chart-time-axis">{timeTicks.map((timestamp, index) => <span key={String(timestamp) + '-' + index}>{chartTimeLabel(timestamp, windowKey)}</span>)}</div> : null}
   </section>
 }
-
 export default function Dashboard() {
   const [summary, setSummary] = useState<any>({})
   const [signals, setSignals] = useState<any[]>([])
@@ -1245,7 +1377,7 @@ export default function Dashboard() {
 
       <section className="cc-dashboard-trading-grid">
         <PositioningChanges rows={alignedFlow} icons={icons} details={mergedAssetDetails} windowLabel={flowWindowText(summary)} />
-        <PricePositioningChart icons={icons} />
+        <PricePositioningChart icons={icons} signals={signals} orders={orders} details={mergedAssetDetails} />
       </section>
 
       <section className="cc-dashboard-context-row">
