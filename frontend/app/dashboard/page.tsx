@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import Nav from '../../components/Nav'
-import LineBackdrop from '../../components/LineBackdrop'
+import PublicNav from '../../components/PublicNav'
 import { apiGet } from '../../lib/api'
 import PerformanceIndex from '../../components/PerformanceIndex'
+import './dashboard-redesign.css'
 
 const COPYCAT_FEED_POLL_MS = Number(process.env.NEXT_PUBLIC_DASHBOARD_FEED_POLL_MS || 60000)
 const COPYCAT_TICK_POLL_MS = Number(process.env.NEXT_PUBLIC_DASHBOARD_TICK_POLL_MS || 15000)
@@ -683,7 +683,7 @@ function MarketNarrativeCard({ narrative }: { narrative?: any }) {
     <div className="cc-market-narrative-head">
       <div>
         <p className="eyebrow live">Live market context</p>
-        <h3 id="cc-market-narrative-title">Market narrative</h3>
+        <h3 id="cc-market-narrative-title">News</h3>
       </div>
       <span>Updated {marketNarrativeAge(narrative?.updated_at_ms)}</span>
     </div>
@@ -746,7 +746,7 @@ function CatalystWatchCard({ watch }: { watch?: any }) {
     <div className="cc-catalyst-watch-head">
       <div>
         <p className="eyebrow live">Crypto-first events</p>
-        <h3 id="cc-catalyst-watch-title">Catalyst watch</h3>
+        <h3 id="cc-catalyst-watch-title">Upcoming Events</h3>
       </div>
       <span>{watch?.updated_at_ms ? `Updated ${marketNarrativeAge(watch.updated_at_ms)}` : 'Official sources'}</span>
     </div>
@@ -760,7 +760,7 @@ function CatalystWatchCard({ watch }: { watch?: any }) {
           target="_blank"
           rel="noopener noreferrer"
           key={`${event?.url || event?.title || index}-${index}`}
-          title={`${event?.source || 'Official source'} â€” ${event?.title || 'Upcoming event'}`}
+          title={`${event?.source || 'Official source'} — ${event?.title || 'Upcoming event'}`}
         >
           <time dateTime={new Date(Number(event?.event_at_ms || 0)).toISOString()}>
             {catalystWatchDate(event?.event_at_ms)}
@@ -769,13 +769,116 @@ function CatalystWatchCard({ watch }: { watch?: any }) {
           <span className="cc-catalyst-title">{event?.title || 'Upcoming market event'}</span>
           <span className={`cc-catalyst-impact ${impact}`}>{impact}</span>
         </a>
-      }) : <div className="cc-catalyst-empty">Collecting verified upcoming datesâ€¦</div>}
+      }) : <div className="cc-catalyst-empty">Collecting verified upcoming dates…</div>}
     </div>
     <small className="cc-catalyst-note">{watch?.note || 'Crypto-first official dates; maximum one macro event.'}</small>
   </section>
 }
 // COPYCAT_CATALYST_WATCH_V1_END
 
+
+
+
+function SignalFlowMap({ rows, icons }: { rows: any[]; icons: Record<string, string> }) {
+  const candidates = [...(rows || [])]
+    .filter((row: any) => row?.coin)
+    .sort((a: any, b: any) => {
+      const aGross = Number(a?.value_long_usd || 0) + Number(a?.value_short_usd || 0)
+      const bGross = Number(b?.value_long_usd || 0) + Number(b?.value_short_usd || 0)
+      return (flowPressureScore(b) + bGross * .02) - (flowPressureScore(a) + aGross * .02)
+    })
+    .slice(0, 11)
+  const maxFlow = Math.max(1, ...candidates.map((row: any) => Math.abs(Number(row?.net_value_flow_usd || 0))))
+  const maxGross = Math.max(1, ...candidates.map((row: any) => Number(row?.value_long_usd || 0) + Number(row?.value_short_usd || 0)))
+
+  return <section className="cc-card cc-signal-flow-card">
+    <div className="cc-panel-title">
+      <h3>Signal × Flow</h3>
+      <span>Positioning conviction against {candidates.some((row: any) => Number(row?.net_value_flow_usd || 0)) ? 'recent capital flow' : 'current exposure'}</span>
+    </div>
+    <div className="cc-signal-flow-plot" role="img" aria-label="Asset signal and recent flow map">
+      <i className="cc-signal-flow-axis-x" aria-hidden />
+      <i className="cc-signal-flow-axis-y" aria-hidden />
+      <span className="cc-plot-label top">Accumulation</span>
+      <span className="cc-plot-label bottom">Distribution</span>
+      <span className="cc-plot-label left">Short</span>
+      <span className="cc-plot-label right">Long</span>
+      {candidates.map((row: any, index: number) => {
+        const signal = Math.max(-1, Math.min(1, displaySignalValue(row)))
+        const flowValue = Number(row?.net_value_flow_usd || 0)
+        const gross = Number(row?.value_long_usd || 0) + Number(row?.value_short_usd || 0)
+        const left = Math.max(7, Math.min(93, 50 + signal * 42))
+        const fallbackBand = ((index % 5) - 2) * 7
+        const top = Math.max(9, Math.min(91, flowValue ? 50 - (flowValue / maxFlow) * 40 : 50 + fallbackBand))
+        const size = 32 + Math.sqrt(Math.max(0, gross) / maxGross) * 30
+        return <span
+          key={String(row.coin)}
+          className={`cc-flow-bubble ${signal < 0 ? 'negative' : 'positive'}`}
+          data-coin={displayToken(row.coin)}
+          title={`${displayToken(row.coin)}: ${displaySignalMagnitudePct(row)} ${displaySignalDirection(row)}, ${compactMoney(flowValue)} recent net flow`}
+          style={{ left: `${left}%`, top: `${top}%`, ['--bubble-size' as any]: `${size}px` }}
+        ><TokenLogo coin={row.coin} icons={icons} /></span>
+      })}
+    </div>
+  </section>
+}
+
+function PositioningChanges({ rows, icons, details, windowLabel }: { rows: any[]; icons: Record<string, string>; details: Record<string, AssetDetail>; windowLabel: string }) {
+  const leaders = [...(rows || [])]
+    .filter((row: any) => row?.coin)
+    .sort((a: any, b: any) => Math.abs(Number(b?.net_value_flow_usd || 0)) - Math.abs(Number(a?.net_value_flow_usd || 0)))
+    .slice(0, 5)
+
+  return <section className="cc-card cc-positioning-card">
+    <div className="cc-panel-title"><h3>Positioning Changes</h3><span>{windowLabel}</span></div>
+    <div className="cc-positioning-list">
+      {leaders.length ? leaders.map((row: any) => {
+        const netFlow = Number(row?.net_value_flow_usd || 0)
+        const buyers = Number(row?.net_buyer_count || 0)
+        return <div className="cc-positioning-row" key={String(row.coin)}>
+          <span className="cc-asset-cell"><TokenLogo coin={row.coin} icons={icons} /><AssetName coin={row.coin} details={details} row={row} /></span>
+          <span>{flowRead(netFlow)} · {Math.abs(buyers)} net {buyers >= 0 ? 'buyers' : 'sellers'}</span>
+          <b className={cls(netFlow)}>{compactMoney(netFlow)}</b>
+        </div>
+      }) : <p className="cc-catalyst-empty">Collecting the latest positioning changes…</p>}
+    </div>
+  </section>
+}
+
+function CurrentPositioningMap({ rows, icons }: { rows: any[]; icons: Record<string, string> }) {
+  const candidates = [...(rows || [])]
+    .filter((row: any) => row?.coin && Number(row?.price_usd || row?.current_price || row?.mark_price || 0) > 0)
+    .sort((a: any, b: any) => {
+      const ag = Number(a?.value_long_usd || 0) + Number(a?.value_short_usd || 0)
+      const bg = Number(b?.value_long_usd || 0) + Number(b?.value_short_usd || 0)
+      return bg - ag
+    })
+    .slice(0, 10)
+  const logs = candidates.map((row: any) => Math.log10(Number(row?.price_usd || row?.current_price || row?.mark_price || 1)))
+  const minLog = logs.length ? Math.min(...logs) : 0
+  const maxLog = logs.length ? Math.max(...logs) : 1
+  const spread = Math.max(.01, maxLog - minLog)
+
+  return <section className="cc-card cc-price-positioning-card">
+    <div className="cc-panel-title"><h3>Price vs Smart-Wallet Positioning</h3><span>Live cross-asset snapshot</span></div>
+    <div className="cc-current-map" role="img" aria-label="Current asset price and smart-wallet positioning map">
+      {candidates.map((row: any, index: number) => {
+        const signal = Math.max(-1, Math.min(1, displaySignalValue(row)))
+        const logPrice = logs[index]
+        const left = Math.max(6, Math.min(94, 50 + signal * 43))
+        const top = Math.max(8, Math.min(88, 86 - ((logPrice - minLog) / spread) * 74))
+        return <span
+          key={String(row.coin)}
+          className={`cc-current-dot ${signal < 0 ? 'negative' : 'positive'}`}
+          data-coin={displayToken(row.coin)}
+          title={`${displayToken(row.coin)}: ${priceText(row?.price_usd || row?.current_price || row?.mark_price)} · ${displaySignalMagnitudePct(row)} ${displaySignalDirection(row)}`}
+          style={{ left: `${left}%`, top: `${top}%` }}
+        ><TokenLogo coin={row.coin} icons={icons} /></span>
+      })}
+    </div>
+    <div className="cc-map-caption"><span>Lower-priced / short</span><span>Higher-priced / long</span></div>
+  </section>
+}
 
 
 export default function Dashboard() {
@@ -1002,77 +1105,103 @@ export default function Dashboard() {
   const topCurrentExposure = useMemo(() => largestCurrentExposure(signals), [signals])
   const flowContextText = `${flowWindowText(summary)}  |  ${flowIntensityText(flow, summary.tracked_open_position_value_usd)}`
 
-  return <><Nav /><main className="cc-dashboard-shell"><LineBackdrop variant="dashboard" />
-    <section className="cc-dashboard-top">
-      <div className="cc-dashboard-copy">
-        <p className="eyebrow live">Live smart-wallet tape</p>
-        <h1>Market intelligence.<br /><em>Follow the best.</em></h1>
-        <p>Value-weighted positioning from Copycat-ranked Hyperliquid wallets.<br />Honest ranking scope and sync status are shown in the footer.</p>
-      </div>
-      <div className="cc-bias-block"><span>Positioning bias</span><button className={`cc-bias-toggle ${isLong ? 'is-long' : 'is-short'}`}><i aria-hidden /><b>{isLong ? 'LONG' : 'SHORT'}</b></button></div>
-      <aside className="cc-top-rail">
-        <div className={`cc-orders-card ${showAllOrders ? 'expanded' : ''}`}>
-          <h3>Most recent orders</h3>
+  const topConviction = [...signals].sort((a: any, b: any) => {
+    const av = signalConvictionParts(a)
+    const bv = signalConvictionParts(b)
+    return (bv.confidence - av.confidence) || (bv.strength - av.strength) || (bv.wallets - av.wallets) || (bv.net - av.net) || (bv.gross - av.gross)
+  })[0] || null
+  const topFlow = [...alignedFlow].sort((a: any, b: any) => flowPressureScore(b) - flowPressureScore(a))[0] || null
+  const openGross = longValue + shortValue
+  const longShare = openGross > 0 ? (longValue / openGross) * 100 : 0
+  const marketPulseInsights = (insights || []).filter(shouldShowInsight).slice(0, 5)
+
+  return <div className="cc-dashboard-page">
+    <PublicNav />
+    <main className="cc-dashboard-shell">
+      <header className="cc-dashboard-heading">
+        <div><p className="eyebrow live">Live smart-wallet intelligence</p><h1>Market Dashboard</h1></div>
+        <span className="cc-dashboard-health"><i aria-hidden />{dataHealthy ? 'Live feed healthy' : 'Checking live feed'} · {summary.live_wallets || 0} wallets online</span>
+      </header>
+
+      {err && <p className="notice gold">{err}</p>}
+
+      <section className="cc-market-pulse" aria-label="Market pulse">
+        <article>
+          <span className="cc-pulse-label">Positioning bias</span>
+          <div className="cc-pulse-main"><strong className={`cc-pulse-bias ${isLong ? 'positive' : 'negative'}`}><i aria-hidden />{isLong ? 'LONG' : 'SHORT'}</strong></div>
+          <span className="cc-pulse-meta">{Math.round(longShare)}% long · {Math.round(100 - longShare)}% short · {compactMoney(longValue - shortValue)} net</span>
+        </article>
+        <article>
+          <span className="cc-pulse-label">Largest exposure</span>
+          {topCurrentExposure ? <><div className="cc-pulse-main"><TokenLogo coin={topCurrentExposure.coin} icons={icons} /><strong>{displayToken(topCurrentExposure.coin)} {topCurrentExposure.direction}</strong></div><span className="cc-pulse-meta">{compactMoney(topCurrentExposure.value)} current net exposure</span></> : <span className="cc-pulse-meta">Awaiting live exposure</span>}
+        </article>
+        <article>
+          <span className="cc-pulse-label">Top conviction</span>
+          {topConviction ? <><div className="cc-pulse-main"><TokenLogo coin={topConviction.coin} icons={icons} /><strong className={cls(displaySignalValue(topConviction))}>{displaySignalMagnitudePct(topConviction)} {displaySignalDirection(topConviction)}</strong></div><span className="cc-pulse-meta">{displayToken(topConviction.coin)} · {topConviction.wallets_long || 0} long / {topConviction.wallets_short || 0} short</span></> : <span className="cc-pulse-meta">Awaiting live signals</span>}
+        </article>
+        <article>
+          <span className="cc-pulse-label">{flowWindowText(summary)}</span>
+          {topFlow ? <><div className="cc-pulse-main"><TokenLogo coin={topFlow.coin} icons={icons} /><strong className={cls(topFlow.net_value_flow_usd)}>{flowRead(topFlow.net_value_flow_usd)}</strong></div><span className="cc-pulse-meta">{displayToken(topFlow.coin)} · {compactMoney(topFlow.net_value_flow_usd)} net flow</span></> : <span className="cc-pulse-meta">Awaiting recent flow</span>}
+        </article>
+        <article className="cc-pulse-orders">
+          <span className="cc-pulse-label">Most recent orders</span>
           <div className="cc-order-list">
-            {visibleOrders.map((o: any) => <div className="cc-order-line" key={orderKey(o)}><TokenLogo coin={o.coin} icons={icons} /><AssetName coin={o.coin} details={mergedAssetDetails} row={o} compact /><span className={orderActionClass(o.side)}>{o.side}</span><WalletExplorerLink wallet={o.wallet} label={o.wallet_label} /><small>{ago(o.ts_ms)}</small></div>)}
+            {visibleOrders.slice(0, 3).map((o: any) => <div className="cc-order-line" key={orderKey(o)}><TokenLogo coin={o.coin} icons={icons} /><AssetName coin={o.coin} details={mergedAssetDetails} row={o} compact /><span className={orderActionClass(o.side)}>{o.side}</span><WalletExplorerLink wallet={o.wallet} label={o.wallet_label} /><small>{ago(o.ts_ms)}</small></div>)}
           </div>
-          <a className="cc-small-action" href="/api-access#recent-activity">View all orders →</a>
-        </div>
-        <div className="cc-insights-card">
-          <h3>At a glance</h3>
-          {topCurrentExposure ? <div className="cc-insight-line" key="largest-current-exposure">
-            <span>Largest current exposure</span><b>{displayToken(topCurrentExposure.coin)} {topCurrentExposure.direction}</b><em>{compactMoney(topCurrentExposure.value)} current exposure</em>
-          </div> : null}
-          {(insights || []).filter(shouldShowInsight).slice(0, topCurrentExposure ? 4 : 5).map((x: any) => <div className="cc-insight-line" key={`${x.type}-${x.coin}`}>
-            <span>{flowInsightLabel(x)}</span><b>{x.coin || '—'}</b><em>{formatInsightDetail(x)}</em>
-          </div>)}
-        </div>
-      </aside>
-    </section>
+        </article>
+        {marketPulseInsights.length ? <article className="cc-pulse-insights">
+          {marketPulseInsights.map((x: any) => <span key={`${x.type}-${x.coin}`}><b>{flowInsightLabel(x)}</b><em>{x.coin || '—'} · {formatInsightDetail(x)}</em></span>)}
+        </article> : null}
+      </section>
 
-    {err && <p className="notice gold">{err}</p>}
+      <section className="cc-kpi-grid cc-kpi-grid-tight">
+        <article><small>Copycat-ranked wallets</small><RollingInteger value={summary.qualified_wallets || 0} /><span>{walletUniverseCaption(summary)}</span></article>
+        <article className="cc-tracked-value-card"><small>Tracked wallet value</small><RollingMoney value={summary.tracked_total_wallet_value_usd ?? summary.tracked_account_value_usd} /><span>{Number(summary.wallets_with_complete_total_value || 0)}/{Number(summary.selected_wallet_count || summary.live_wallets || 50)} fully valued · same live cohort as API</span>{summary.tracked_account_value_usd ? <em>Perp equity: {money(summary.tracked_account_value_usd)}</em> : null}</article>
+        <article className="cc-open-position-card"><small>Open position value</small><RollingMoney value={summary.tracked_open_position_value_usd} /><span>{summary.open_positions || 0} live positions</span>{grossLeverageValue ? <em>{leverageText(grossLeverageValue)}</em> : null}</article>
+        <article><small>Assets with signals</small><RollingInteger value={summary.assets_with_signals || signals.length || 0} /><span>{summary.markets_monitored ? `${summary.markets_monitored} price markets available` : 'cross-asset breadth'}</span></article>
+      </section>
 
+      <section className="cc-dashboard-primary-grid">
+        <SignalFlowMap rows={alignedFlow} icons={icons} />
+        <div className="cc-card cc-allocation-card"><div className="cc-card-title-row"><h3>Portfolio allocation</h3><span>Rebalanced {fmtTime(latestAllocationTs(targets, signals, summary))} UTC</span></div><AllocationDonut targets={targets} signals={signals} trackedValue={Number(summary.tracked_account_value_usd || 0)} icons={icons} assetDetails={mergedAssetDetails} /></div>
+        <div className="cc-card cc-exposure-card"><div className="cc-panel-title"><h3>Long vs short exposure</h3><span><i />Long <em />Short</span></div><ExposureBars signals={signals} icons={icons} assetDetails={mergedAssetDetails} /></div>
+      </section>
 
-<section className="cc-kpi-grid cc-kpi-grid-tight">
-      <article><small>Copycat-ranked wallets</small><RollingInteger value={summary.qualified_wallets || 0} /><span>{walletUniverseCaption(summary)}</span></article>
-      <article className="cc-tracked-value-card"><small>Tracked wallet value</small><RollingMoney value={summary.tracked_total_wallet_value_usd ?? summary.tracked_account_value_usd} /><span>{Number(summary.wallets_with_complete_total_value || 0)}/{Number(summary.selected_wallet_count || summary.live_wallets || 50)} fully valued | same live cohort as API</span>{summary.tracked_account_value_usd ? <em>Perp equity: {money(summary.tracked_account_value_usd)}</em> : null}</article>
-      <article className="cc-open-position-card"><small>Open position value</small><RollingMoney value={summary.tracked_open_position_value_usd} /><span>{summary.open_positions || 0} live positions</span>{grossLeverageValue ? <em>{leverageText(grossLeverageValue)}</em> : null}</article>
-      <article><small>Assets with signals</small><RollingInteger value={summary.assets_with_signals || signals.length || 0} /><span>{summary.markets_monitored ? `${summary.markets_monitored} price markets available` : 'cross-asset breadth'}</span></article>
-    </section>
-
-
-    <section className="cc-dashboard-analysis-row">
-      <div className="cc-card cc-allocation-card"><div className="cc-card-title-row"><h3>Portfolio allocation</h3><span>Last rebalanced: {fmtTime(latestAllocationTs(targets, signals, summary))} UTC</span></div><AllocationDonut targets={targets} signals={signals} trackedValue={Number(summary.tracked_account_value_usd || 0)} icons={icons} assetDetails={mergedAssetDetails} /></div>
-      <div className="cc-card cc-exposure-card"><div className="cc-panel-title"><h3>Long vs short exposure</h3><span><i />Long <em />Short</span></div><ExposureBars signals={signals} icons={icons} assetDetails={mergedAssetDetails} /></div>
-      <div className="cc-card cc-table-card cc-signal-board-card">
-        <div className="cc-panel-title"><h3>Asset signal board</h3><span>clearest long/short conviction first</span></div>
+      <section className="cc-card cc-table-card cc-signal-board-card">
+        <div className="cc-panel-title"><h3>Asset Signal Board</h3><span>Clearest long/short conviction first</span></div>
         <div className="cc-scroll-table cc-scroll-y">
           <table className="cc-signal-table">
             <thead><tr><th>#</th><th className="cc-mobile-asset-logo-head" aria-label="Asset logo" /><SortTh label="Asset" sortKey="asset" sort={signalSort} setSort={setSignalSort} /><SortTh label="Signal" sortKey="conviction" sort={signalSort} setSort={setSignalSort} /><SortTh label="Confidence" sortKey="confidence" sort={signalSort} setSort={setSignalSort} /><SortTh label="Wallets" sortKey="wallets" sort={signalSort} setSort={setSignalSort} /><SortTh label="Value L/S" sortKey="value_ls" sort={signalSort} setSort={setSignalSort} /><SortTh label="Net value" sortKey="net_value_usd" sort={signalSort} setSort={setSignalSort} /><SortTh label="% total value" sortKey="pct_total" sort={signalSort} setSort={setSignalSort} /></tr></thead>
             <tbody>{sortedSignals.map((r, i) => <tr key={`${r.coin}-${i}`}><td>{i + 1}</td><td className="cc-mobile-asset-logo-cell" aria-hidden="true"><TokenLogo coin={r.coin} icons={icons} /></td><td><span className="cc-asset-cell"><TokenLogo coin={r.coin} icons={icons} /><AssetName coin={r.coin} details={mergedAssetDetails} row={r} /></span></td><td className={cls(displaySignalValue(r))}><span className={`cc-signal-pill ${signalDirectionClass(r)}`}>{displaySignalMagnitudePct(r)} {displaySignalDirection(r)}</span></td><td><span className={`cc-confidence ${String(r.confidence).toLowerCase()}`}>{r.confidence}</span></td><td>{r.wallets_long} long / {r.wallets_short} short</td><td>{money(r.value_long_usd)} / {money(r.value_short_usd)}</td><td className={cls(r.net_value_usd)}>{money(r.net_value_usd)}</td><td>{pct(r.value_long_pct_total)} long / {pct(r.value_short_pct_total)} short</td></tr>)}</tbody>
           </table>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <section className="cc-dashboard-context-row">
-      <MarketNarrativeCard narrative={marketNarrative} />
-      <CatalystWatchCard watch={catalystWatch} />
-    </section>
-    <section className="cc-dashboard-performance-row">
-      <div className="cc-index-compact-wrapper"><PerformanceIndex variant="dashboard" /></div>
-      <div className="cc-card cc-table-card cc-pressure-card">
-        <div className="cc-panel-title"><h3>Recent buyer / seller pressure</h3><span>{flowContextText}</span></div>
-        <div className="cc-scroll-table cc-scroll-y">
-          <table className="cc-flow-table">
-            <thead><tr><th className="cc-mobile-asset-logo-head" aria-label="Asset logo" /><SortTh label="Asset" sortKey="asset" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Long exposure" sortKey="value_long_usd" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Short exposure" sortKey="value_short_usd" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Buy flow" sortKey="bullish" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Sell flow" sortKey="bearish" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Net flow" sortKey="net_value_flow_usd" sort={flowSortState} setSort={setFlowSortState} /></tr></thead>
-            <tbody>{sortedFlow.map((r, i) => <tr key={`${r.coin}-${i}`}><td className="cc-mobile-asset-logo-cell" aria-hidden="true"><TokenLogo coin={r.coin} icons={icons} /></td><td><span className="cc-asset-cell"><TokenLogo coin={r.coin} icons={icons} /><AssetName coin={r.coin} details={mergedAssetDetails} row={r} /></span></td><td className="positive">{money(r.value_long_usd)}</td><td className="negative">{money(r.value_short_usd)}</td><td>{money(r.bullish_flow_usd)}</td><td>{money(r.bearish_flow_usd)}</td><td className={cls(r.net_value_flow_usd)}>{money(r.net_value_flow_usd)}</td></tr>)}</tbody>
-          </table>
+      <section className="cc-dashboard-trading-grid">
+        <PositioningChanges rows={alignedFlow} icons={icons} details={mergedAssetDetails} windowLabel={flowWindowText(summary)} />
+        <CurrentPositioningMap rows={signals} icons={icons} />
+      </section>
+
+      <section className="cc-dashboard-context-row">
+        <MarketNarrativeCard narrative={marketNarrative} />
+        <CatalystWatchCard watch={catalystWatch} />
+      </section>
+
+      <section className="cc-dashboard-performance-row">
+        <div className="cc-index-compact-wrapper"><PerformanceIndex variant="dashboard" /></div>
+        <div className="cc-card cc-table-card cc-pressure-card">
+          <div className="cc-panel-title"><h3>Recent Buyer / Seller Pressure</h3><span>{flowContextText}</span></div>
+          <div className="cc-scroll-table cc-scroll-y">
+            <table className="cc-flow-table">
+              <thead><tr><th className="cc-mobile-asset-logo-head" aria-label="Asset logo" /><SortTh label="Asset" sortKey="asset" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Long exposure" sortKey="value_long_usd" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Short exposure" sortKey="value_short_usd" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Buy flow" sortKey="bullish" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Sell flow" sortKey="bearish" sort={flowSortState} setSort={setFlowSortState} /><SortTh label="Net flow" sortKey="net_value_flow_usd" sort={flowSortState} setSort={setFlowSortState} /></tr></thead>
+              <tbody>{sortedFlow.map((r, i) => <tr key={`${r.coin}-${i}`}><td className="cc-mobile-asset-logo-cell" aria-hidden="true"><TokenLogo coin={r.coin} icons={icons} /></td><td><span className="cc-asset-cell"><TokenLogo coin={r.coin} icons={icons} /><AssetName coin={r.coin} details={mergedAssetDetails} row={r} /></span></td><td className="positive">{money(r.value_long_usd)}</td><td className="negative">{money(r.value_short_usd)}</td><td>{money(r.bullish_flow_usd)}</td><td>{money(r.bearish_flow_usd)}</td><td className={cls(r.net_value_flow_usd)}>{money(r.net_value_flow_usd)}</td></tr>)}</tbody>
+            </table>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
 
+      <footer className="cc-warning-banner"><span className="cc-shield" aria-hidden><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5.2c0 4.5-2.7 8.4-7 9.8-4.3-1.4-7-5.3-7-9.8V6l7-3z"/><path d="M9.2 12.1l1.7 1.7 3.9-4.1"/></svg></span><div className="cc-footer-main"><strong>Market intelligence only.</strong><em>Not financial advice. {rankingScope}. {claimReady ? 'Broad-index threshold met.' : 'Not claiming all-Hyperliquid top 50 yet.'}</em><small>Live coverage: {liveCoverageText} · {summary.snapshot_wallets || 0} fallback · Sync: <b className={`cc-audit-${summary.data_quality_status === 'healthy' ? 'pass' : 'checking'}`}>{summary.data_quality_status === 'healthy' ? 'live' : 'checking'}</b> · {summary.data_quality_message || 'Waiting for live feed'}</small></div><div className={`cc-footer-meta ${dataHealthy ? 'healthy' : 'checking'}`}><span className="cc-footer-quality"><span className="cc-pulse-dot" /><b>{dataHealthy ? (claimReady ? 'Live data and ranking verified' : 'Live feed healthy') : 'Data quality checking'}</b></span><small>Signal refresh: {fmtTime(summary.latest_signal_ts_ms)} UTC · {summary.live_state_active ? `Live state: ${fmtTime(summary.latest_live_state_ts_ms)} UTC` : 'Snapshot mode'} · Snapshot/cache refresh</small></div><nav className="cc-legal-links" aria-label="Legal links" style={{ flexBasis: '100%', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 6, margin: '4px 0 0 41px', padding: 0, fontSize: 11, lineHeight: 1.25, color: 'rgba(247,251,255,.62)' }}><span style={{ color: 'rgba(247,251,255,.42)' }}>Legal:</span><a href="/terms" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>Terms</a><span aria-hidden="true" style={{ color: 'rgba(247,251,255,.42)' }}> · </span><a href="/privacy" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>Privacy</a><span aria-hidden="true" style={{ color: 'rgba(247,251,255,.42)' }}> · </span><a href="/risk-disclaimer" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>Risk disclaimer</a><span aria-hidden="true" style={{ color: 'rgba(247,251,255,.42)' }}> · </span><a href="/external-links" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>External links</a></nav></footer>
+    </main>
+  </div>
 
-    <footer className="cc-warning-banner"><span className="cc-shield" aria-hidden><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5.2c0 4.5-2.7 8.4-7 9.8-4.3-1.4-7-5.3-7-9.8V6l7-3z"/><path d="M9.2 12.1l1.7 1.7 3.9-4.1"/></svg></span><div className="cc-footer-main"><strong>Market intelligence only.</strong><em>Not financial advice. {rankingScope}. {claimReady ? 'Broad-index threshold met.' : 'Not claiming all-Hyperliquid top 50 yet.'}</em><small>Live coverage: {liveCoverageText}  |  {summary.snapshot_wallets || 0} fallback  |  Sync: <b className={`cc-audit-${summary.data_quality_status === 'healthy' ? 'pass' : 'checking'}`}>{summary.data_quality_status === 'healthy' ? 'live' : 'checking'}</b>  |  {summary.data_quality_message || 'Waiting for live feed'}</small></div><div className={`cc-footer-meta ${dataHealthy ? 'healthy' : 'checking'}`}><span className="cc-footer-quality"><span className="cc-pulse-dot" /><b>{dataHealthy ? (claimReady ? 'Live data and ranking verified' : 'Live feed healthy') : 'Data quality checking'}</b></span><small>Signal refresh: {fmtTime(summary.latest_signal_ts_ms)} UTC  |  {summary.live_state_active ? `Live state: ${fmtTime(summary.latest_live_state_ts_ms)} UTC` : 'Snapshot mode'}  |  Snapshot/cache refresh</small></div><nav className="cc-legal-links" aria-label="Legal links" style={{ flexBasis: '100%', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 6, margin: '4px 0 0 41px', padding: 0, fontSize: 11, lineHeight: 1.25, color: 'rgba(247,251,255,.62)' }}><span style={{ color: 'rgba(247,251,255,.42)' }}>Legal:</span><a href="/terms" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>Terms</a><span aria-hidden="true" style={{ color: 'rgba(247,251,255,.42)' }}> | </span><a href="/privacy" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>Privacy</a><span aria-hidden="true" style={{ color: 'rgba(247,251,255,.42)' }}> | </span><a href="/risk-disclaimer" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>Risk disclaimer</a><span aria-hidden="true" style={{ color: 'rgba(247,251,255,.42)' }}> | </span><a href="/external-links" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>External links</a></nav></footer>
-  </main></>
 }
