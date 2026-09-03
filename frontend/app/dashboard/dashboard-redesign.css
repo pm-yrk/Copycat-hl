@@ -1414,6 +1414,13 @@ body:has(.cc-dashboard-page),
 }
 .cc-dashboard-page .cc-index-compact-wrapper .cc-index-head span{font-size:11px!important}
 .cc-dashboard-page .cc-index-compact-wrapper .cc-index-note{padding-bottom:9px!important}
+@media(min-width:721px){
+  .cc-dashboard-page .cc-index-compact-wrapper,
+  .cc-dashboard-page .cc-pressure-card,
+  .cc-dashboard-page .cc-index-compact-wrapper>section,
+  .cc-dashboard-page .cc-index-compact-wrapper>article,
+  .cc-dashboard-page .cc-index-compact-wrapper .cc-index-card{min-height:485px!important}
+}
 @media(max-width:720px){
   .cc-dashboard-page .cc-dashboard-performance-row{grid-template-columns:1fr!important}
   .cc-dashboard-page .cc-index-compact-wrapper,
