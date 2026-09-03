@@ -1332,7 +1332,6 @@ body:has(.cc-dashboard-page),
   .cc-dashboard-page .cc-index-compact-wrapper>article,
   .cc-dashboard-page .cc-index-compact-wrapper .cc-index-card{min-height:auto!important}
 }
-+
 /* Recent-order icons own their grid slot; legacy token rules cannot offset them. */
 .cc-dashboard-page .cc-pulse-orders .cc-order-line>.cc-token-logo{
   position:relative!important;
@@ -1364,7 +1363,6 @@ body:has(.cc-dashboard-page),
   transform:none!important;
   object-fit:contain!important;
 }
-+
 /* Live parity refinements: readable concentrated quadrants and a clean Index header. */
 .cc-dashboard-page .cc-signal-flow-head .cc-bubble-key i{
   display:grid!important;
@@ -1427,4 +1425,3 @@ body:has(.cc-dashboard-page),
   .cc-dashboard-page .cc-index-compact-wrapper .cc-index-head>strong{justify-self:start!important;font-size:36px!important}
   .cc-dashboard-page .cc-index-compact-wrapper .cc-index-head h2{white-space:normal!important}
 }
-
