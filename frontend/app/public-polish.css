@@ -1340,3 +1340,10 @@
     flex-basis:46px!important;
   }
 }
+
+
+/* Compensate for transparent padding inside some token artwork. */
+.public-signal-title>.public-token-icon-large img{
+  transform:scale(1.32);
+  transform-origin:center;
+}
