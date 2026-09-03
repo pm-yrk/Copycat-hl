@@ -1306,3 +1306,37 @@
     padding-right:calc((100vw - 1484px)/2 + 52px);
   }
 }
+
+
+/* Homepage primary crypto mark — larger and unframed. */
+.public-signal-title>.public-token-icon-large{
+  width:52px!important;
+  height:52px!important;
+  flex-basis:52px!important;
+  margin-right:4px!important;
+  overflow:visible!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+.public-signal-title>.public-token-icon-large img{
+  width:100%!important;
+  height:100%!important;
+  object-fit:contain!important;
+  filter:drop-shadow(0 6px 12px rgba(0,0,0,.28));
+}
+.public-signal-title>.public-token-icon-large>span{
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  font-size:13px!important;
+}
+@media(max-width:620px){
+  .public-signal-title>.public-token-icon-large{
+    width:46px!important;
+    height:46px!important;
+    flex-basis:46px!important;
+  }
+}
