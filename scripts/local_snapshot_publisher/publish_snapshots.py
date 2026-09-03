@@ -1437,6 +1437,11 @@ MARKET_NEWS_SOURCES = [
     {"name": "FCA", "badge": "FCA", "url": "https://www.fca.org.uk/news/rss.xml", "weight": 9},
     {"name": "Ethereum Foundation", "badge": "ETH", "url": "https://blog.ethereum.org/feed.xml", "weight": 7, "always_relevant": True},
     {"name": "Kraken", "badge": "K", "url": "https://blog.kraken.com/feed", "weight": 6, "always_relevant": True},
+    {"name": "Blockworks", "badge": "BW", "url": "https://blockworks.co/feed", "weight": 8, "always_relevant": True},
+    {"name": "DL News", "badge": "DL", "url": "https://www.dlnews.com/arc/outboundfeeds/rss/", "weight": 8, "always_relevant": True},
+    {"name": "Bitcoin Magazine", "badge": "BM", "url": "https://bitcoinmagazine.com/.rss/full/", "weight": 7, "always_relevant": True},
+    {"name": "Chainlink", "badge": "LINK", "url": "https://blog.chain.link/feed", "weight": 7, "always_relevant": True},
+    {"name": "Solana Changelog", "badge": "SOL", "url": "https://solana.com/changelog/rss.xml", "weight": 8, "always_relevant": True},
 
     {"name": "Aave Governance", "badge": "AAVE", "url": "https://governance.aave.com/latest.rss", "weight": 8},
     {"name": "Uniswap Governance", "badge": "UNI", "url": "https://gov.uniswap.org/latest.rss", "weight": 8},
@@ -1478,8 +1483,98 @@ BEARISH_HEADLINE_TERMS = [
     "investigation", "delay", "delays", "reject", "rejected", "denied",
     "rate hike", "hikes rates", "hawkish", "sanctions", "war", "attack",
     "default", "bankrupt", "insolvency", "depeg", "outage", "halt",
-    "suspend", "crackdown", "fraud", "scam", "warning",
+    "suspend", "crackdown", "fraud", "scam", "warning", "dump", "dumps",
+    "selloff", "sell off", "slump", "slides", "loses", "losses",
 ]
+
+# Phrase rules are deliberately stronger than isolated words. This prevents a
+# headline such as "cannot break resistance ... choked every rally" being
+# labelled bullish merely because it contains the word "rally".
+BULLISH_CONTEXT_RULES = {
+    "breaks above": 4,
+    "breaks out": 4,
+    "new all time high": 5,
+    "record inflow": 4,
+    "clears resistance": 4,
+    "back above": 3,
+    "buying accelerates": 4,
+    "odds of a rate hike slide": 3,
+    "dismantled": 3,
+    "restored": 3,
+}
+BEARISH_CONTEXT_RULES = {
+    "cannot break": 6,
+    "can t break": 6,
+    "fails to break": 6,
+    "failed to break": 6,
+    "struggles to break": 5,
+    "rejected at": 5,
+    "roadblock": 4,
+    "choked every rally": 6,
+    "faces resistance": 4,
+    "under resistance": 4,
+    "below support": 5,
+    "breaks below": 5,
+    "treasury dumps": 5,
+    "dumping": 4,
+    "selling accelerates": 4,
+    "net outflow": 4,
+    "delayed sends": 4,
+    "degraded performance": 4,
+}
+NEGATING_HEADLINE_PATTERNS = (
+    r"\bnot\s+",
+    r"\bno\s+",
+    r"\bnever\s+",
+    r"\bcannot\s+",
+    r"\bcan\s+t\s+",
+    r"\bfails?\s+to\s+",
+    r"\bfailed\s+to\s+",
+)
+
+
+def _market_term_hits(text: str, terms: Iterable[str]) -> int:
+    total = 0
+    for term in terms:
+        phrase = _market_normal_title(term)
+        if not phrase:
+            continue
+        if re.search(rf"\b{re.escape(phrase)}\b", text):
+            total += 1
+    return total
+
+
+def _market_context_score(text: str, rules: Dict[str, int]) -> int:
+    return sum(
+        int(weight)
+        for phrase, weight in rules.items()
+        if re.search(rf"\b{re.escape(_market_normal_title(phrase))}\b", text)
+    )
+
+
+def _market_sentiment(title: str) -> Tuple[str, int]:
+    text = _market_normal_title(title)
+    positive = _market_term_hits(text, BULLISH_HEADLINE_TERMS)
+    negative = _market_term_hits(text, BEARISH_HEADLINE_TERMS)
+    positive += _market_context_score(text, BULLISH_CONTEXT_RULES)
+    negative += _market_context_score(text, BEARISH_CONTEXT_RULES)
+
+    # Negated positive language is usually downside context ("fails to rally",
+    # "cannot recover"). Move that evidence to the bearish side.
+    for pattern in NEGATING_HEADLINE_PATTERNS:
+        for term in BULLISH_HEADLINE_TERMS:
+            phrase = _market_normal_title(term)
+            if phrase and re.search(pattern + rf"(?:\w+\s+){{0,2}}{re.escape(phrase)}\b", text):
+                positive = max(0, positive - 1)
+                negative += 3
+
+    score = positive - negative
+    # A one-word edge is too weak to publish as directional. Keep it neutral.
+    if score >= 2:
+        return "bullish", score
+    if score <= -2:
+        return "bearish", score
+    return "neutral", 0
 
 
 def _market_text(value: Any) -> str:
@@ -1557,18 +1652,6 @@ def _market_title_is_duplicate(title: str, accepted: List[Dict[str, Any]]) -> bo
             if overlap >= 0.82:
                 return True
     return False
-
-
-def _market_sentiment(title: str) -> Tuple[str, int]:
-    text = _market_normal_title(title)
-    positive = sum(1 for term in BULLISH_HEADLINE_TERMS if term in text)
-    negative = sum(1 for term in BEARISH_HEADLINE_TERMS if term in text)
-    score = positive - negative
-    if score > 0:
-        return "bullish", score
-    if score < 0:
-        return "bearish", score
-    return "neutral", 0
 
 
 def _market_relevance(title: str, source: Dict[str, Any], asset_terms: Iterable[str], now_ms: int, published_ms: int) -> float:
@@ -1660,7 +1743,7 @@ def market_narrative_from_cache(now_ms: int) -> Dict[str, Any]:
         "source_count": safe_int(cached.get("source_count")),
         "sources_attempted": safe_int(cached.get("sources_attempted")) or len(MARKET_NEWS_SOURCES),
         "stories": stories[:5],
-        "note": "Automated headline classification; informational only. Headlines link to the original publishers.",
+        "note": "Context-checked headline lean; informational only. Headlines link to the original publishers.",
     }
 
 
@@ -1721,6 +1804,8 @@ def build_market_narrative(now_ms: int, timeout: int, signals: List[Dict[str, An
         row["published_at_ms"] = published_ms
         row["sentiment"] = sentiment
         row["sentiment_score"] = sentiment_score
+        row["sentiment_confidence"] = round(min(1.0, abs(sentiment_score) / 6.0), 2)
+        row["sentiment_method"] = "context-v2"
         row["relevance_score"] = round(relevance, 2)
         ranked.append(row)
 
@@ -1772,6 +1857,7 @@ CATALYST_WATCH_MAX_AHEAD_MS = 90 * 24 * 60 * 60 * 1000
 CATALYST_WATCH_CACHE = SCRIPT_DIR / "scanner_state" / "catalyst_watch_cache.json"
 CATALYST_FOMC_URL = "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm"
 CATALYST_BLS_ICS_URL = "https://www.bls.gov/schedule/news_release/bls.ics"
+CATALYST_BEA_SCHEDULE_URL = "https://www.bea.gov/news/schedule"
 CATALYST_SNAPSHOT_URL = "https://hub.snapshot.org/graphql"
 
 CATALYST_STATUSPAGE_SOURCES = [
@@ -1996,6 +2082,53 @@ def _catalyst_parse_fomc(text: str, now_ms: int) -> List[Dict[str, Any]]:
                 "relevance_score": 14,
             })
 
+    return events
+
+
+
+def _catalyst_parse_bea_schedule(text: str, now_ms: int) -> List[Dict[str, Any]]:
+    clean = _market_text(text)
+    year_match = re.search(r"\bYear\s+(20\d{2})\b", clean, flags=re.I)
+    year = safe_int(year_match.group(1)) if year_match else datetime.now(timezone.utc).year
+    months = "|".join(name.title() for name in CATALYST_MONTHS.keys())
+    row_pattern = re.compile(
+        rf"\b({months})\s+(\d{{1,2}})\s+(\d{{1,2}}):(\d{{2}})\s+(AM|PM)\b(.*?)(?=\b(?:{months})\s+\d{{1,2}}\s+\d{{1,2}}:\d{{2}}\s+(?:AM|PM)\b|\bTo Be Announced\b|$)",
+        flags=re.I,
+    )
+    events: List[Dict[str, Any]] = []
+    for match in row_pattern.finditer(clean):
+        month = CATALYST_MONTHS.get(match.group(1).lower())
+        day = safe_int(match.group(2))
+        body = re.sub(r"^[|\s]*(?:N\s*ews|D\s*ata|Release)[|\s]*", "", match.group(6), flags=re.I)
+        body = _market_text(body).strip(" |-")
+        lower = body.lower()
+        mapped = None
+        if "personal income and outlays" in lower:
+            mapped = ("PCE", "US PCE inflation release", "HIGH", 14)
+        elif "gdp" in lower or "gross domestic product" in lower:
+            mapped = ("GDP", "US GDP release", "HIGH", 13)
+        elif "international trade in goods and services" in lower:
+            mapped = ("TRADE", "US international trade release", "MEDIUM", 8)
+        if not mapped or not month or not day:
+            continue
+        try:
+            event_at_ms = _catalyst_date_ms(year, month, day)
+        except Exception:
+            continue
+        if not _catalyst_in_window(event_at_ms, now_ms):
+            continue
+        badge, title, impact, relevance = mapped
+        events.append({
+            "source": "U.S. Bureau of Economic Analysis",
+            "badge": badge,
+            "asset": "MACRO",
+            "title": title,
+            "url": CATALYST_BEA_SCHEDULE_URL,
+            "event_at_ms": event_at_ms,
+            "impact": impact,
+            "category": "macro",
+            "relevance_score": relevance,
+        })
     return events
 
 
@@ -2281,12 +2414,17 @@ def build_catalyst_watch(
         text = _catalyst_http_text(CATALYST_FOMC_URL, timeout)
         return "Federal Reserve", _catalyst_parse_fomc(text, now_ms)
 
+    def fetch_bea() -> Tuple[str, List[Dict[str, Any]]]:
+        text = _catalyst_http_text(CATALYST_BEA_SCHEDULE_URL, timeout)
+        return "BEA", _catalyst_parse_bea_schedule(text, now_ms)
+
     def fetch_snapshot() -> Tuple[str, List[Dict[str, Any]]]:
         return "Snapshot", _catalyst_fetch_snapshot(now_ms, timeout)
 
     jobs: List[Tuple[str, Any]] = [
         ("BLS", fetch_bls),
         ("Federal Reserve", fetch_fomc),
+        ("BEA", fetch_bea),
         ("Snapshot", fetch_snapshot),
     ]
     for status_source in CATALYST_STATUSPAGE_SOURCES:
@@ -2338,6 +2476,21 @@ def build_catalyst_watch(
         + (f"; {len(failures)} unavailable" if failures else "")
     )
     return payload
+
+def _market_sentiment_self_test() -> List[str]:
+    failures: List[str] = []
+    cases = [
+        ("Bitcoin cannot break out past $80,000 until it devours an 880k BTC roadblock that choked every rally", "bearish"),
+        ("Bitcoin breaks above resistance as ETF inflows accelerate", "bullish"),
+        ("Coinbase delays Ethereum sends during degraded performance", "bearish"),
+        ("Protocol publishes routine governance update", "neutral"),
+    ]
+    for headline, expected in cases:
+        actual, _ = _market_sentiment(headline)
+        if actual != expected:
+            failures.append(f"Sentiment expected {expected} but got {actual}: {headline}")
+    return failures
+
 
 def _catalyst_watch_self_test() -> List[str]:
     failures: List[str] = []
