@@ -1284,3 +1284,25 @@
   .public-telegram-bubble section>span{font-size:8px}
 }
 
+
+
+/* ==========================================================================
+   Copycat public background edge continuity v10
+   Keep the content at its original measure while the stage follows the full
+   viewport, so oversized ribbons never reveal a hard vertical background edge.
+   Dashboard selectors intentionally untouched.
+   ========================================================================== */
+.public-redesign-shell{
+  width:100%;
+  margin-inline:0;
+}
+.cc-legal-page{
+  width:100%;
+  max-width:none;
+}
+@media(min-width:1485px){
+  .public-redesign-shell{
+    padding-left:calc((100vw - 1484px)/2 + 52px);
+    padding-right:calc((100vw - 1484px)/2 + 52px);
+  }
+}
