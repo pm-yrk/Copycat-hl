@@ -688,3 +688,268 @@
 @media(max-width:620px){
   .cc-dashboard-page .cc-dashboard-shell{gap:14px!important}
 }
+
+
+/* Copycat dashboard final-fit corrections — compact, glassy, edge-to-edge. */
+html:has(.cc-dashboard-page),
+body:has(.cc-dashboard-page){
+  min-width:100%;
+  background:#04141d!important;
+}
+.cc-dashboard-page{
+  width:100%;
+  max-width:none;
+  margin:0!important;
+  background:
+    radial-gradient(ellipse 82% 56% at 86% -8%,rgba(35,233,157,.24),transparent 63%),
+    radial-gradient(ellipse 70% 54% at -10% 44%,rgba(31,145,132,.2),transparent 69%),
+    radial-gradient(ellipse 58% 46% at 58% 64%,rgba(24,113,107,.14),transparent 73%),
+    linear-gradient(148deg,#020a11 0%,#071b24 49%,#0a2b33 100%)!important;
+}
+.cc-dashboard-page>.public-nav{width:100%;max-width:none}
+.cc-dashboard-page .public-brand span{color:#f6fbf9!important}
+.cc-dashboard-page .public-brand em{color:#36e8aa!important}
+
+.cc-dashboard-page .cc-dashboard-shell{
+  padding-top:10px!important;
+  gap:8px!important;
+}
+.cc-dashboard-page .cc-dashboard-shell>*{margin-bottom:0!important}
+
+/* Signal markers are translucent glass bubbles; the token is locked to the exact centre. */
+.cc-dashboard-page .cc-flow-bubble{
+  box-sizing:border-box;
+  display:block!important;
+  border-color:rgba(128,255,216,.58)!important;
+  color:#ecfff9!important;
+  background:
+    radial-gradient(circle at 29% 23%,rgba(255,255,255,.38) 0 4%,rgba(255,255,255,.1) 12%,transparent 30%),
+    radial-gradient(circle at 70% 78%,rgba(34,232,164,.13),transparent 58%),
+    linear-gradient(145deg,rgba(92,255,207,.16),rgba(5,31,32,.1) 52%,rgba(3,14,22,.3))!important;
+  box-shadow:
+    inset 2px 2px 7px rgba(255,255,255,.13),
+    inset -4px -5px 10px rgba(0,8,12,.32),
+    0 5px 16px rgba(0,0,0,.3),
+    0 0 15px rgba(53,234,169,.08)!important;
+  -webkit-backdrop-filter:blur(2px) saturate(120%);
+  backdrop-filter:blur(2px) saturate(120%);
+}
+.cc-dashboard-page .cc-flow-bubble.negative{
+  border-color:rgba(255,146,162,.52)!important;
+  background:
+    radial-gradient(circle at 29% 23%,rgba(255,255,255,.32) 0 4%,rgba(255,255,255,.08) 12%,transparent 30%),
+    radial-gradient(circle at 70% 78%,rgba(255,103,129,.11),transparent 58%),
+    linear-gradient(145deg,rgba(255,126,147,.15),rgba(46,12,25,.1) 52%,rgba(16,7,14,.3))!important;
+}
+.cc-dashboard-page .cc-flow-bubble>.cc-token-logo{
+  position:absolute!important;
+  top:50%!important;
+  left:50%!important;
+  display:block!important;
+  width:64%!important;
+  height:64%!important;
+  min-width:0!important;
+  min-height:0!important;
+  margin:0!important;
+  padding:0!important;
+  transform:translate(-50%,-50%)!important;
+  border:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+.cc-dashboard-page .cc-flow-bubble>.cc-token-logo>img,
+.cc-dashboard-page .cc-flow-bubble>.cc-token-logo>.cc-token-fallback{
+  position:absolute;
+  inset:0;
+  width:100%!important;
+  height:100%!important;
+  margin:0!important;
+  object-fit:contain;
+}
+
+/* Asset and timeframe controls live together in the chart header. */
+.cc-dashboard-page .cc-chart-toolbar{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  flex-wrap:wrap;
+  gap:7px;
+}
+.cc-dashboard-page .cc-chart-asset-tabs,
+.cc-dashboard-page .cc-chart-window-tabs{
+  display:flex;
+  align-items:center;
+  gap:3px;
+  padding:3px;
+  border:1px solid rgba(121,202,193,.14);
+  border-radius:9px;
+  background:rgba(1,9,15,.46);
+}
+.cc-dashboard-page .cc-chart-asset-tabs button,
+.cc-dashboard-page .cc-chart-window-tabs button{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:5px;
+  min-height:25px;
+  padding:4px 8px;
+  border:0;
+  border-radius:6px;
+  color:#73898d;
+  background:transparent;
+  font:800 9px/1 inherit;
+  cursor:pointer;
+}
+.cc-dashboard-page .cc-chart-asset-tabs button.active,
+.cc-dashboard-page .cc-chart-window-tabs button.active{
+  color:#dffff4;
+  background:rgba(43,224,167,.13);
+  box-shadow:inset 0 0 0 1px rgba(81,239,191,.18);
+}
+.cc-dashboard-page .cc-chart-asset-tabs .cc-token-logo{
+  width:15px!important;
+  height:15px!important;
+  flex:0 0 15px!important;
+  border:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+
+/* Give the lower analytical cards room for every weight and row. */
+.cc-dashboard-page .cc-dashboard-performance-row{align-items:stretch}
+.cc-dashboard-page .cc-index-compact-wrapper,
+.cc-dashboard-page .cc-pressure-card{min-height:450px!important}
+.cc-dashboard-page .cc-index-compact-wrapper>section,
+.cc-dashboard-page .cc-index-compact-wrapper>article,
+.cc-dashboard-page .cc-index-compact-wrapper .cc-index-card{
+  box-sizing:border-box;
+  min-height:100%;
+  height:100%;
+  overflow:visible!important;
+}
+.cc-dashboard-page .cc-index-compact-wrapper .cc-index-head{
+  position:relative!important;
+  min-height:42px;
+  padding-right:94px!important;
+}
+.cc-dashboard-page .cc-index-compact-wrapper .cc-index-head>strong{
+  position:absolute!important;
+  top:0!important;
+  right:0!important;
+  margin:0!important;
+  text-align:right!important;
+  white-space:nowrap;
+}
+.cc-dashboard-page .cc-index-compact-wrapper .cc-index-weights{
+  flex-wrap:wrap!important;
+  overflow:visible!important;
+}
+
+/* All four top figures use the same visual weight. */
+.cc-dashboard-page .cc-kpi-grid>article>b,
+.cc-dashboard-page .cc-kpi-grid>article>b.cc-rolling-number{
+  display:block!important;
+  font-size:25px!important;
+  line-height:1.05!important;
+  letter-spacing:-.035em!important;
+}
+
+/* Legal/risk panel returns to its high-visibility amber treatment. */
+.cc-dashboard-page .cc-warning-banner{
+  border-color:rgba(245,181,82,.44)!important;
+  background:
+    radial-gradient(circle at 0 50%,rgba(245,171,58,.14),transparent 28%),
+    linear-gradient(145deg,rgba(43,29,13,.93),rgba(18,14,10,.96))!important;
+  box-shadow:inset 0 1px 0 rgba(255,226,169,.1),0 16px 44px rgba(0,0,0,.2)!important;
+}
+.cc-dashboard-page .cc-warning-banner .cc-shield{color:#f5b95e!important}
+.cc-dashboard-page .cc-warning-banner strong{color:#ffd99e!important}
+.cc-dashboard-page .cc-warning-banner em,
+.cc-dashboard-page .cc-warning-banner small,
+.cc-dashboard-page .cc-warning-banner a{color:#c9ab7e!important}
+
+/* Separate explanatory notes from the final data row. */
+.cc-dashboard-page .cc-market-narrative-note,
+.cc-dashboard-page .cc-catalyst-note{
+  display:block!important;
+  margin-top:11px!important;
+  padding-top:0!important;
+  line-height:1.4!important;
+}
+
+/* Use the available width so every trading column is readable. */
+@media(min-width:981px){
+  .cc-dashboard-page .cc-signal-table{
+    width:100%!important;
+    min-width:100%!important;
+    table-layout:fixed!important;
+  }
+  .cc-dashboard-page .cc-signal-table th,
+  .cc-dashboard-page .cc-signal-table td{
+    box-sizing:border-box;
+    padding-left:8px!important;
+    padding-right:8px!important;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    font-size:10px!important;
+  }
+  .cc-dashboard-page .cc-signal-table th:nth-child(2),
+  .cc-dashboard-page .cc-signal-table td:nth-child(2){display:none!important}
+  .cc-dashboard-page .cc-signal-table th:nth-child(1),
+  .cc-dashboard-page .cc-signal-table td:nth-child(1){width:3.5%}
+  .cc-dashboard-page .cc-signal-table th:nth-child(3),
+  .cc-dashboard-page .cc-signal-table td:nth-child(3){width:10.5%}
+  .cc-dashboard-page .cc-signal-table th:nth-child(4),
+  .cc-dashboard-page .cc-signal-table td:nth-child(4){width:10.5%}
+  .cc-dashboard-page .cc-signal-table th:nth-child(5),
+  .cc-dashboard-page .cc-signal-table td:nth-child(5){width:9%}
+  .cc-dashboard-page .cc-signal-table th:nth-child(6),
+  .cc-dashboard-page .cc-signal-table td:nth-child(6){width:14%}
+  .cc-dashboard-page .cc-signal-table th:nth-child(7),
+  .cc-dashboard-page .cc-signal-table td:nth-child(7){width:20.5%}
+  .cc-dashboard-page .cc-signal-table th:nth-child(8),
+  .cc-dashboard-page .cc-signal-table td:nth-child(8){width:13.5%}
+  .cc-dashboard-page .cc-signal-table th:nth-child(9),
+  .cc-dashboard-page .cc-signal-table td:nth-child(9){width:18.5%}
+
+  .cc-dashboard-page .cc-flow-table{
+    width:100%!important;
+    min-width:100%!important;
+    table-layout:fixed!important;
+  }
+  .cc-dashboard-page .cc-flow-table th,
+  .cc-dashboard-page .cc-flow-table td{
+    box-sizing:border-box;
+    padding-left:7px!important;
+    padding-right:7px!important;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    font-size:9.5px!important;
+  }
+  .cc-dashboard-page .cc-flow-table th:first-child,
+  .cc-dashboard-page .cc-flow-table td:first-child{display:none!important}
+  .cc-dashboard-page .cc-flow-table th:nth-child(2),
+  .cc-dashboard-page .cc-flow-table td:nth-child(2){width:17%}
+  .cc-dashboard-page .cc-flow-table th:nth-child(n+3),
+  .cc-dashboard-page .cc-flow-table td:nth-child(n+3){width:16.6%}
+}
+@media(max-width:980px){
+  .cc-dashboard-page .cc-dashboard-shell{padding-top:8px!important}
+  .cc-dashboard-page .cc-index-compact-wrapper,
+  .cc-dashboard-page .cc-pressure-card{min-height:420px!important}
+  .cc-dashboard-page .cc-price-chart-head{gap:10px}
+}
+@media(max-width:620px){
+  .cc-dashboard-page .cc-dashboard-shell{gap:7px!important}
+  .cc-dashboard-page .cc-dashboard-shell>*{margin-bottom:0!important}
+  .cc-dashboard-page .cc-index-compact-wrapper,
+  .cc-dashboard-page .cc-pressure-card{min-height:auto!important}
+  .cc-dashboard-page .cc-price-chart-head{display:grid!important}
+  .cc-dashboard-page .cc-chart-toolbar{justify-content:flex-start}
+  .cc-dashboard-page .cc-chart-asset-tabs button,
+  .cc-dashboard-page .cc-chart-window-tabs button{min-height:28px}
+  .cc-dashboard-page .cc-kpi-grid>article>b,
+  .cc-dashboard-page .cc-kpi-grid>article>b.cc-rolling-number{font-size:21px!important}
+}
