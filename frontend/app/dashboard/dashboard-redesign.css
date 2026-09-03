@@ -1002,3 +1002,23 @@ body:has(.cc-dashboard-page){
     display:table-cell!important;
   }
 }
+
+
+/* Final component-level overrides for legacy global typography/control rules. */
+.cc-dashboard-page .public-brand span,
+.cc-dashboard-page .public-brand em{
+  font-size:inherit!important;
+  line-height:inherit!important;
+  color:inherit!important;
+}
+.cc-dashboard-page .cc-chart-window-tabs{
+  width:auto!important;
+  min-width:0!important;
+  flex:0 0 auto!important;
+  justify-content:flex-start!important;
+}
+.cc-dashboard-page .cc-chart-window-tabs button{
+  width:auto!important;
+  min-width:42px!important;
+  flex:0 0 auto!important;
+}
