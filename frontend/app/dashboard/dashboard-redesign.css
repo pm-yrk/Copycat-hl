@@ -675,3 +675,16 @@
   .cc-dashboard-page .cc-signal-board-card{min-height:430px}
   .cc-dashboard-page .cc-signal-board-card .cc-scroll-y{height:360px;max-height:360px}
 }
+
+
+/* Keep a consistent visual pause between every dashboard row. */
+.cc-dashboard-page .cc-dashboard-shell{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:stretch!important;
+  gap:16px!important;
+}
+.cc-dashboard-page .cc-dashboard-heading{padding-bottom:4px}
+@media(max-width:620px){
+  .cc-dashboard-page .cc-dashboard-shell{gap:14px!important}
+}
