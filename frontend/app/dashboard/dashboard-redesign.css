@@ -1332,3 +1332,36 @@ body:has(.cc-dashboard-page),
   .cc-dashboard-page .cc-index-compact-wrapper>article,
   .cc-dashboard-page .cc-index-compact-wrapper .cc-index-card{min-height:auto!important}
 }
++
+/* Recent-order icons own their grid slot; legacy token rules cannot offset them. */
+.cc-dashboard-page .cc-pulse-orders .cc-order-line>.cc-token-logo{
+  position:relative!important;
+  inset:auto!important;
+  display:grid!important;
+  place-items:center!important;
+  align-self:center!important;
+  justify-self:center!important;
+  box-sizing:border-box!important;
+  width:20px!important;
+  height:20px!important;
+  min-width:20px!important;
+  min-height:20px!important;
+  margin:0!important;
+  padding:0!important;
+  transform:none!important;
+  line-height:1!important;
+}
+.cc-dashboard-page .cc-pulse-orders .cc-order-line>.cc-token-logo>img,
+.cc-dashboard-page .cc-pulse-orders .cc-order-line>.cc-token-logo>.cc-token-fallback{
+  position:relative!important;
+  inset:auto!important;
+  display:block!important;
+  width:18px!important;
+  height:18px!important;
+  min-width:18px!important;
+  min-height:18px!important;
+  margin:0!important;
+  transform:none!important;
+  object-fit:contain!important;
+}
+
