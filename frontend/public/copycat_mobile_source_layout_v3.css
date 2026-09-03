@@ -1803,3 +1803,95 @@
   }
 }
 /* COPYCAT_MOBILE_SPACING_TABLES_V11_END */
+
+
+/* Dashboard mobile consolidation.
+   Retired runtime hotfixes no longer mutate the dashboard after first paint. */
+@media (max-width: 820px) {
+  html:has(.cc-dashboard-page),
+  body:has(.cc-dashboard-page) {
+    width:100%!important;
+    max-width:none!important;
+    min-width:0!important;
+    margin:0!important;
+    padding:0!important;
+    overflow-x:hidden!important;
+    background:#04141d!important;
+  }
+  .cc-dashboard-page {
+    display:block!important;
+    width:100%!important;
+    max-width:none!important;
+    min-width:0!important;
+    margin:0!important;
+    padding:0!important;
+    overflow-x:hidden!important;
+  }
+  .cc-dashboard-page>.public-nav {
+    width:100%!important;
+    max-width:none!important;
+    margin:0!important;
+  }
+  .cc-dashboard-page>.cc-dashboard-shell {
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:stretch!important;
+    width:calc(100% - 24px)!important;
+    max-width:none!important;
+    min-width:0!important;
+    height:auto!important;
+    max-height:none!important;
+    margin:0 auto!important;
+    padding:8px 0 24px!important;
+    gap:7px!important;
+    overflow:visible!important;
+  }
+  .cc-dashboard-page>.cc-dashboard-shell>* {margin-bottom:0!important}
+  .cc-dashboard-page .cc-dashboard-performance-row {
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:14px!important;
+    width:100%!important;
+    margin:0!important;
+  }
+  .cc-dashboard-page .cc-index-compact-wrapper,
+  .cc-dashboard-page .cc-pressure-card {
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    height:auto!important;
+    max-height:none!important;
+    min-height:420px!important;
+    margin:0!important;
+    overflow:hidden!important;
+  }
+  .cc-dashboard-page .cc-index-card,
+  .cc-dashboard-page .cc-index-card.deep,
+  .cc-dashboard-page .cc-index-dashboard-fit {
+    min-height:420px!important;
+    height:auto!important;
+    max-height:none!important;
+    padding-bottom:22px!important;
+    overflow:visible!important;
+  }
+  .cc-dashboard-page .cc-index-chart,
+  .cc-dashboard-page .cc-index-chart svg {
+    min-height:150px!important;
+    height:150px!important;
+    max-height:150px!important;
+  }
+  .cc-dashboard-page .cc-dashboard-primary-grid,
+  .cc-dashboard-page .cc-dashboard-trading-grid,
+  .cc-dashboard-page .cc-dashboard-context-row {
+    gap:12px!important;
+    margin:0!important;
+  }
+}
+@media (max-width: 620px) {
+  .cc-dashboard-page>.cc-dashboard-shell{width:calc(100% - 18px)!important}
+  .cc-dashboard-page .cc-index-compact-wrapper,
+  .cc-dashboard-page .cc-pressure-card{min-height:0!important}
+  .cc-dashboard-page .cc-index-card,
+  .cc-dashboard-page .cc-index-card.deep,
+  .cc-dashboard-page .cc-index-dashboard-fit{min-height:0!important}
+}
