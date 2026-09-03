@@ -848,17 +848,20 @@ function PositioningChanges({ rows, icons, details, windowLabel }: { rows: any[]
 }
 
 type QuickChartWindow = '24H' | '7D'
+type QuickChartAsset = 'BTC' | 'ETH'
 
-function quickChartPoints(data: any, windowKey: QuickChartWindow) {
+function quickChartPoints(data: any, windowKey: QuickChartWindow, asset: QuickChartAsset) {
   const suppliedKey = windowKey === '24H' ? '1D' : '1W'
   const supplied = Array.isArray(data?.timeframes?.[suppliedKey]) ? data.timeframes[suppliedKey] : []
   const all = supplied.length ? supplied : (Array.isArray(data?.points) ? data.points : [])
   const latest = Number(data?.latest_ts_ms || all[all.length - 1]?.ts_ms || Date.now())
   const cutoff = latest - (windowKey === '24H' ? 24 : 24 * 7) * 60 * 60 * 1000
+  const priceKey = asset === 'ETH' ? 'eth_nav' : 'btc_nav'
+  const priceFallback = asset === 'ETH' ? 'eth' : 'btc'
   const normalised = all.map((row: any) => ({
     ts_ms: Number(row?.ts_ms || row?.time || 0),
     model: Number(row?.copycat_nav ?? row?.copycat ?? 100),
-    price: Number(row?.btc_nav ?? row?.btc ?? 100),
+    price: Number(row?.[priceKey] ?? row?.[priceFallback] ?? 100),
   })).filter((row: any) => row.ts_ms > 0 && Number.isFinite(row.model) && Number.isFinite(row.price))
   const filtered = normalised.filter((row: any) => row.ts_ms >= cutoff)
   return filtered.length >= 2 ? filtered : normalised
@@ -872,9 +875,10 @@ function quickChartPath(points: any[], key: 'model' | 'price', minimum: number, 
   }).join(' ')
 }
 
-function PricePositioningChart() {
+function PricePositioningChart({ icons }: { icons: Record<string, string> }) {
   const [data, setData] = useState<any>(null)
   const [windowKey, setWindowKey] = useState<QuickChartWindow>('24H')
+  const [asset, setAsset] = useState<QuickChartAsset>('BTC')
 
   useEffect(() => {
     let alive = true
@@ -886,7 +890,7 @@ function PricePositioningChart() {
     return () => { alive = false; window.clearInterval(timer) }
   }, [])
 
-  const points = useMemo(() => quickChartPoints(data, windowKey), [data, windowKey])
+  const points = useMemo(() => quickChartPoints(data, windowKey, asset), [data, windowKey, asset])
   const values = points.flatMap((row: any) => [Number(row.model), Number(row.price)]).filter((value: number) => Number.isFinite(value))
   const rawMin = values.length ? Math.min(...values) : 98
   const rawMax = values.length ? Math.max(...values) : 102
@@ -899,21 +903,25 @@ function PricePositioningChart() {
   const last = points[points.length - 1]
   const modelMove = first ? ((Number(last?.model || 100) / Number(first.model || 100)) - 1) * 100 : 0
   const priceMove = first ? ((Number(last?.price || 100) / Number(first.price || 100)) - 1) * 100 : 0
-  const timeText = (timestamp: number) => timestamp ? new Date(timestamp).toLocaleString(undefined, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) : '—'
 
   return <section className="cc-card cc-price-positioning-card">
     <div className="cc-panel-title cc-price-chart-head">
-      <div><h3>Price vs Smart-Wallet Positioning</h3><span>Copycat model compared with BTC price</span></div>
-      <div className="cc-chart-window-tabs" aria-label="Chart timeframe">
-        {(['24H', '7D'] as QuickChartWindow[]).map((key) => <button type="button" className={windowKey === key ? 'active' : ''} onClick={() => setWindowKey(key)} key={key}>{key}</button>)}
+      <div><h3>Price vs Smart-Wallet Positioning</h3><span>Copycat model compared with {asset} price</span></div>
+      <div className="cc-chart-toolbar">
+        <div className="cc-chart-asset-tabs" aria-label="Comparison asset">
+          {(['BTC', 'ETH'] as QuickChartAsset[]).map((key) => <button type="button" className={asset === key ? 'active' : ''} onClick={() => setAsset(key)} key={key}><TokenLogo coin={key} icons={icons} />{key}</button>)}
+        </div>
+        <div className="cc-chart-window-tabs" aria-label="Chart timeframe">
+          {(['24H', '7D'] as QuickChartWindow[]).map((key) => <button type="button" className={windowKey === key ? 'active' : ''} onClick={() => setWindowKey(key)} key={key}>{key}</button>)}
+        </div>
       </div>
     </div>
     <div className="cc-chart-legend">
       <span><i className="model" />Smart-wallet model <b className={cls(modelMove)}>{modelMove >= 0 ? '+' : ''}{modelMove.toFixed(2)}%</b></span>
-      <span><i className="price" />BTC price <b className={cls(priceMove)}>{priceMove >= 0 ? '+' : ''}{priceMove.toFixed(2)}%</b></span>
+      <span><i className="price" />{asset} price <b className={cls(priceMove)}>{priceMove >= 0 ? '+' : ''}{priceMove.toFixed(2)}%</b></span>
     </div>
     <div className="cc-price-line-chart">
-      {points.length >= 2 ? <svg viewBox="0 0 680 220" preserveAspectRatio="none" role="img" aria-label={`Copycat smart-wallet model and BTC price over ${windowKey}`}>
+      {points.length >= 2 ? <svg viewBox="0 0 680 220" preserveAspectRatio="none" role="img" aria-label={`Copycat smart-wallet model and ${asset} price over ${windowKey}`}>
         <defs>
           <linearGradient id="ccModelArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#36e8aa" stopOpacity=".22" /><stop offset="1" stopColor="#36e8aa" stopOpacity="0" /></linearGradient>
         </defs>
@@ -922,7 +930,6 @@ function PricePositioningChart() {
         <path className="cc-price-line" d={pricePath} />
       </svg> : <div className="cc-chart-empty">Collecting the live comparison…</div>}
     </div>
-    <div className="cc-chart-time-axis"><span>{timeText(Number(first?.ts_ms || 0))}</span><span>{timeText(Number(last?.ts_ms || 0))} UTC</span></div>
   </section>
 }
 
@@ -1161,11 +1168,6 @@ export default function Dashboard() {
   return <div className="cc-dashboard-page">
     <PublicNav />
     <main className="cc-dashboard-shell">
-      <header className="cc-dashboard-heading">
-        <div><p className="eyebrow live">Live smart-wallet intelligence</p><h1>Market Dashboard</h1></div>
-        <span className="cc-dashboard-health"><i aria-hidden />{dataHealthy ? 'Live feed healthy' : 'Checking live feed'} · {summary.live_wallets || 0} wallets online</span>
-      </header>
-
       {err && <p className="notice gold">{err}</p>}
 
       <section className="cc-market-pulse" aria-label="Market pulse">
@@ -1211,7 +1213,7 @@ export default function Dashboard() {
         <div className="cc-panel-title"><h3>Asset Signal Board</h3><span>Clearest long/short conviction first</span></div>
         <div className="cc-scroll-table cc-scroll-y">
           <table className="cc-signal-table">
-            <thead><tr><th>#</th><th className="cc-mobile-asset-logo-head" aria-label="Asset logo" /><SortTh label="Asset" sortKey="asset" sort={signalSort} setSort={setSignalSort} /><SortTh label="Signal" sortKey="conviction" sort={signalSort} setSort={setSignalSort} /><SortTh label="Confidence" sortKey="confidence" sort={signalSort} setSort={setSignalSort} /><SortTh label="Wallets" sortKey="wallets" sort={signalSort} setSort={setSignalSort} /><SortTh label="Value L/S" sortKey="value_ls" sort={signalSort} setSort={setSignalSort} /><SortTh label="Net value" sortKey="net_value_usd" sort={signalSort} setSort={setSignalSort} /><SortTh label="% total value" sortKey="pct_total" sort={signalSort} setSort={setSignalSort} /></tr></thead>
+            <thead><tr><th>#</th><th className="cc-mobile-asset-logo-head" aria-label="Asset logo" /><SortTh label="Asset" sortKey="asset" sort={signalSort} setSort={setSignalSort} /><SortTh label="Signal" sortKey="conviction" sort={signalSort} setSort={setSignalSort} /><SortTh label="Confidence" sortKey="confidence" sort={signalSort} setSort={setSignalSort} /><SortTh label="Wallets" sortKey="wallets" sort={signalSort} setSort={setSignalSort} /><SortTh label="Wallet value L/S" sortKey="value_ls" sort={signalSort} setSort={setSignalSort} /><SortTh label="Net value" sortKey="net_value_usd" sort={signalSort} setSort={setSignalSort} /><SortTh label="% total value" sortKey="pct_total" sort={signalSort} setSort={setSignalSort} /></tr></thead>
             <tbody>{sortedSignals.map((r, i) => <tr key={`${r.coin}-${i}`}><td>{i + 1}</td><td className="cc-mobile-asset-logo-cell" aria-hidden="true"><TokenLogo coin={r.coin} icons={icons} /></td><td><span className="cc-asset-cell"><TokenLogo coin={r.coin} icons={icons} /><AssetName coin={r.coin} details={mergedAssetDetails} row={r} /></span></td><td className={cls(displaySignalValue(r))}><span className={`cc-signal-pill ${signalDirectionClass(r)}`}>{displaySignalMagnitudePct(r)} {displaySignalDirection(r)}</span></td><td><span className={`cc-confidence ${String(r.confidence).toLowerCase()}`}>{r.confidence}</span></td><td>{r.wallets_long} long / {r.wallets_short} short</td><td>{money(r.value_long_usd)} / {money(r.value_short_usd)}</td><td className={cls(r.net_value_usd)}>{money(r.net_value_usd)}</td><td>{pct(r.value_long_pct_total)} long / {pct(r.value_short_pct_total)} short</td></tr>)}</tbody>
           </table>
         </div>
@@ -1219,7 +1221,7 @@ export default function Dashboard() {
 
       <section className="cc-dashboard-trading-grid">
         <PositioningChanges rows={alignedFlow} icons={icons} details={mergedAssetDetails} windowLabel={flowWindowText(summary)} />
-        <PricePositioningChart />
+        <PricePositioningChart icons={icons} />
       </section>
 
       <section className="cc-dashboard-context-row">
