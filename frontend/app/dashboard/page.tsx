@@ -787,7 +787,7 @@ function SignalFlowMap({ rows, icons }: { rows: any[]; icons: Record<string, str
       const bGross = Number(b?.value_long_usd || 0) + Number(b?.value_short_usd || 0)
       return (flowPressureScore(b) + bGross * .02) - (flowPressureScore(a) + aGross * .02)
     })
-    .slice(0, 11)
+    .slice(0, 9)
   const maxFlow = Math.max(1, ...candidates.map((row: any) => Math.abs(Number(row?.net_value_flow_usd || 0))))
   const maxGross = Math.max(1, ...candidates.map((row: any) => Number(row?.value_long_usd || 0) + Number(row?.value_short_usd || 0)))
 
@@ -810,7 +810,7 @@ function SignalFlowMap({ rows, icons }: { rows: any[]; icons: Record<string, str
         const left = Math.max(7, Math.min(93, 50 + signal * 42))
         const fallbackBand = ((index % 5) - 2) * 7
         const top = Math.max(9, Math.min(91, flowValue ? 50 - (flowValue / maxFlow) * 40 : 50 + fallbackBand))
-        const size = 32 + Math.sqrt(Math.max(0, gross) / maxGross) * 30
+        const size = 24 + Math.sqrt(Math.max(0, gross) / maxGross) * 16
         return <span
           key={String(row.coin)}
           className={`cc-flow-bubble ${signal < 0 ? 'negative' : 'positive'}`}
@@ -845,41 +845,84 @@ function PositioningChanges({ rows, icons, details, windowLabel }: { rows: any[]
   </section>
 }
 
-function CurrentPositioningMap({ rows, icons }: { rows: any[]; icons: Record<string, string> }) {
-  const candidates = [...(rows || [])]
-    .filter((row: any) => row?.coin && Number(row?.price_usd || row?.current_price || row?.mark_price || 0) > 0)
-    .sort((a: any, b: any) => {
-      const ag = Number(a?.value_long_usd || 0) + Number(a?.value_short_usd || 0)
-      const bg = Number(b?.value_long_usd || 0) + Number(b?.value_short_usd || 0)
-      return bg - ag
-    })
-    .slice(0, 10)
-  const logs = candidates.map((row: any) => Math.log10(Number(row?.price_usd || row?.current_price || row?.mark_price || 1)))
-  const minLog = logs.length ? Math.min(...logs) : 0
-  const maxLog = logs.length ? Math.max(...logs) : 1
-  const spread = Math.max(.01, maxLog - minLog)
+type QuickChartWindow = '24H' | '7D'
 
-  return <section className="cc-card cc-price-positioning-card">
-    <div className="cc-panel-title"><h3>Price vs Smart-Wallet Positioning</h3><span>Live cross-asset snapshot</span></div>
-    <div className="cc-current-map" role="img" aria-label="Current asset price and smart-wallet positioning map">
-      {candidates.map((row: any, index: number) => {
-        const signal = Math.max(-1, Math.min(1, displaySignalValue(row)))
-        const logPrice = logs[index]
-        const left = Math.max(6, Math.min(94, 50 + signal * 43))
-        const top = Math.max(8, Math.min(88, 86 - ((logPrice - minLog) / spread) * 74))
-        return <span
-          key={String(row.coin)}
-          className={`cc-current-dot ${signal < 0 ? 'negative' : 'positive'}`}
-          data-coin={displayToken(row.coin)}
-          title={`${displayToken(row.coin)}: ${priceText(row?.price_usd || row?.current_price || row?.mark_price)} · ${displaySignalMagnitudePct(row)} ${displaySignalDirection(row)}`}
-          style={{ left: `${left}%`, top: `${top}%` }}
-        ><TokenLogo coin={row.coin} icons={icons} /></span>
-      })}
-    </div>
-    <div className="cc-map-caption"><span>Short positioning</span><span>Long positioning</span></div>
-  </section>
+function quickChartPoints(data: any, windowKey: QuickChartWindow) {
+  const suppliedKey = windowKey === '24H' ? '1D' : '1W'
+  const supplied = Array.isArray(data?.timeframes?.[suppliedKey]) ? data.timeframes[suppliedKey] : []
+  const all = supplied.length ? supplied : (Array.isArray(data?.points) ? data.points : [])
+  const latest = Number(data?.latest_ts_ms || all[all.length - 1]?.ts_ms || Date.now())
+  const cutoff = latest - (windowKey === '24H' ? 24 : 24 * 7) * 60 * 60 * 1000
+  const normalised = all.map((row: any) => ({
+    ts_ms: Number(row?.ts_ms || row?.time || 0),
+    model: Number(row?.copycat_nav ?? row?.copycat ?? 100),
+    price: Number(row?.btc_nav ?? row?.btc ?? 100),
+  })).filter((row: any) => row.ts_ms > 0 && Number.isFinite(row.model) && Number.isFinite(row.price))
+  const filtered = normalised.filter((row: any) => row.ts_ms >= cutoff)
+  return filtered.length >= 2 ? filtered : normalised
 }
 
+function quickChartPath(points: any[], key: 'model' | 'price', minimum: number, span: number) {
+  return points.map((row: any, index: number) => {
+    const x = points.length === 1 ? 0 : (index / (points.length - 1)) * 680
+    const y = 220 - ((Number(row[key]) - minimum) / span) * 220
+    return `${index ? 'L' : 'M'} ${x.toFixed(2)} ${y.toFixed(2)}`
+  }).join(' ')
+}
+
+function PricePositioningChart() {
+  const [data, setData] = useState<any>(null)
+  const [windowKey, setWindowKey] = useState<QuickChartWindow>('24H')
+
+  useEffect(() => {
+    let alive = true
+    const load = () => apiGet('/api/performance-index', { timeoutMs: 16000 })
+      .then((payload: any) => { if (alive) setData(payload) })
+      .catch(() => {})
+    load()
+    const timer = window.setInterval(load, COPYCAT_FEED_POLL_MS)
+    return () => { alive = false; window.clearInterval(timer) }
+  }, [])
+
+  const points = useMemo(() => quickChartPoints(data, windowKey), [data, windowKey])
+  const values = points.flatMap((row: any) => [Number(row.model), Number(row.price)]).filter((value: number) => Number.isFinite(value))
+  const rawMin = values.length ? Math.min(...values) : 98
+  const rawMax = values.length ? Math.max(...values) : 102
+  const padding = Math.max(.25, (rawMax - rawMin) * .12)
+  const minimum = rawMin - padding
+  const span = Math.max(.5, rawMax + padding - minimum)
+  const modelPath = quickChartPath(points, 'model', minimum, span)
+  const pricePath = quickChartPath(points, 'price', minimum, span)
+  const first = points[0]
+  const last = points[points.length - 1]
+  const modelMove = first ? ((Number(last?.model || 100) / Number(first.model || 100)) - 1) * 100 : 0
+  const priceMove = first ? ((Number(last?.price || 100) / Number(first.price || 100)) - 1) * 100 : 0
+  const timeText = (timestamp: number) => timestamp ? new Date(timestamp).toLocaleString(undefined, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) : '—'
+
+  return <section className="cc-card cc-price-positioning-card">
+    <div className="cc-panel-title cc-price-chart-head">
+      <div><h3>Price vs Smart-Wallet Positioning</h3><span>Copycat model compared with BTC price</span></div>
+      <div className="cc-chart-window-tabs" aria-label="Chart timeframe">
+        {(['24H', '7D'] as QuickChartWindow[]).map((key) => <button type="button" className={windowKey === key ? 'active' : ''} onClick={() => setWindowKey(key)} key={key}>{key}</button>)}
+      </div>
+    </div>
+    <div className="cc-chart-legend">
+      <span><i className="model" />Smart-wallet model <b className={cls(modelMove)}>{modelMove >= 0 ? '+' : ''}{modelMove.toFixed(2)}%</b></span>
+      <span><i className="price" />BTC price <b className={cls(priceMove)}>{priceMove >= 0 ? '+' : ''}{priceMove.toFixed(2)}%</b></span>
+    </div>
+    <div className="cc-price-line-chart">
+      {points.length >= 2 ? <svg viewBox="0 0 680 220" preserveAspectRatio="none" role="img" aria-label={`Copycat smart-wallet model and BTC price over ${windowKey}`}>
+        <defs>
+          <linearGradient id="ccModelArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#36e8aa" stopOpacity=".22" /><stop offset="1" stopColor="#36e8aa" stopOpacity="0" /></linearGradient>
+        </defs>
+        <path className="cc-model-area" d={`${modelPath} L 680 220 L 0 220 Z`} />
+        <path className="cc-model-line" d={modelPath} />
+        <path className="cc-price-line" d={pricePath} />
+      </svg> : <div className="cc-chart-empty">Collecting the live comparison…</div>}
+    </div>
+    <div className="cc-chart-time-axis"><span>{timeText(Number(first?.ts_ms || 0))}</span><span>{timeText(Number(last?.ts_ms || 0))} UTC</span></div>
+  </section>
+}
 
 export default function Dashboard() {
   const [summary, setSummary] = useState<any>({})
@@ -1113,8 +1156,6 @@ export default function Dashboard() {
   const topFlow = [...alignedFlow].sort((a: any, b: any) => Math.abs(Number(b?.net_value_flow_usd || 0)) - Math.abs(Number(a?.net_value_flow_usd || 0)) || flowPressureScore(b) - flowPressureScore(a))[0] || null
   const openGross = longValue + shortValue
   const longShare = openGross > 0 ? (longValue / openGross) * 100 : 0
-  const marketPulseInsights = (insights || []).filter(shouldShowInsight).slice(0, 5)
-
   return <div className="cc-dashboard-page">
     <PublicNav />
     <main className="cc-dashboard-shell">
@@ -1149,9 +1190,6 @@ export default function Dashboard() {
             {visibleOrders.slice(0, 3).map((o: any) => <div className="cc-order-line" key={orderKey(o)}><TokenLogo coin={o.coin} icons={icons} /><AssetName coin={o.coin} details={mergedAssetDetails} row={o} compact /><span className={orderActionClass(o.side)}>{o.side}</span><WalletExplorerLink wallet={o.wallet} label={o.wallet_label} /><small suppressHydrationWarning>{ago(o.ts_ms)}</small></div>)}
           </div>
         </article>
-        {marketPulseInsights.length ? <article className="cc-pulse-insights">
-          {marketPulseInsights.map((x: any) => <span key={`${x.type}-${x.coin}`}><b>{flowInsightLabel(x)}</b><em>{x.coin || '—'} · {formatInsightDetail(x)}</em></span>)}
-        </article> : null}
       </section>
 
       <section className="cc-kpi-grid cc-kpi-grid-tight">
@@ -1179,7 +1217,7 @@ export default function Dashboard() {
 
       <section className="cc-dashboard-trading-grid">
         <PositioningChanges rows={alignedFlow} icons={icons} details={mergedAssetDetails} windowLabel={flowWindowText(summary)} />
-        <CurrentPositioningMap rows={signals} icons={icons} />
+        <PricePositioningChart />
       </section>
 
       <section className="cc-dashboard-context-row">
