@@ -245,7 +245,6 @@ export default function Home() {
           <p className="public-eyebrow"><span /> Hyperliquid wallet intelligence</p>
           <h1>See what the<br/>best traders are doing.</h1>
           <p className="public-hero-lede">{selected && feedLive ? <>Copycat tracks <strong>{compact(selected)}</strong> of its highest-ranked Hyperliquid wallets and turns their positions into simple signals anyone can understand.</> : <>Copycat turns the positioning of its ranked Hyperliquid wallet cohort into simple signals anyone can understand.</>}</p>
-          <div className="public-actions"><Link className="public-primary" href="/dashboard">Open live dashboard <span>→</span></Link><a className="public-secondary" href="#how-it-works">How Copycat works</a></div>
           <div className="public-live-stats">
             <div><i><MiniIcon type="users"/></i><b>{feedLive && selected ? compact(selected) : '—'}</b><span>top wallets tracked</span></div>
             <div><i><MiniIcon type="search"/></i><b>{feedLive && indexed ? compact(indexed) : '—'}</b><span>wallets analysed</span></div>
