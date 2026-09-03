@@ -7,7 +7,6 @@ import '../app/public-polish.css'
 export default function PublicNav() {
   const path = usePathname()
   const links = [
-    ['/dashboard', 'Dashboard'],
     ['/#how-it-works', 'How it works'],
     ['/api-access', 'API'],
     ['/pricing', 'Pricing'],
