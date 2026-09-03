@@ -785,7 +785,8 @@ function SignalFlowMap({ rows, icons }: { rows: any[]; icons: Record<string, str
     .sort((a: any, b: any) => {
       const aGross = Number(a?.value_long_usd || 0) + Number(a?.value_short_usd || 0)
       const bGross = Number(b?.value_long_usd || 0) + Number(b?.value_short_usd || 0)
-      return (flowPressureScore(b) + bGross * .02) - (flowPressureScore(a) + aGross * .02)
+      const flowDifference = flowPressureScore(b) - flowPressureScore(a)
+      return flowDifference || (bGross - aGross)
     })
     .slice(0, 7)
   const maxFlow = Math.max(1, ...candidates.map((row: any) => Math.abs(Number(row?.net_value_flow_usd || 0))))
