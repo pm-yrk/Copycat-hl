@@ -312,8 +312,8 @@
   box-shadow:0 5px 15px rgba(0,0,0,.34),0 0 12px rgba(53,234,169,.08);
 }
 .cc-flow-bubble.negative{
-  border-color:rgba(255,130,148,.52);
-  background:radial-gradient(circle at 35% 27%,#ffb4bf,#bd5266 52%,#501824);
+  border-color:rgba(255,130,148,.44);
+  background:radial-gradient(circle at 35% 27%,rgba(255,153,168,.34),rgba(92,31,46,.94) 56%,#160b12);
 }
 .cc-flow-bubble .cc-token-logo{width:55%;height:55%;box-shadow:none}
 .cc-flow-bubble:hover{z-index:4;filter:brightness(1.08)}
