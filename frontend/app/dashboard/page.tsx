@@ -787,7 +787,7 @@ function SignalFlowMap({ rows, icons }: { rows: any[]; icons: Record<string, str
       const bGross = Number(b?.value_long_usd || 0) + Number(b?.value_short_usd || 0)
       return (flowPressureScore(b) + bGross * .02) - (flowPressureScore(a) + aGross * .02)
     })
-    .slice(0, 9)
+    .slice(0, 7)
   const maxFlow = Math.max(1, ...candidates.map((row: any) => Math.abs(Number(row?.net_value_flow_usd || 0))))
   const maxGross = Math.max(1, ...candidates.map((row: any) => Number(row?.value_long_usd || 0) + Number(row?.value_short_usd || 0)))
 
@@ -807,10 +807,11 @@ function SignalFlowMap({ rows, icons }: { rows: any[]; icons: Record<string, str
         const signal = Math.max(-1, Math.min(1, displaySignalValue(row)))
         const flowValue = Number(row?.net_value_flow_usd || 0)
         const gross = Number(row?.value_long_usd || 0) + Number(row?.value_short_usd || 0)
-        const left = Math.max(7, Math.min(93, 50 + signal * 42))
-        const fallbackBand = ((index % 5) - 2) * 7
+        const baseLeft = 50 + signal * 42
+        const left = Math.max(7, Math.min(93, baseLeft + (flowValue ? 0 : ((index % 3) - 1) * 2.8)))
+        const fallbackBand = ((index % 7) - 3) * 9
         const top = Math.max(9, Math.min(91, flowValue ? 50 - (flowValue / maxFlow) * 40 : 50 + fallbackBand))
-        const size = 24 + Math.sqrt(Math.max(0, gross) / maxGross) * 16
+        const size = 22 + Math.sqrt(Math.max(0, gross) / maxGross) * 12
         return <span
           key={String(row.coin)}
           className={`cc-flow-bubble ${signal < 0 ? 'negative' : 'positive'}`}
