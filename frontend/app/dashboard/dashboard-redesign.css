@@ -993,3 +993,12 @@ body:has(.cc-dashboard-page){
 @media(max-width:620px){
   .cc-dashboard-page>.cc-dashboard-shell{width:calc(100% - 18px)!important}
 }
+
+
+/* Override the retired six-column board rule: every current signal column is intentional. */
+@media(min-width:981px){
+  .cc-dashboard-page .cc-signal-board-card .cc-signal-table th:nth-child(n+3),
+  .cc-dashboard-page .cc-signal-board-card .cc-signal-table td:nth-child(n+3){
+    display:table-cell!important;
+  }
+}
