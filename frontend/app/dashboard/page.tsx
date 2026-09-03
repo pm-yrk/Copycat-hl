@@ -685,7 +685,7 @@ function MarketNarrativeCard({ narrative }: { narrative?: any }) {
         <p className="eyebrow live">Live market context</p>
         <h3 id="cc-market-narrative-title">News</h3>
       </div>
-      <span>Updated {marketNarrativeAge(narrative?.updated_at_ms)}</span>
+      <span suppressHydrationWarning>Updated {marketNarrativeAge(narrative?.updated_at_ms)}</span>
     </div>
     <div className="cc-market-news-list">
       {stories.map((story, index) => {
@@ -748,7 +748,7 @@ function CatalystWatchCard({ watch }: { watch?: any }) {
         <p className="eyebrow live">Crypto-first events</p>
         <h3 id="cc-catalyst-watch-title">Upcoming Events</h3>
       </div>
-      <span>{watch?.updated_at_ms ? `Updated ${marketNarrativeAge(watch.updated_at_ms)}` : 'Official sources'}</span>
+      <span suppressHydrationWarning>{watch?.updated_at_ms ? `Updated ${marketNarrativeAge(watch.updated_at_ms)}` : 'Official sources'}</span>
     </div>
     <div className="cc-catalyst-list">
       {events.length ? events.map((event, index) => {
@@ -876,7 +876,7 @@ function CurrentPositioningMap({ rows, icons }: { rows: any[]; icons: Record<str
         ><TokenLogo coin={row.coin} icons={icons} /></span>
       })}
     </div>
-    <div className="cc-map-caption"><span>Lower-priced / short</span><span>Higher-priced / long</span></div>
+    <div className="cc-map-caption"><span>Short positioning</span><span>Long positioning</span></div>
   </section>
 }
 
@@ -1110,7 +1110,7 @@ export default function Dashboard() {
     const bv = signalConvictionParts(b)
     return (bv.confidence - av.confidence) || (bv.strength - av.strength) || (bv.wallets - av.wallets) || (bv.net - av.net) || (bv.gross - av.gross)
   })[0] || null
-  const topFlow = [...alignedFlow].sort((a: any, b: any) => flowPressureScore(b) - flowPressureScore(a))[0] || null
+  const topFlow = [...alignedFlow].sort((a: any, b: any) => Math.abs(Number(b?.net_value_flow_usd || 0)) - Math.abs(Number(a?.net_value_flow_usd || 0)) || flowPressureScore(b) - flowPressureScore(a))[0] || null
   const openGross = longValue + shortValue
   const longShare = openGross > 0 ? (longValue / openGross) * 100 : 0
   const marketPulseInsights = (insights || []).filter(shouldShowInsight).slice(0, 5)
@@ -1146,7 +1146,7 @@ export default function Dashboard() {
         <article className="cc-pulse-orders">
           <span className="cc-pulse-label">Most recent orders</span>
           <div className="cc-order-list">
-            {visibleOrders.slice(0, 3).map((o: any) => <div className="cc-order-line" key={orderKey(o)}><TokenLogo coin={o.coin} icons={icons} /><AssetName coin={o.coin} details={mergedAssetDetails} row={o} compact /><span className={orderActionClass(o.side)}>{o.side}</span><WalletExplorerLink wallet={o.wallet} label={o.wallet_label} /><small>{ago(o.ts_ms)}</small></div>)}
+            {visibleOrders.slice(0, 3).map((o: any) => <div className="cc-order-line" key={orderKey(o)}><TokenLogo coin={o.coin} icons={icons} /><AssetName coin={o.coin} details={mergedAssetDetails} row={o} compact /><span className={orderActionClass(o.side)}>{o.side}</span><WalletExplorerLink wallet={o.wallet} label={o.wallet_label} /><small suppressHydrationWarning>{ago(o.ts_ms)}</small></div>)}
           </div>
         </article>
         {marketPulseInsights.length ? <article className="cc-pulse-insights">
