@@ -672,6 +672,30 @@ function MarketNarrativeSourceMark({ source, badge }: { source: string; badge: s
   </span>
 }
 
+function contextCheckedNewsSentiment(story: MarketNarrativeStory) {
+  const supplied = String(story?.sentiment || 'neutral').toLowerCase()
+  const title = String(story?.title || '').toLowerCase()
+
+  const bearishContext = [
+    /\b(?:cannot|can't|fails?|failed|struggles?)\s+(?:to\s+)?(?:break|clear|hold|reclaim)\b/i,
+    /\b(?:roadblock|resistance|rejection|sell-?off|liquidations?|outage|exploit|breach)\b/i,
+    /\bchok(?:e|ed|es|ing)\b.*\brall(?:y|ies)\b/i,
+    /\b(?:dump(?:s|ed|ing)?|plunge(?:s|d)?|slide(?:s|d)?|drop(?:s|ped)?|crash(?:es|ed)?)\b/i,
+    /\b(?:hack(?:ed|s|ing)?|withdrawals? paused|delayed sends|delayed receives)\b/i,
+  ]
+  if (bearishContext.some((pattern) => pattern.test(title))) return 'bearish'
+
+  const bullishContext = [
+    /\b(?:breaks?|broke) above\b/i,
+    /\b(?:clears?|cleared) resistance\b/i,
+    /\b(?:reclaims?|reclaimed|back above)\b/i,
+    /\b(?:surges?|surged|rallies|rallied|accumulat(?:es|ed|ing)|inflows?|buying)\b/i,
+  ]
+  if (bullishContext.some((pattern) => pattern.test(title))) return 'bullish'
+
+  return supplied === 'bullish' || supplied === 'bearish' ? supplied : 'neutral'
+}
+
 function MarketNarrativeCard({ narrative }: { narrative?: any }) {
   const stories: MarketNarrativeStory[] = Array.isArray(narrative?.stories)
     ? narrative.stories.slice(0, 5)
@@ -689,7 +713,7 @@ function MarketNarrativeCard({ narrative }: { narrative?: any }) {
     </div>
     <div className="cc-market-news-list">
       {stories.map((story, index) => {
-        const sentiment = String(story?.sentiment || 'neutral').toLowerCase()
+        const sentiment = contextCheckedNewsSentiment(story)
         const source = String(story?.source || 'Source')
         const badge = String(story?.badge || source.slice(0, 2)).slice(0, 4).toUpperCase()
         return <a
@@ -707,7 +731,7 @@ function MarketNarrativeCard({ narrative }: { narrative?: any }) {
         </a>
       })}
     </div>
-    <small className="cc-market-narrative-note">{narrative?.note || 'Automated headline classification; informational only.'}</small>
+    <small className="cc-market-narrative-note">Context-checked headline lean; informational only. Headlines link to the original publishers.</small>
   </section>
 }
 // COPYCAT_MARKET_NARRATIVE_CARD_V2_END
