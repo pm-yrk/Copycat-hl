@@ -1,0 +1,1 @@
+The image files in this folder are public build screenshots used by the GitHub README.
