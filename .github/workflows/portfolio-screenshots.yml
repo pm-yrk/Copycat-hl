@@ -10,103 +10,26 @@ permissions:
   contents: write
 
 jobs:
-  capture:
+  publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 5
 
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install frontend dependencies
-        working-directory: frontend
-        run: npm ci --no-audit --no-fund
-
-      - name: Build the same static frontend used on Cloudflare Pages
-        working-directory: frontend
-        env:
-          CLOUDFLARE_PAGES: "1"
-          NEXT_PUBLIC_STATIC_EXPORT: "true"
-          NEXT_PUBLIC_SNAPSHOT_FIRST: "true"
-          NEXT_PUBLIC_API_BASE_URL: "https://hwt-api.onrender.com"
-        run: npm run build:cloudflare
-
-      - name: Install Chromium
-        run: npx --yes playwright@1.55.0 install --with-deps chromium
-
-      - name: Serve the build and capture portfolio views
+      - name: Save the current dashboard screenshot as a static portfolio image
         run: |
-          mkdir -p docs/portfolio
-          python3 -m http.server 4173 --directory frontend/out >/tmp/copycat-http.log 2>&1 &
-          SERVER_PID=$!
-          trap 'kill $SERVER_PID || true' EXIT
+          cp docs/portfolio/copycat-dashboard.png docs/portfolio/copycat-static-2026-09-04.png
 
-          for attempt in {1..20}; do
-            if curl -fsS http://127.0.0.1:4173/ >/dev/null; then
-              break
-            fi
-            sleep 1
-          done
-
-          npx --yes playwright@1.55.0 screenshot \
-            --browser chromium \
-            --viewport-size "1440,900" \
-            --wait-for-timeout 6000 \
-            http://127.0.0.1:4173/ \
-            /tmp/copycat-home.png
-
-          DASHBOARD_URL="http://127.0.0.1:4173/dashboard.html"
-          if [ -f frontend/out/dashboard/index.html ]; then
-            DASHBOARD_URL="http://127.0.0.1:4173/dashboard/index.html"
-          elif [ ! -f frontend/out/dashboard.html ]; then
-            echo "::error::Dashboard HTML was not found in the static export."
-            exit 1
-          fi
-
-          npx --yes playwright@1.55.0 screenshot \
-            --browser chromium \
-            --viewport-size "1440,900" \
-            --wait-for-timeout 8000 \
-            "$DASHBOARD_URL" \
-            /tmp/copycat-dashboard.png
-
-      - name: Convert portfolio images to lightweight JPGs
-        run: |
-          python3 -m pip install --quiet pillow
-          python3 - <<'PY'
-          from PIL import Image
-
-          pairs = [
-              ("/tmp/copycat-home.png", "docs/portfolio/copycat-home.jpg"),
-              ("/tmp/copycat-dashboard.png", "docs/portfolio/copycat-dashboard.jpg"),
-          ]
-
-          for source, target in pairs:
-              image = Image.open(source).convert("RGB")
-              image.save(target, "JPEG", quality=80, optimize=True)
-          PY
-
-      - name: Upload screenshots
-        uses: actions/upload-artifact@v4
-        with:
-          name: portfolio-screenshots
-          path: docs/portfolio/*.jpg
-          retention-days: 7
-
-      - name: Keep the latest screenshots in the repository
+      - name: Commit the static screenshot
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git pull --rebase origin main
-          git add docs/portfolio/copycat-home.jpg docs/portfolio/copycat-dashboard.jpg
+          git add docs/portfolio/copycat-static-2026-09-04.png
           if git diff --cached --quiet; then
-            echo "Portfolio screenshots are already current."
+            echo "Static screenshot already exists."
           else
-            git commit -m "Refresh Copycat portfolio screenshots"
+            git commit -m "Add static Copycat portfolio screenshot"
             git push origin HEAD:main
           fi
