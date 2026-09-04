@@ -2,7 +2,7 @@
 
 **A live Hyperliquid data product that turns the positioning of consistently strong wallets into a market view that is actually readable.**
 
-![Copycat current build](docs/portfolio/copycat-static-2026-09-04.png)
+![Copycat current build](docs/portfolio/copycat-readme-current.jpg)
 
 ## Why I built it
 
