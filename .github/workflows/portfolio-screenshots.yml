@@ -57,9 +57,8 @@ jobs:
             --browser chromium \
             --viewport-size "1440,900" \
             --wait-for-timeout 6000 \
-            --full-page \
             http://127.0.0.1:4173/ \
-            docs/portfolio/copycat-home.png
+            /tmp/copycat-home.png
 
           DASHBOARD_URL="http://127.0.0.1:4173/dashboard.html"
           if [ -f frontend/out/dashboard/index.html ]; then
@@ -73,15 +72,30 @@ jobs:
             --browser chromium \
             --viewport-size "1440,900" \
             --wait-for-timeout 8000 \
-            --full-page \
             "$DASHBOARD_URL" \
-            docs/portfolio/copycat-dashboard.png
+            /tmp/copycat-dashboard.png
+
+      - name: Convert portfolio images to lightweight JPGs
+        run: |
+          python3 -m pip install --quiet pillow
+          python3 - <<'PY'
+          from PIL import Image
+
+          pairs = [
+              ("/tmp/copycat-home.png", "docs/portfolio/copycat-home.jpg"),
+              ("/tmp/copycat-dashboard.png", "docs/portfolio/copycat-dashboard.jpg"),
+          ]
+
+          for source, target in pairs:
+              image = Image.open(source).convert("RGB")
+              image.save(target, "JPEG", quality=80, optimize=True)
+          PY
 
       - name: Upload screenshots
         uses: actions/upload-artifact@v4
         with:
           name: portfolio-screenshots
-          path: docs/portfolio
+          path: docs/portfolio/*.jpg
           retention-days: 7
 
       - name: Keep the latest screenshots in the repository
@@ -89,7 +103,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git pull --rebase origin main
-          git add docs/portfolio/copycat-home.png docs/portfolio/copycat-dashboard.png
+          git add docs/portfolio/copycat-home.jpg docs/portfolio/copycat-dashboard.jpg
           if git diff --cached --quiet; then
             echo "Portfolio screenshots are already current."
           else
