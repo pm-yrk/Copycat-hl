@@ -1,0 +1,42 @@
+name: Verify GitHub README rendering
+
+on:
+  push:
+    paths:
+      - ".github/workflows/verify-github-readmes.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Install Chromium for Playwright
+        run: npx --yes playwright@1.55.0 install --with-deps chromium
+
+      - name: Capture public GitHub repository pages
+        run: |
+          mkdir -p /tmp/readme-check
+          npx --yes playwright@1.55.0 screenshot \
+            --browser chromium \
+            --viewport-size "1440,1800" \
+            --wait-for-timeout 6000 \
+            https://github.com/pm-yrk/busstops \
+            /tmp/readme-check/busstops-github.png
+
+          npx --yes playwright@1.55.0 screenshot \
+            --browser chromium \
+            --viewport-size "1440,1800" \
+            --wait-for-timeout 6000 \
+            https://github.com/pm-yrk/Copycat-hl \
+            /tmp/readme-check/copycat-github.png
+
+      - name: Upload rendered-page screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: github-readme-render-check
+          path: /tmp/readme-check/*.png
+          retention-days: 1
