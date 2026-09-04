@@ -25,6 +25,8 @@ That became Copycat.
 
 The simple version is: **find good traders → make their positions comparable → cancel the noise → show what is left.**
 
+![Copycat live dashboard](docs/portfolio/copycat-dashboard.png)
+
 ## What I was responsible for
 
 I came up with what the product should do, how the ranking and consensus should behave, what the dashboard needed to explain and the rules I wanted the data to follow.
