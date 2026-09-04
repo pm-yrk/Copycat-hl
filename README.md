@@ -1,124 +1,108 @@
-
 # Copycat
 
-**Live Hyperliquid wallet intelligence and a consensus-weighted market index.**
+**A live Hyperliquid data product that turns the positioning of consistently strong wallets into a market view that is actually readable.**
 
-Copycat is a data product that discovers active Hyperliquid wallets, evaluates
-their trading history, selects a high-quality live cohort and turns their
-current positioning into transparent market signals.
+![Copycat current build](docs/portfolio/copycat-home.png)
 
-> Status: active personal project and portfolio case study.
+## Why I built it
 
-## Overview
+I kept seeing crypto dashboards that basically answered **which wallet is biggest?** or **who has made the most money?** That is interesting, but it does not automatically tell you whether a group of good traders actually agrees on anything right now.
 
-The project answers a practical question:
+I wanted to see if I could build something that answered a more useful question:
 
-> What are consistently profitable Hyperliquid wallets doing right now, and
-> where do they genuinely agree?
+> **What are consistently profitable Hyperliquid wallets doing right now, and where do they genuinely agree?**
 
-Copycat combines wallet discovery, historical scoring, live position
-monitoring, market aggregation and public JSON snapshots in one system.
+That became Copycat.
 
-## Key features
+## How it works in plain English
 
-- Discovers wallets from live Hyperliquid market activity.
-- Deeply analyses wallet fills, fees, funding and trading consistency.
-- Selects a live cohort using strict minimum-history and quality rules.
-- Aggregates long and short exposure by asset.
-- Produces an equity-normalised consensus portfolio.
-- Lets opposing long and short positions cancel rather than overstating a
-  divided signal.
-- Excludes stablecoins from directional portfolio allocation.
-- Publishes read-only dashboard and API snapshots to Cloudflare R2.
-- Includes market narrative, catalyst monitoring and data-quality checks.
-- Supports desktop and mobile dashboards.
+1. **Find active wallets.** Copycat discovers wallets from Hyperliquid market activity and keeps its own local registry.
+2. **Check their history.** It looks at trading history, fills, fees, funding, consistency and minimum-history rules rather than trusting a leaderboard position on its own.
+3. **Choose the live cohort.** The best qualified wallets from the indexed universe are selected for live monitoring.
+4. **Make the wallets comparable.** A huge wallet should not automatically overpower a smaller but consistently good one, so each position is measured against that wallet's own perpetual-account equity and each wallet's total contribution is capped.
+5. **Let disagreement cancel out.** If strong wallets are split between long and short on the same asset, the model reduces or removes that signal rather than pretending there is conviction.
+6. **Publish the result.** The remaining consensus becomes asset signals, long/short exposure, a model portfolio and a synthetic Copycat Index, with read-only snapshots feeding the public interface.
+
+The simple version is: **find good traders → make their positions comparable → cancel the noise → show what is left.**
+
+## What I was responsible for
+
+I came up with what the product should do, how the ranking and consensus should behave, what the dashboard needed to explain and the rules I wanted the data to follow.
+
+A big part of the project has been checking whether the numbers mean what the interface says they mean. For example, I have had to separate total wallet value from perpetual-account equity, fix cases where token pricing could inflate wallet values, make the dashboard and API use the same selected-wallet source and rework the portfolio logic so opposing positions actually cancel.
+
+That validation side is probably the best description of how I work on projects like this: **decide what the system is supposed to mean, test the output, find where reality does not match the intention, then keep refining it.**
+
+### How I use AI
+
+I use AI heavily for implementation. I am not claiming I manually wrote every line of Python or TypeScript in this repository.
+
+What I own is the **product idea, requirements, scoring and data rules, dashboard behaviour, validation, QA and the decisions about what the result should mean**. I use AI to get from those decisions to working software much faster, then I review the output against the actual product logic rather than assuming generated code is right.
+
+For me, the useful skill is not pretending AI was not involved. It is being able to take an idea, make the requirements specific enough to build, spot when the output is wrong and get it to a working result.
+
+## What the project demonstrates
+
+- Turning a vague question into measurable rules and a working data product.
+- Designing KPIs and scoring rather than just displaying raw API data.
+- Working with messy live data and distinguishing similar-looking measures that mean different things.
+- Building validation and data-quality checks around a dashboard.
+- Automating data collection, ranking, publishing and alerting.
+- Explaining a reasonably complicated model in normal language.
+- Using AI-assisted development while still owning the product decisions and QA.
+
+## The consensus model
+
+Each selected wallet is treated as a source of information rather than being weighted purely by account size.
+
+For each wallet:
+
+1. Position value is divided by the wallet's perpetual-account equity.
+2. Total contribution is capped so one wallet cannot dominate the result.
+3. Higher-ranked wallets get a small additional influence.
+4. Long and short positions in the same asset cancel each other.
+5. Assets need participation from multiple wallets and a minimum level of agreement.
+6. Stablecoins are excluded from directional allocation.
+7. The remaining asset scores are normalised into portfolio weights.
+
+So if the selected cohort is only long BTC, the model can end up heavily or entirely allocated to BTC. If it is roughly 51% long and 49% short, that is disagreement, not a strong BTC signal, and the allocation should be tiny or zero.
 
 ## Architecture
 
 ```text
 Hyperliquid public APIs
-        |
-        v
-Wallet discovery and registry
-        |
-        v
+        ↓
+Wallet discovery + registry
+        ↓
 Historical quality analysis
-        |
-        v
+        ↓
 Qualified live wallet cohort
-        |
-        v
+        ↓
 Local snapshot publisher
-        |
-        +--> Consensus index
-        +--> Asset signals
-        +--> Exposure and flow tables
-        +--> Data-quality snapshots
-        |
-        v
-Cloudflare R2 JSON snapshots
-        |
-        v
-Next.js dashboard and public data pages
+        ↓
+Consensus index / asset signals / exposure / data-quality checks
+        ↓
+Cloudflare R2 read-only JSON snapshots
+        ↓
+Next.js public interface
 ```
 
-## Repository structure
+**Main tools:** Python, TypeScript, Next.js, React, Hyperliquid public APIs, SQLite, Cloudflare R2 / Pages, PowerShell automation and GitHub Actions.
 
-```text
-frontend/   Next.js dashboard and public data interface
-backend/    Application and API services
-scripts/    Discovery, ranking, publishing and maintenance tools
-docs/       Methodology, architecture and implementation notes
-infra/      Infrastructure configuration
-supabase/   Earlier database integration assets
-```
+## Things I do not want the project to pretend
 
-## Consensus portfolio methodology
+- This is **not** a historical backtest proving the strategy would have made a particular return.
+- Public Hyperliquid history has limits, so a wallet can be excluded when there is not enough history to verify it properly.
+- The selected cohort is the best qualified set from Copycat's indexed universe, not a claim that these are definitively the best wallets on the entire platform.
+- The Copycat Index is synthetic and informational. It does not include execution costs, slippage or guaranteed tradability.
+- Nothing in the project is financial advice.
 
-Each selected wallet is treated as a source of information rather than being
-weighted only by account size.
+## Portfolio case study
 
-For each wallet:
+[`docs/PORTFOLIO_CASE_STUDY.md`](docs/PORTFOLIO_CASE_STUDY.md) goes into more detail on the problems I found while building it, why I changed the model and how I validated the results.
 
-1. Position value is divided by the wallet's perpetual-account equity.
-2. The wallet's total signal contribution is capped.
-3. Higher-ranked wallets receive a small additional influence.
-4. Long and short positions in the same asset cancel.
-5. Assets require participation from multiple wallets and a minimum level of
-   agreement.
-6. Stablecoins are excluded from directional allocations.
-7. Remaining asset scores are normalised into portfolio weights.
-
-If every selected wallet is only long BTC, the portfolio can be 100% BTC. A
-51% long versus 49% short split produces little or no portfolio allocation.
-
-The published index is synthetic. It measures how the consensus portfolio
-would move from its start point; it is not a claim of the wallets' realised
-historical profit.
-
-## Technology
-
-- Python
-- TypeScript
-- Next.js
-- React
-- Hyperliquid public APIs
-- SQLite
-- Cloudflare R2
-- PowerShell automation
-- Git and GitHub
-
-## Running locally
-
-### Requirements
-
-- Python 3
-- Node.js and npm
-- A copy of the required environment example files
-- Hyperliquid public API access
-- Cloudflare R2 credentials only when publishing snapshots
-
-### Frontend
+<details>
+<summary><strong>Running locally</strong></summary>
 
 ```bash
 cd frontend
@@ -126,42 +110,16 @@ npm install
 npm run dev
 ```
 
-### Configuration
+Copy the relevant `.env.example` file to its local non-example filename and replace placeholder values. Real credentials, bot tokens, wallet keys, local databases and runtime output should never be committed.
 
-Copy the relevant `.env.example` file to its local non-example filename and
-replace placeholder values. Never commit real credentials.
-
-The snapshot publisher has its own example configuration at:
+The local snapshot publisher has its own example configuration at:
 
 ```text
 scripts/local_snapshot_publisher/publisher.env.example
 ```
 
-## Data quality and limitations
-
-- Copycat uses public Hyperliquid data and is subject to API availability,
-  caching and history limits.
-- A wallet may be excluded when its complete history cannot be verified.
-- The live cohort is selected from the locally indexed universe; it is not a
-  guaranteed platform-wide ranking.
-- Wallet values can differ between explorers when perp equity, spot balances
-  and unified-account collateral are labelled differently.
-- The index is informational and does not include execution costs, slippage or
-  guaranteed tradability.
-- Nothing in this repository is financial advice.
-
-## Portfolio case study
-
-A more interview-focused explanation is available in
-[`docs/PORTFOLIO_CASE_STUDY.md`](docs/PORTFOLIO_CASE_STUDY.md).
-
-## Security
-
-Never commit passwords, API secrets, private keys, bot tokens, wallet private
-keys, local databases or runtime output. See [`SECURITY.md`](SECURITY.md).
+</details>
 
 ## Ownership
 
-Copyright (c) 2026 Paul Murrin. All rights reserved.
-
-No open-source licence is granted unless a separate `LICENSE` file is added.
+Copyright © 2026 Paul Murrin. All rights reserved. No open-source licence is granted unless a separate `LICENSE` file is added.
