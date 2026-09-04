@@ -9,6 +9,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: portfolio-screenshots
+  cancel-in-progress: true
+
 jobs:
   capture:
     runs-on: ubuntu-latest
@@ -75,38 +79,59 @@ jobs:
             "$DASHBOARD_URL" \
             /tmp/copycat-dashboard.png
 
-      - name: Convert portfolio images to lightweight JPGs
+      - name: Create fresh README JPEGs
         run: |
           python3 -m pip install --quiet pillow
           python3 - <<'PY'
           from PIL import Image
 
           pairs = [
-              ("/tmp/copycat-home.png", "docs/portfolio/copycat-home.jpg"),
-              ("/tmp/copycat-dashboard.png", "docs/portfolio/copycat-dashboard.jpg"),
+              ("/tmp/copycat-home.png", "docs/portfolio/copycat-home-v7.jpg"),
+              ("/tmp/copycat-dashboard.png", "docs/portfolio/copycat-dashboard-v7.jpg"),
           ]
 
           for source, target in pairs:
               image = Image.open(source).convert("RGB")
-              image.save(target, "JPEG", quality=80, optimize=True)
+              image.save(target, "JPEG", quality=82, optimize=True, progressive=False)
+              check = Image.open(target)
+              check.verify()
+          PY
+          file docs/portfolio/copycat-home-v7.jpg docs/portfolio/copycat-dashboard-v7.jpg
+
+      - name: Point README at the fresh images
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path("README.md")
+          text = path.read_text()
+          text = re.sub(
+              r"!\[Copycat current build\]\([^\n]+\)",
+              "![Copycat current build](docs/portfolio/copycat-home-v7.jpg)",
+              text,
+          )
+          text = re.sub(
+              r"!\[Copycat live dashboard\]\([^\n]+\)",
+              "![Copycat live dashboard](docs/portfolio/copycat-dashboard-v7.jpg)",
+              text,
+          )
+          path.write_text(text)
           PY
 
       - name: Upload screenshots
         uses: actions/upload-artifact@v4
         with:
-          name: portfolio-screenshots
-          path: docs/portfolio/*.jpg
+          name: portfolio-screenshots-v7
+          path: docs/portfolio/*-v7.jpg
           retention-days: 7
 
-      - name: Keep the latest screenshots in the repository
+      - name: Commit README and screenshots normally with git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git pull --rebase origin main
-          git add docs/portfolio/copycat-home.jpg docs/portfolio/copycat-dashboard.jpg
-          if git diff --cached --quiet; then
-            echo "Portfolio screenshots are already current."
-          else
-            git commit -m "Refresh Copycat portfolio screenshots"
-            git push origin HEAD:main
-          fi
+          git add README.md docs/portfolio/copycat-home-v7.jpg docs/portfolio/copycat-dashboard-v7.jpg
+          git status --short
+          git commit -m "Fix Copycat README screenshots"
+          git push origin HEAD:main
