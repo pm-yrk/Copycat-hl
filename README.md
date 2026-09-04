@@ -2,7 +2,7 @@
 
 **A live Hyperliquid data product that turns the positioning of consistently strong wallets into a market view that is actually readable.**
 
-![Copycat current build](https://raw.githubusercontent.com/pm-yrk/Copycat-hl/main/docs/portfolio/readme-preview-v3.jpg?v=20260904-1402)
+![Copycat current build](docs/portfolio/copycat-home.jpg)
 
 ## Why I built it
 
@@ -24,6 +24,8 @@ That became Copycat.
 6. **Publish the result.** The remaining consensus becomes asset signals, long/short exposure, a model portfolio and a synthetic Copycat Index, with read-only snapshots feeding the public interface.
 
 The simple version is: **find good traders → make their positions comparable → cancel the noise → show what is left.**
+
+![Copycat live dashboard](docs/portfolio/copycat-dashboard.jpg)
 
 ## What I was responsible for
 
