@@ -7,7 +7,7 @@ on:
       - ".github/workflows/portfolio-screenshots.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   capture:
@@ -41,7 +41,7 @@ jobs:
 
       - name: Serve the build and capture portfolio views
         run: |
-          mkdir -p portfolio-screenshots
+          mkdir -p docs/portfolio
           python3 -m http.server 4173 --directory frontend/out >/tmp/copycat-http.log 2>&1 &
           SERVER_PID=$!
           trap 'kill $SERVER_PID || true' EXIT
@@ -62,7 +62,7 @@ jobs:
             --wait-for-timeout 6000 \
             --full-page \
             http://127.0.0.1:4173/ \
-            portfolio-screenshots/home.png
+            docs/portfolio/copycat-home.png
 
           DASHBOARD_URL="http://127.0.0.1:4173/dashboard.html"
           if [ -f frontend/out/dashboard/index.html ]; then
@@ -78,11 +78,23 @@ jobs:
             --wait-for-timeout 8000 \
             --full-page \
             "$DASHBOARD_URL" \
-            portfolio-screenshots/dashboard.png
+            docs/portfolio/copycat-dashboard.png
 
       - name: Upload screenshots
         uses: actions/upload-artifact@v4
         with:
           name: portfolio-screenshots
-          path: portfolio-screenshots
+          path: docs/portfolio
           retention-days: 7
+
+      - name: Keep the latest screenshots in the repository
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/portfolio/copycat-home.png docs/portfolio/copycat-dashboard.png
+          if git diff --cached --quiet; then
+            echo "Portfolio screenshots are already current."
+          else
+            git commit -m "Refresh Copycat portfolio screenshots"
+            git push
+          fi
