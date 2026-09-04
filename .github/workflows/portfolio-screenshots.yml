@@ -53,6 +53,9 @@ jobs:
             sleep 1
           done
 
+          echo "Static export routes:"
+          find frontend/out -maxdepth 2 -type f -name '*.html' -print | sort
+
           npx --yes playwright@1.55.0 screenshot \
             --browser chromium \
             --viewport-size "1440,900" \
@@ -61,12 +64,20 @@ jobs:
             http://127.0.0.1:4173/ \
             portfolio-screenshots/home.png
 
+          DASHBOARD_URL="http://127.0.0.1:4173/dashboard.html"
+          if [ -f frontend/out/dashboard/index.html ]; then
+            DASHBOARD_URL="http://127.0.0.1:4173/dashboard/index.html"
+          elif [ ! -f frontend/out/dashboard.html ]; then
+            echo "::error::Dashboard HTML was not found in the static export."
+            exit 1
+          fi
+
           npx --yes playwright@1.55.0 screenshot \
             --browser chromium \
             --viewport-size "1440,900" \
             --wait-for-timeout 8000 \
             --full-page \
-            http://127.0.0.1:4173/dashboard/ \
+            "$DASHBOARD_URL" \
             portfolio-screenshots/dashboard.png
 
       - name: Upload screenshots
