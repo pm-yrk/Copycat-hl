@@ -1,0 +1,1 @@
+Static portfolio screenshot copied from the current Copycat build on 2026-09-04.
