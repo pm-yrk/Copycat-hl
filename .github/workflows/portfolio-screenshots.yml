@@ -1,0 +1,77 @@
+name: Portfolio screenshots
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/portfolio-screenshots.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci --no-audit --no-fund
+
+      - name: Build the same static frontend used on Cloudflare Pages
+        working-directory: frontend
+        env:
+          CLOUDFLARE_PAGES: "1"
+          NEXT_PUBLIC_STATIC_EXPORT: "true"
+          NEXT_PUBLIC_SNAPSHOT_FIRST: "true"
+          NEXT_PUBLIC_API_BASE_URL: "https://hwt-api.onrender.com"
+        run: npm run build:cloudflare
+
+      - name: Install Chromium
+        run: npx --yes playwright@1.55.0 install --with-deps chromium
+
+      - name: Serve the build and capture portfolio views
+        run: |
+          mkdir -p portfolio-screenshots
+          python3 -m http.server 4173 --directory frontend/out >/tmp/copycat-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID || true' EXIT
+
+          for attempt in {1..20}; do
+            if curl -fsS http://127.0.0.1:4173/ >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+
+          npx --yes playwright@1.55.0 screenshot \
+            --browser chromium \
+            --viewport-size "1440,900" \
+            --wait-for-timeout 6000 \
+            --full-page \
+            http://127.0.0.1:4173/ \
+            portfolio-screenshots/home.png
+
+          npx --yes playwright@1.55.0 screenshot \
+            --browser chromium \
+            --viewport-size "1440,900" \
+            --wait-for-timeout 8000 \
+            --full-page \
+            http://127.0.0.1:4173/dashboard/ \
+            portfolio-screenshots/dashboard.png
+
+      - name: Upload screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: portfolio-screenshots
+          path: portfolio-screenshots
+          retention-days: 7
