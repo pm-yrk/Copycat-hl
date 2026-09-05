@@ -1,0 +1,125 @@
+name: Deploy Copycat to Cloudflare Pages
+
+# Direct-upload deployment. This deliberately does not depend on Cloudflare's GitHub App,
+# so a stale/broken Pages repository connection cannot block releases.
+#
+# Automatic runs are limited to frontend/config changes only; README/docs-only pushes do not
+# spend an Actions run or create a Cloudflare deployment.
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "frontend/**"
+      - "cloudflare-pages.toml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: copycat-cloudflare-pages-production
+  # If several frontend commits land quickly, only the newest build is useful.
+  cancel-in-progress: true
+
+env:
+  CLOUDFLARE_PAGES: "1"
+  NEXT_PUBLIC_STATIC_EXPORT: "true"
+  NEXT_PUBLIC_API_BASE_URL: "https://hwt-api.onrender.com"
+  NEXT_PUBLIC_DASHBOARD_FEED_POLL_MS: "60000"
+  NEXT_PUBLIC_DASHBOARD_TICK_POLL_MS: "15000"
+  NEXT_PUBLIC_PERFORMANCE_POLL_MS: "300000"
+  PAGES_PROJECT: "copycat-dd8"
+
+jobs:
+  deploy:
+    name: Build and deploy Pages
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Check Cloudflare credentials are configured
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::error::Missing repository secret CLOUDFLARE_ACCOUNT_ID"
+            exit 1
+          fi
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::Missing repository secret CLOUDFLARE_API_TOKEN"
+            exit 1
+          fi
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci --no-audit --no-fund
+
+      - name: Build static Cloudflare Pages site
+        working-directory: frontend
+        env:
+          # These are public browser configuration values, but keeping the existing Supabase
+          # values as repository secrets lets this direct build match the old Cloudflare build.
+          # If Copycat does not use them they may remain unset.
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: npm run build:cloudflare
+
+      - name: Verify static export
+        run: |
+          test -d frontend/out || {
+            echo "::error::frontend/out was not produced by the Next.js static export"
+            exit 1
+          }
+          test -f frontend/out/index.html || {
+            echo "::error::frontend/out/index.html is missing"
+            exit 1
+          }
+
+      - name: Deploy directly to existing Cloudflare Pages project
+        working-directory: frontend
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          npx --yes wrangler@4.37.0 pages deploy out \
+            --project-name "$PAGES_PROJECT" \
+            --branch main \
+            --commit-dirty=true
+
+      - name: Verify production site answers
+        run: |
+          URL="https://${PAGES_PROJECT}.pages.dev"
+          for attempt in 1 2 3 4 5 6; do
+            CODE=$(curl -L -sS -o /dev/null -w '%{http_code}' --max-time 20 "$URL" || true)
+            if [ "$CODE" = "200" ]; then
+              echo "Copycat is live at $URL"
+              exit 0
+            fi
+            echo "Attempt $attempt: HTTP ${CODE:-000}; waiting for Pages propagation"
+            sleep 10
+          done
+          echo "::error::Deployment completed but $URL did not return HTTP 200 in time"
+          exit 1
+
+      - name: Deployment summary
+        if: always()
+        run: |
+          {
+            echo "## Copycat Cloudflare Pages"
+            echo
+            echo "Direct deployment target: https://${PAGES_PROJECT}.pages.dev"
+            echo
+            echo "This workflow does not use the Cloudflare GitHub App repository connection."
+          } >> "$GITHUB_STEP_SUMMARY"
