@@ -2,7 +2,9 @@
 
 **A live Hyperliquid data product that turns the positioning of consistently strong wallets into a market view that is actually readable.**
 
-<img width="1440" height="2855" alt="Copycat_Home" src="https://github.com/user-attachments/assets/2a0ec615-5511-428d-ac3e-aba4e6996734" />
+[**Open the live preview →**]([https://copycat-dd8.pages.dev/])
+
+<img width="1471" height="1316" alt="Screenshot 2026-09-05 165818" src="https://github.com/user-attachments/assets/584236a4-8771-4b55-b73e-058d39b4b1bd" />
 
 ## Why I built it
 
@@ -25,7 +27,7 @@ That became Copycat.
 
 The simple version is: **find good traders → make their positions comparable → cancel the noise → show what is left.**
 
-<img width="1440" height="3376" alt="Copycat_Dashboard" src="https://github.com/user-attachments/assets/e8698e3f-aba8-459c-898b-f9394f015082" />
+<img width="1298" height="1352" alt="Screenshot 2026-09-05 170127" src="https://github.com/user-attachments/assets/c598644e-b649-4022-b77f-a3d13b2b7bb8" />
 
 ## What I was responsible for
 
