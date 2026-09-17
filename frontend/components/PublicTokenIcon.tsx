@@ -58,8 +58,15 @@ function dashboardTokenIcons() {
 
 export function canonicalPublicToken(symbol: string) {
   const clean = String(symbol || '').toUpperCase().trim()
+  // Defensive compatibility for snapshots produced before the publisher
+  // began resolving Hyperliquid numeric spot-market identifiers dynamically.
+  if (clean === '@107' || clean === '107') return 'HYPE'
   if (clean === 'USDC/CASH' || clean === 'USDCCASH' || clean === 'USDCASH' || clean === 'CASH') return 'USDC'
   return clean.replace(/[^A-Z0-9]/g, '')
+}
+
+export function displayPublicToken(symbol: string) {
+  return canonicalPublicToken(symbol) || String(symbol || '').toUpperCase().trim()
 }
 
 export default function PublicTokenIcon({ symbol, className = '' }: { symbol: string; className?: string }) {

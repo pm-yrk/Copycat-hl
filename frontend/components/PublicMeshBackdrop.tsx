@@ -268,17 +268,25 @@ export default function PublicMeshBackdrop({ variant = 'default' }: { variant?: 
     const particleCount = Math.round((mobileView.matches ? 28 : 50) * theme.density)
     const particles = createParticles(variant, particleCount)
     let particlePointerActive = false
+    const strandSteps = mobileView.matches ? 48 : 64
+    const primaryBaseY = Array.from({ length: PRIMARY_COUNT }, (_, index) =>
+      Array.from({ length: strandSteps + 1 }, (_, step) => ribbonY(index, PRIMARY_COUNT, step / strandSteps, 'primary', variant)))
+    const crossBaseY = Array.from({ length: CROSS_COUNT }, (_, index) =>
+      Array.from({ length: strandSteps + 1 }, (_, step) => ribbonY(index, CROSS_COUNT, step / strandSteps, 'cross', variant)))
 
     const setPhysics = () => {
-      node.style.setProperty('--mesh-physics-x', outerX.toFixed(2) + 'px')
-      node.style.setProperty('--mesh-physics-y', outerY.toFixed(2) + 'px')
-      node.style.setProperty('--mesh-physics-tilt', outerTilt.toFixed(3) + 'deg')
+      // Mobile does not use the outer transform, so avoid three needless
+      // style recalculations on every animation frame there.
+      if (!finePointer.matches) return
+      node.style.setProperty('--mesh-physics-x', outerX.toFixed(1) + 'px')
+      node.style.setProperty('--mesh-physics-y', outerY.toFixed(1) + 'px')
+      node.style.setProperty('--mesh-physics-tilt', outerTilt.toFixed(2) + 'deg')
     }
 
     const resizeCanvas = () => {
       const rect = canvas.getBoundingClientRect()
       if (!rect.width || !rect.height) return
-      const pixelRatio = Math.min(window.devicePixelRatio || 1, mobileView.matches ? 1.15 : 1.4)
+      const pixelRatio = Math.min(window.devicePixelRatio || 1, mobileView.matches ? 1 : 1.2)
       const width = Math.max(1, Math.round(rect.width * pixelRatio))
       const height = Math.max(1, Math.round(rect.height * pixelRatio))
       if (canvas.width !== width || canvas.height !== height) {
@@ -355,17 +363,18 @@ export default function PublicMeshBackdrop({ variant = 'default' }: { variant?: 
       return amount
     }
 
-    const traceStrand = (index: number, count: number, kind: RibbonKind, steps: number) => {
-      const base = ribbonY(index, count, 0, kind, variant)
+    const traceStrand = (index: number, kind: RibbonKind) => {
+      const basePoints = kind === 'primary' ? primaryBaseY[index] : crossBaseY[index]
+      const base = basePoints[0]
       const firstY = base + displacement(0, base, 0, index, kind)
       context.beginPath()
       context.moveTo(0, firstY)
       let previousX = 0
       let previousY = firstY
-      for (let step = 1; step <= steps; step++) {
-        const t = step / steps
+      for (let step = 1; step <= strandSteps; step++) {
+        const t = step / strandSteps
         const x = VIEW_WIDTH * t
-        const baseY = ribbonY(index, count, t, kind, variant)
+        const baseY = basePoints[step]
         const y = baseY + displacement(x, baseY, t, index, kind)
         const middleX = (previousX + x) * .5
         const middleY = (previousY + y) * .5
@@ -425,11 +434,9 @@ export default function PublicMeshBackdrop({ variant = 'default' }: { variant?: 
       drawParticles()
       context.lineCap = 'round'
       context.lineJoin = 'round'
-      const steps = mobileView.matches ? 60 : 86
-
       for (let index = 0; index < CROSS_COUNT; index++) {
         const center = Math.pow(Math.sin((index / (CROSS_COUNT - 1)) * Math.PI), 1.5)
-        traceStrand(index, CROSS_COUNT, 'cross', steps)
+        traceStrand(index, 'cross')
         context.strokeStyle = crossGradient
         context.lineWidth = .72 + center * .34
         context.globalAlpha = .065 + center * .22
@@ -438,7 +445,7 @@ export default function PublicMeshBackdrop({ variant = 'default' }: { variant?: 
 
       for (let index = 0; index < PRIMARY_COUNT; index++) {
         const center = Math.pow(Math.sin((index / (PRIMARY_COUNT - 1)) * Math.PI), 1.35)
-        traceStrand(index, PRIMARY_COUNT, 'primary', steps)
+        traceStrand(index, 'primary')
         if (center > .54) {
           context.strokeStyle = primaryGradient
           context.lineWidth = 3.15
@@ -499,7 +506,7 @@ export default function PublicMeshBackdrop({ variant = 'default' }: { variant?: 
       const elapsed = Math.max(12, now - lastPointerAt)
       const travelled = Math.hypot(x - lastPointerX, y - lastPointerY)
       const speed = travelled / elapsed * 1000
-      if (pointerActive && now - lastRippleAt > 42 && travelled > 4) {
+      if (pointerActive && now - lastRippleAt > 64 && travelled > 4) {
         ripples.push({
           x,
           lineIndex: nearest.lineIndex,
@@ -507,7 +514,7 @@ export default function PublicMeshBackdrop({ variant = 'default' }: { variant?: 
           born: simulationTime,
           strength: clamp(.58 + speed / 1350, .58, 1.45),
         })
-        if (ripples.length > 14) ripples.splice(0, ripples.length - 14)
+        if (ripples.length > 10) ripples.splice(0, ripples.length - 10)
         lastRippleAt = now
       }
       lastPointerX = x
@@ -533,6 +540,16 @@ export default function PublicMeshBackdrop({ variant = 'default' }: { variant?: 
       resizeCanvas()
     }
 
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        if (frame) window.cancelAnimationFrame(frame)
+        frame = 0
+        previousFrameAt = 0
+        return
+      }
+      if (!reducedMotion.matches && !frame) frame = window.requestAnimationFrame(animate)
+    }
+
     resizeCanvas()
     setPhysics()
     if (reducedMotion.matches) {
@@ -548,6 +565,7 @@ export default function PublicMeshBackdrop({ variant = 'default' }: { variant?: 
     window.addEventListener('pointerleave', releasePointer)
     window.addEventListener('blur', releasePointer)
     window.addEventListener('resize', onResize)
+    document.addEventListener('visibilitychange', onVisibilityChange)
 
     return () => {
       resizeObserver?.disconnect()
@@ -556,6 +574,7 @@ export default function PublicMeshBackdrop({ variant = 'default' }: { variant?: 
       window.removeEventListener('pointerleave', releasePointer)
       window.removeEventListener('blur', releasePointer)
       window.removeEventListener('resize', onResize)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
       if (frame) window.cancelAnimationFrame(frame)
     }
   }, [variant])

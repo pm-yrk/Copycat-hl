@@ -219,7 +219,7 @@ export default function PerformanceIndex({ variant = 'dashboard' }: { variant?: 
     }
   }
 
-  useEffect(() => { load(); const id = setInterval(load, compact ? 30000 : 10000); return () => clearInterval(id) }, [])
+  useEffect(() => { load(); const id = setInterval(load, compact ? 60000 : COPYCAT_PERFORMANCE_POLL_MS); return () => clearInterval(id) }, [])
 
   const weights = useMemo(() => (data.current_weights || []).slice(0, 5), [data.current_weights])
   const isBacktest = data.mode === 'backtest' && (data.points || []).length > 0
@@ -232,7 +232,7 @@ export default function PerformanceIndex({ variant = 'dashboard' }: { variant?: 
     ? `Backtested from ${shortDate(data.start_ts_ms)} | USDC margin excluded`
     : range === 'ALL'
       ? `Live history from ${shortDate(data.start_ts_ms)} | protected archive | no hindsight`
-      : `${range} window | selected-period returns and drawdown | no hindsight`
+      : `${range} window | selected-period return ${ret(viewData.copycat_return_pct)} | since inception ${ret(data.copycat_return_pct)} | no hindsight`
 
   return <section className={`cc-index-card ${compact ? 'home' : 'deep cc-index-dashboard-fit'}`}>
     <div className="cc-index-head">

@@ -4,12 +4,13 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import PublicNav from '../../components/PublicNav'
 import PublicMeshBackdrop from '../../components/PublicMeshBackdrop'
-import PublicTokenIcon from '../../components/PublicTokenIcon'
+import PublicTokenIcon, { displayPublicToken } from '../../components/PublicTokenIcon'
 import { apiGetFresh } from '../../lib/api'
 
 const MAX_LIVE_AGE_MS = Number(process.env.NEXT_PUBLIC_PUBLIC_LIVE_MAX_AGE_MS || 5 * 60 * 1000)
 
 type Tab = 'wallets' | 'markets' | 'activity' | 'endpoints'
+type CodeView = 'curl' | 'javascript' | 'python' | 'response'
 
 function compact(n: any) {
   const v = Number(n)
@@ -54,8 +55,8 @@ function signalText(row: any) {
 }
 function activityClass(side: any) {
   const value = String(side || '').toLowerCase()
-  if (value === 'sell' || value.includes('open short') || value.includes('close long')) return 'negative'
-  if (value === 'buy' || value.includes('open long') || value.includes('close short')) return 'positive'
+  if (value === 'sell' || value.includes('open short') || value.includes('add short') || value.includes('reduce long') || value.includes('close long')) return 'negative'
+  if (value === 'buy' || value.includes('open long') || value.includes('add long') || value.includes('reduce short') || value.includes('close short')) return 'positive'
   return ''
 }
 function rankSignalsLikeDashboard(rows: any[]) {
@@ -93,6 +94,8 @@ export default function ApiAccessPage() {
   const [screener, setScreener] = useState<any>({})
   const [feed, setFeed] = useState<any>({})
   const [tab, setTab] = useState<Tab>('markets')
+  const [codeView, setCodeView] = useState<CodeView>('curl')
+  const [copied, setCopied] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -115,7 +118,7 @@ export default function ApiAccessPage() {
       setError(results.every(r => r.status === 'rejected') ? 'Live Copycat API snapshots are temporarily unavailable.' : '')
     }
     load()
-    const id = window.setInterval(load, 30000)
+    const id = window.setInterval(load, 60000)
     return () => { cancelled = true; window.clearInterval(id) }
   }, [])
 
@@ -159,7 +162,7 @@ export default function ApiAccessPage() {
   const sample = marketLive ? ((screener?.rows || screener?.data || [])[0] || null) : null
   const base = endpointBase()
 
-  const codeSample = useMemo(() => {
+  const responseSample = useMemo(() => {
     if (!sample) return '{\n  "status": "waiting_for_fresh_snapshot"\n}'
     return JSON.stringify({
       status: screener?.status || 'ok',
@@ -169,13 +172,33 @@ export default function ApiAccessPage() {
     }, null, 2)
   }, [sample, screener])
 
+  const codeExamples = useMemo<Record<CodeView, string>>(() => {
+    const url = `${base}/api/token-screener-preview.json`
+    return {
+      curl: `curl --request GET \\\n+  --url '${url}' \\\n+  --header 'Accept: application/json'`,
+      javascript: `const response = await fetch('${url}', {\n  headers: { Accept: 'application/json' },\n})\n\nif (!response.ok) throw new Error(\`Copycat API ${'${response.status}'}\`)\nconst data = await response.json()\nconsole.log(data.rows)`,
+      python: `import requests\n\nresponse = requests.get(\n    '${url}',\n    headers={'Accept': 'application/json'},\n    timeout=10,\n)\nresponse.raise_for_status()\nprint(response.json()['rows'])`,
+      response: responseSample,
+    }
+  }, [base, responseSample])
+
+  async function copyCode() {
+    try {
+      await navigator.clipboard.writeText(codeExamples[codeView])
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1600)
+    } catch {
+      setCopied(false)
+    }
+  }
+
   const endpoints = [
     ['Dashboard feed', '/dashboard-feed.json', 'Aggregate live snapshot of market signals, flow, orders and model targets.'],
     ['Ranked wallets', '/api/leaderboard-preview.json', 'Current ranked cohort with account value and open exposure.'],
     ['Token screener', '/api/token-screener-preview.json', 'Market conviction, wallet counts and net positioning.'],
     ['Performance index', '/performance-index.json', 'Copycat Index and live BTC / ETH / S&P benchmark data.'],
     ['Coverage status', '/api/coverage-preview.json', 'Current data freshness, coverage and publisher status.'],
-    ['Ranking audit', '/api/ranking-audit.json', 'Ranking methodology and quality-control snapshot.'],
+    ['Platform health', '/api/platform-health.json', 'Publisher freshness and public snapshot availability.'],
   ]
 
   return <div className="public-redesign-root">
@@ -211,8 +234,9 @@ export default function ApiAccessPage() {
 
       <section className="public-api-code-section">
         <article className="public-code-card">
-          <header><div><h2>One request. Structured intelligence.</h2><span><b>GET</b> /api/token-screener-preview.json · response excerpt</span></div><em className={marketLive && sample ? 'live' : ''}>{marketLive && sample ? '200 LIVE' : 'WAITING'}</em></header>
-          <pre>{codeSample}</pre>
+          <header><div><h2>One request. Structured intelligence.</h2><span><b>GET</b> /api/token-screener-preview.json · real endpoint</span></div><em className={marketLive && sample ? 'live' : ''}>{marketLive && sample ? '200 LIVE' : 'WAITING'}</em></header>
+          <div className="public-code-toolbar"><div>{(['curl','javascript','python','response'] as CodeView[]).map(view => <button type="button" key={view} className={codeView === view ? 'active' : ''} onClick={() => setCodeView(view)}>{view === 'curl' ? 'cURL' : view === 'javascript' ? 'JavaScript' : view === 'python' ? 'Python' : 'Live response'}</button>)}</div><button type="button" className="public-copy-code" onClick={copyCode}>{copied ? 'Copied' : 'Copy'}</button></div>
+          <pre aria-live="polite">{codeExamples[codeView]}</pre>
         </article>
         <div className="public-api-benefits">
           <div><i>ϟ</i><span><b>Simple & predictable</b><small>Clean REST-style snapshot endpoints with consistent JSON responses.</small></span></div>
@@ -223,9 +247,9 @@ export default function ApiAccessPage() {
 
       <section className="public-api-browser">
         <header><div className="public-api-tabs">{(['wallets','markets','activity','endpoints'] as Tab[]).map(t => <button key={t} className={tab === t ? 'active' : ''} onClick={() => setTab(t)}>{t[0].toUpperCase()+t.slice(1)}</button>)}</div><span className={live ? 'live' : ''}>{live ? 'Live data' : 'Fresh data unavailable'}</span></header>
-        {tab === 'markets' ? <div className="public-api-table-block"><h3>Market positioning <small>Same dashboard feed • {freshness(marketDataTs || latestTs)}</small></h3>{markets.length ? <div className="public-table-scroll"><table><thead><tr><th>Asset</th><th>Conviction</th><th>Long wallets</th><th>Short wallets</th><th>Net exposure</th></tr></thead><tbody>{markets.slice(0,12).map((r:any)=><tr key={r.coin}><td><span className="public-api-token-cell"><PublicTokenIcon symbol={r.coin}/><b>{r.coin}</b></span></td><td className={displaySignalValue(r) < 0 ? 'negative' : 'positive'}>{signalText(r)}</td><td>{compact(r.wallets_long)}</td><td>{compact(r.wallets_short)}</td><td className={Number(r.net_value_usd)<0?'negative':'positive'}>{money(r.net_value_usd)}</td></tr>)}</tbody></table></div> : <div className="public-data-empty"><b>Waiting for a fresh market snapshot.</b><span>No bundled table is shown as live.</span></div>}</div> : null}
+        {tab === 'markets' ? <div className="public-api-table-block"><h3>Market positioning <small>Same dashboard feed • {freshness(marketDataTs || latestTs)}</small></h3>{markets.length ? <div className="public-table-scroll"><table><thead><tr><th>Asset</th><th>Conviction</th><th>Long wallets</th><th>Short wallets</th><th>Net exposure</th></tr></thead><tbody>{markets.slice(0,12).map((r:any)=><tr key={r.coin}><td><span className="public-api-token-cell"><PublicTokenIcon symbol={r.coin}/><b>{displayPublicToken(r.coin)}</b></span></td><td className={displaySignalValue(r) < 0 ? 'negative' : 'positive'}>{signalText(r)}</td><td>{compact(r.wallets_long)}</td><td>{compact(r.wallets_short)}</td><td className={Number(r.net_value_usd)<0?'negative':'positive'}>{money(r.net_value_usd)}</td></tr>)}</tbody></table></div> : <div className="public-data-empty"><b>Waiting for a fresh market snapshot.</b><span>No bundled table is shown as live.</span></div>}</div> : null}
         {tab === 'wallets' ? <div className="public-api-table-block"><h3>Ranked wallet cohort <small>{freshness(boardTs || latestTs)}</small></h3>{wallets.length ? <div className="public-table-scroll"><table><thead><tr><th>#</th><th>Wallet</th><th>Total value</th><th>Perp equity</th><th>Open exposure</th></tr></thead><tbody>{wallets.slice(0,20).map((r:any,i:number)=><tr key={r.wallet || i}><td>{r.rank || i+1}</td><td><a href={r.wallet ? `https://hypurrscan.io/address/${r.wallet}` : '#'} target="_blank" rel="noreferrer">{shortWallet(r)}</a></td><td>{money(r.total_wallet_value_usd)}</td><td>{money(r.perp_account_value_usd ?? r.account_value_usd)}</td><td>{money(r.open_position_value_usd)}</td></tr>)}</tbody></table></div> : <div className="public-data-empty"><b>Waiting for a fresh wallet snapshot.</b><span>No deploy-time wallet values are substituted.</span></div>}</div> : null}
-        {tab === 'activity' ? <div className="public-api-table-block"><h3>Recent tracked-wallet activity <small>{freshness(feedTs || latestTs)}</small></h3>{activity.length ? <div className="public-table-scroll"><table><thead><tr><th>Wallet</th><th>Action</th><th>Asset</th><th>Value</th><th>Time</th></tr></thead><tbody>{activity.slice(0,20).map((r:any,i:number)=><tr key={`${r.wallet}-${r.ts_ms}-${i}`}><td>{shortWallet(r)}</td><td className={activityClass(r.side || r.action)}>{r.side || r.action || 'Order'}</td><td><span className="public-api-token-cell"><PublicTokenIcon symbol={r.coin || r.asset}/><b>{r.coin || r.asset || '—'}</b></span></td><td>{money(r.delta_value_usd ?? r.position_value_usd ?? r.value_usd)}</td><td>{freshness(r.ts_ms)}</td></tr>)}</tbody></table></div> : <div className="public-data-empty"><b>Waiting for fresh wallet activity.</b><span>Activity only appears when the live feed is current.</span></div>}</div> : null}
+        {tab === 'activity' ? <div className="public-api-table-block"><h3>Recent tracked-wallet activity <small>{freshness(feedTs || latestTs)}</small></h3>{activity.length ? <div className="public-table-scroll"><table><thead><tr><th>Wallet</th><th>Action</th><th>Asset</th><th>Value</th><th>Time</th></tr></thead><tbody>{activity.slice(0,20).map((r:any,i:number)=><tr key={`${r.wallet}-${r.ts_ms}-${i}`}><td>{shortWallet(r)}</td><td className={activityClass(r.side || r.action)}>{r.side || r.action || 'Order'}</td><td><span className="public-api-token-cell"><PublicTokenIcon symbol={r.coin || r.asset}/><b>{displayPublicToken(r.coin || r.asset) || '—'}</b></span></td><td>{money(r.delta_value_usd ?? r.position_value_usd ?? r.value_usd)}</td><td>{freshness(r.ts_ms)}</td></tr>)}</tbody></table></div> : <div className="public-data-empty"><b>Waiting for fresh wallet activity.</b><span>Activity only appears when the live feed is current.</span></div>}</div> : null}
         {tab === 'endpoints' ? <div className="public-api-tab-endpoints">{endpoints.map(([title,path,desc])=><code key={title}><b>{title}</b><span>GET {base}{path}</span><em>{desc}</em></code>)}</div> : null}
       </section>
 

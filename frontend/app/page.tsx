@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import PublicNav from '../components/PublicNav'
 import PublicMeshBackdrop from '../components/PublicMeshBackdrop'
-import PublicTokenIcon, { canonicalPublicToken } from '../components/PublicTokenIcon'
+import PublicTokenIcon, { canonicalPublicToken, displayPublicToken } from '../components/PublicTokenIcon'
 import { apiGetFresh } from '../lib/api'
 
 const MAX_LIVE_AGE_MS = Number(process.env.NEXT_PUBLIC_PUBLIC_LIVE_MAX_AGE_MS || 5 * 60 * 1000)
@@ -41,8 +41,8 @@ function freshness(ts: any) {
 }
 function activityClass(side: any) {
   const value = String(side || '').toLowerCase()
-  if (value === 'sell' || value.includes('open short') || value.includes('close long')) return 'negative'
-  if (value === 'buy' || value.includes('open long') || value.includes('close short')) return 'positive'
+  if (value === 'sell' || value.includes('open short') || value.includes('add short') || value.includes('reduce long') || value.includes('close long')) return 'negative'
+  if (value === 'buy' || value.includes('open long') || value.includes('add long') || value.includes('reduce short') || value.includes('close short')) return 'positive'
   return ''
 }
 function isFresh(ts: any) {
@@ -314,7 +314,7 @@ export default function Home() {
               <article className="public-shot-signals"><header><b>Asset signal board</b><span>live conviction</span></header><div>{rankedSignals.slice(0,5).map((row:any,index:number)=>{const value=displaySignalValue(row);return <span key={row.coin}><i>{index+1}</i><PublicTokenIcon symbol={row.coin}/><b>{row.coin}</b><em className={value < 0 ? 'negative' : 'positive'}>{Math.round(Math.abs(value)*100)}% {value < 0 ? 'Short' : 'Long'}</em><small>{money(row.net_value_usd)}</small></span>})}</div></article>
               <article className="public-shot-performance"><header><b>Model performance</b><span>Last 24 hours</span></header>{perfReady ? <><div className="public-shot-chart"><svg viewBox="0 0 260 72" preserveAspectRatio="none"><path d={copycatPath}/></svg></div><div className="public-shot-performance-legend"><span><i className="public-index-mark">◇</i>Copycat <b className={perf24hReturns.copycat < 0 ? 'negative' : 'positive'}>{pct(perf24hReturns.copycat)}</b></span><span><PublicTokenIcon symbol="BTC"/>BTC <b className={perf24hReturns.btc < 0 ? 'negative' : 'positive'}>{pct(perf24hReturns.btc)}</b></span><span><PublicTokenIcon symbol="ETH"/>ETH <b className={perf24hReturns.eth < 0 ? 'negative' : 'positive'}>{pct(perf24hReturns.eth)}</b></span></div></> : <div className="public-data-empty"><b>24h window warming up.</b></div>}</article>
             </div>
-            <div className="public-shot-orders"><header><b>Most recent orders</b><span>same live cohort as dashboard</span></header><div>{orders.slice(0,3).map((row:any,index:number)=><span key={`${row.wallet}-${row.ts_ms}-${index}`}><PublicTokenIcon symbol={row.coin || row.asset}/><b>{row.coin || row.asset}</b><em className={activityClass(row.side)}>{row.side || 'Order'}</em><small>{String(row.wallet_label || row.wallet || 'Wallet').replace(/^(.{8}).*(.{4})$/, '$1…$2')}</small><strong>{money(row.delta_value_usd ?? row.position_value_usd)}</strong></span>)}</div></div>
+            <div className="public-shot-orders"><header><b>Most recent orders</b><span>same live cohort as dashboard</span></header><div>{orders.slice(0,3).map((row:any,index:number)=><span key={`${row.wallet}-${row.ts_ms}-${index}`}><PublicTokenIcon symbol={row.coin || row.asset}/><b>{displayPublicToken(row.coin || row.asset)}</b><em className={activityClass(row.side)}>{row.side || 'Order'}</em><small>{String(row.wallet_label || row.wallet || 'Wallet').replace(/^(.{8}).*(.{4})$/, '$1…$2')}</small><strong>{money(row.delta_value_usd ?? row.position_value_usd)}</strong></span>)}</div></div>
           </div> : <div className="public-data-empty"><b>Fresh dashboard snapshot unavailable.</b><span>The preview never substitutes made-up data.</span></div>}
         </div>
         <div className="public-telegram-preview">

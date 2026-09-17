@@ -13,7 +13,10 @@ const COPYCAT_TICK_POLL_MS = Number(process.env.NEXT_PUBLIC_DASHBOARD_TICK_POLL_
 
 
 function money(n: any) {
-  return '$' + Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })
+  const value = Number(n || 0)
+  if (!Number.isFinite(value)) return '$0'
+  const sign = value < 0 ? '-' : ''
+  return sign + '$' + Math.abs(value).toLocaleString(undefined, { maximumFractionDigits: 0 })
 }
 function useRollingNumber(value: any, durationMs = 850) {
   const target = Number(value || 0)
@@ -57,7 +60,13 @@ function compactMoney(n: any) {
   if (v >= 1_000) return `${sign}$${(v / 1_000).toFixed(1)}k`
   return `${sign}$${v.toFixed(0)}`
 }
-function pct(n: any) { return Math.round(Number(n || 0) * 100) + '%' }
+function exposureSharePct(n: any) {
+  const value = Math.abs(Number(n || 0) * 100)
+  if (!Number.isFinite(value) || value === 0) return '0%'
+  if (value < 0.1) return '<0.1%'
+  if (value < 10) return `${value.toFixed(1)}%`
+  return `${Math.round(value)}%`
+}
 function uiPct(n: any, digits = 0) {
   const num = Number(n || 0) * 100
   return `${num.toFixed(digits)}%`
@@ -174,8 +183,9 @@ function largestCurrentExposure(signals: any[]) {
 }
 function orderActionClass(side: any) {
   const s = String(side || '').toLowerCase()
-  if (s.includes('open short') || s.includes('add short') || s.includes('reduce long') || s.includes('close long')) return 'negative'
-  return 'positive'
+  if (s.includes('sell') || s.includes('open short') || s.includes('add short') || s.includes('reduce long') || s.includes('close long')) return 'negative'
+  if (s.includes('buy') || s.includes('open long') || s.includes('add long') || s.includes('reduce short') || s.includes('close short')) return 'positive'
+  return ''
 }
 function orderKey(o: any) {
   return [o.source || 'snapshot', o.wallet || '', o.coin || '', o.ts_ms || '', o.side || '', Math.round(Number(o.delta_value_usd || o.notional_usd || 0))].join(':')
@@ -229,6 +239,7 @@ const staticLogoUrls: Record<string, string> = {
 }
 function canonicalToken(symbol: string) {
   const clean = String(symbol || '').toUpperCase().trim()
+  if (clean === '@107' || clean === '107') return 'HYPE'
   if (clean === 'USDC/CASH' || clean === 'USDCCASH' || clean === 'USDCASH' || clean === 'CASH') return 'USDC'
   return clean.replace(/[^A-Z0-9]/g, '')
 }
@@ -241,7 +252,10 @@ function tokenFullName(symbol: string) {
 
 function displayToken(symbol: string) {
   const clean = String(symbol || '').toUpperCase().trim()
-  return canonicalToken(clean) === 'USDC' ? 'USDC' : clean
+  const canonical = canonicalToken(clean)
+  if (canonical === 'USDC') return 'USDC'
+  if (canonical === 'HYPE' && (clean === '@107' || clean === '107')) return 'HYPE'
+  return clean
 }
 function iconSources(symbol: string, apiUrl?: string) {
   const clean = canonicalToken(symbol)
@@ -323,7 +337,7 @@ function tokenColour(symbol: string, index: number) {
   return fallbackColours[raw] || fallbackColours[canonicalToken(raw)] || palette[index % palette.length]
 }
 
-type Segment = { coin: string; weight: number; color: string; originalWeight: number; direction?: string }
+type Segment = { coin: string; weight: number; color: string; originalWeight: number; displayPct: number; direction?: string }
 
 function AllocationDonut({ targets, signals, trackedValue, icons, assetDetails }: { targets: any[]; signals: any[]; trackedValue: number; icons: Record<string, string>; assetDetails: Record<string, AssetDetail> }) {
   const [hovered, setHovered] = useState<Segment | null>(null)
@@ -342,7 +356,17 @@ function AllocationDonut({ targets, signals, trackedValue, icons, assetDetails }
     const remaining = rows.slice(12).reduce((a: number, r: any) => a + r.weight, 0)
     if (remaining > 0) top = [...top, { coin: 'OTHER', weight: remaining, direction: 'mixed' }]
     const total = top.reduce((a: number, r: any) => a + r.weight, 0) || 1
-    return top.map((t: any, i: number) => ({ coin: t.coin, direction: t.direction, originalWeight: Number(t.weight || 0) / total, weight: Number(t.weight || 0) / total, color: tokenColour(t.coin, i) }))
+    const normalised = top.map((t: any, i: number) => ({ coin: t.coin, direction: t.direction, originalWeight: Number(t.weight || 0) / total, weight: Number(t.weight || 0) / total, color: tokenColour(t.coin, i) }))
+    // Largest-remainder apportionment keeps the displayed whole percentages
+    // truthful and guarantees that the visible allocation always totals 100%.
+    const floors = normalised.map((part) => Math.floor(part.originalWeight * 100))
+    const remainingPoints = Math.max(0, 100 - floors.reduce((sum, value) => sum + value, 0))
+    const remainderOrder = normalised
+      .map((part, index) => ({ index, remainder: part.originalWeight * 100 - floors[index] }))
+      .sort((a, b) => b.remainder - a.remainder || a.index - b.index)
+    const displayPcts = [...floors]
+    remainderOrder.slice(0, remainingPoints).forEach(({ index }) => { displayPcts[index] += 1 })
+    return normalised.map((part, index) => ({ ...part, displayPct: displayPcts[index] }))
   }, [targets, signals])
   let angle = -90
   const path = (cx: number, cy: number, r1: number, r2: number, a0: number, a1: number) => {
@@ -351,8 +375,8 @@ function AllocationDonut({ targets, signals, trackedValue, icons, assetDetails }
     return `M ${s1.x} ${s1.y} A ${r1} ${r1} 0 ${large} 1 ${e1.x} ${e1.y} L ${s2.x} ${s2.y} A ${r2} ${r2} 0 ${large} 0 ${e2.x} ${e2.y} Z`
   }
   if (!parts.length) return <div className="cc-empty-state">Targets will appear after refresh.</div>
-  return <div className="cc-donut-layout"><div className="cc-donut-stage"><svg viewBox="0 0 220 220" className="cc-donut-svg" aria-label="Copycat Index allocation">{parts.map((p: any) => { const start = angle; angle += p.weight * 360; return <path key={`${p.coin}-${p.direction}`} d={path(110, 110, 92, 50, start, angle - 1)} fill={p.color} onMouseEnter={() => setHovered(p)} onMouseLeave={() => setHovered(null)} onFocus={() => setHovered(p)} onBlur={() => setHovered(null)} tabIndex={0}><title>{p.direction === 'short' ? 'Short ' : p.direction === 'long' ? 'Long ' : ''}{displayToken(p.coin)}: {Math.round(p.originalWeight * 100)}%</title></path> })}<circle className="cc-donut-hole" cx="110" cy="110" r="50" /></svg><div className="cc-donut-tooltip">{hovered ? `${hovered.direction === 'short' ? 'Short ' : hovered.direction === 'long' ? 'Long ' : ''}${displayToken(hovered.coin)} ${Math.round(hovered.originalWeight * 100)}% index allocation` : 'USDC margin is excluded from this allocation.'}</div></div><div className="cc-donut-legend cc-scroll-y">{parts.map((p: any) => {
-    const allocationPct = Math.round(p.originalWeight * 100)
+  return <div className="cc-donut-layout"><div className="cc-donut-stage"><svg viewBox="0 0 220 220" className="cc-donut-svg" aria-label="Copycat Index allocation">{parts.map((p: any) => { const start = angle; angle += p.weight * 360; return <path key={`${p.coin}-${p.direction}`} d={path(110, 110, 92, 50, start, angle - 1)} fill={p.color} onMouseEnter={() => setHovered(p)} onMouseLeave={() => setHovered(null)} onFocus={() => setHovered(p)} onBlur={() => setHovered(null)} tabIndex={0}><title>{p.direction === 'short' ? 'Short ' : p.direction === 'long' ? 'Long ' : ''}{displayToken(p.coin)}: {p.displayPct}%</title></path> })}<circle className="cc-donut-hole" cx="110" cy="110" r="50" /></svg><div className="cc-donut-tooltip">{hovered ? `${hovered.direction === 'short' ? 'Short ' : hovered.direction === 'long' ? 'Long ' : ''}${displayToken(hovered.coin)} ${hovered.displayPct}% index allocation` : 'USDC margin is excluded from this allocation.'}</div></div><div className="cc-donut-legend cc-scroll-y">{parts.map((p: any) => {
+    const allocationPct = p.displayPct
     const allocationDirection = p.direction === 'short' ? 'short' : p.direction === 'long' ? 'long' : 'mixed'
     return <div className="cc-allocation-legend-row" key={`${p.coin}-${p.direction}`}><TokenLogo coin={p.coin} icons={icons} /><AssetName coin={p.coin} details={assetDetails} row={{ gross_exposure_usd: p.originalWeight * trackedValue, tilt: p.direction }} compact /><b className={`cc-allocation-legend-meta ${p.direction === 'short' ? 'negative' : p.direction === 'long' ? 'positive' : ''}`}>{allocationDirection} {allocationPct}%</b></div>
   })}</div></div>
@@ -1183,7 +1207,7 @@ function DashboardContent() {
     loadTick()
     const bootTimer = window.setTimeout(loadFull, 80)
     const tickId = setInterval(loadTick, COPYCAT_TICK_POLL_MS)
-    const fullId = setInterval(loadFull, 10000)
+    const fullId = setInterval(loadFull, COPYCAT_FEED_POLL_MS)
     return () => { clearTimeout(bootTimer); clearInterval(tickId); clearInterval(fullId) }
   }, [])
 
@@ -1274,7 +1298,7 @@ function DashboardContent() {
   const liveCoverageText = `${summary.live_wallets || 0}/${summary.qualified_wallets || 0} live wallets`
   const auditStatus = audit?.status || 'checking'
   const grossLeverageValue = grossLeverage(summary.tracked_open_position_value_usd, summary.tracked_account_value_usd)
-  const orderRows = orders.length ? orders : flow.slice(0, 12).map((r: any) => ({ coin: r.coin, side: Number(r.net_value_flow_usd) >= 0 ? 'Long' : 'Short', wallet_label: 'Wallet 0x1A…7F3B', wallet: r.wallet, ts_ms: summary.latest_signal_ts_ms }))
+  const orderRows = orders
   const orderSignature = useMemo(() => orderRows.slice(0, 50).map(orderKey).join('|'), [orderRows])
   useEffect(() => {
     orderStageTimers.current.forEach((timer) => window.clearTimeout(timer))
@@ -1356,6 +1380,7 @@ function DashboardContent() {
           <span className="cc-pulse-label">Most recent orders</span>
           <div className="cc-order-list">
             {visibleOrders.slice(0, 3).map((o: any) => <div className="cc-order-line" key={orderKey(o)}><TokenLogo coin={o.coin} icons={icons} /><AssetName coin={o.coin} details={mergedAssetDetails} row={o} compact /><span className={orderActionClass(o.side)}>{o.side}</span><WalletExplorerLink wallet={o.wallet} label={o.wallet_label} /><small suppressHydrationWarning>{ago(o.ts_ms)}</small></div>)}
+            {!visibleOrders.length ? <span className="cc-pulse-meta">No recent tracked-wallet orders in this window.</span> : null}
           </div>
         </article>
       </section>
@@ -1379,7 +1404,7 @@ function DashboardContent() {
         <div className="cc-scroll-table cc-scroll-y">
           <table className="cc-signal-table">
             <thead><tr><th>#</th><th className="cc-mobile-asset-logo-head" aria-label="Asset logo" /><SortTh label="Asset" sortKey="asset" sort={signalSort} setSort={setSignalSort} /><SortTh label="Signal" sortKey="conviction" sort={signalSort} setSort={setSignalSort} /><SortTh label="Confidence" sortKey="confidence" sort={signalSort} setSort={setSignalSort} /><SortTh label="Wallets" sortKey="wallets" sort={signalSort} setSort={setSignalSort} /><SortTh label="Wallet value L/S" sortKey="value_ls" sort={signalSort} setSort={setSignalSort} /><SortTh label="Net value" sortKey="net_value_usd" sort={signalSort} setSort={setSignalSort} /><SortTh label="% total value" sortKey="pct_total" sort={signalSort} setSort={setSignalSort} /></tr></thead>
-            <tbody>{sortedSignals.map((r, i) => <tr key={`${r.coin}-${i}`}><td>{i + 1}</td><td className="cc-mobile-asset-logo-cell" aria-hidden="true"><TokenLogo coin={r.coin} icons={icons} /></td><td><span className="cc-asset-cell"><TokenLogo coin={r.coin} icons={icons} /><AssetName coin={r.coin} details={mergedAssetDetails} row={r} /></span></td><td className={cls(displaySignalValue(r))}><span className={`cc-signal-pill ${signalDirectionClass(r)}`}>{displaySignalMagnitudePct(r)} {displaySignalDirection(r)}</span></td><td><span className={`cc-confidence ${String(r.confidence).toLowerCase()}`}>{r.confidence}</span></td><td>{r.wallets_long} long / {r.wallets_short} short</td><td>{money(r.value_long_usd)} / {money(r.value_short_usd)}</td><td className={cls(r.net_value_usd)}>{money(r.net_value_usd)}</td><td>{pct(r.value_long_pct_total)} long / {pct(r.value_short_pct_total)} short</td></tr>)}</tbody>
+            <tbody>{sortedSignals.map((r, i) => <tr key={`${r.coin}-${i}`}><td>{i + 1}</td><td className="cc-mobile-asset-logo-cell" aria-hidden="true"><TokenLogo coin={r.coin} icons={icons} /></td><td><span className="cc-asset-cell"><TokenLogo coin={r.coin} icons={icons} /><AssetName coin={r.coin} details={mergedAssetDetails} row={r} /></span></td><td className={cls(displaySignalValue(r))}><span className={`cc-signal-pill ${signalDirectionClass(r)}`}>{displaySignalMagnitudePct(r)} {displaySignalDirection(r)}</span></td><td><span className={`cc-confidence ${String(r.confidence).toLowerCase()}`}>{r.confidence}</span></td><td>{r.wallets_long} long / {r.wallets_short} short</td><td>{money(r.value_long_usd)} / {money(r.value_short_usd)}</td><td className={cls(r.net_value_usd)}>{money(r.net_value_usd)}</td><td>{exposureSharePct(r.value_long_pct_total)} long / {exposureSharePct(r.value_short_pct_total)} short</td></tr>)}</tbody>
           </table>
         </div>
       </section>
@@ -1406,7 +1431,7 @@ function DashboardContent() {
         </div>
       </section>
 
-      <footer className="cc-warning-banner"><span className="cc-shield" aria-hidden><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5.2c0 4.5-2.7 8.4-7 9.8-4.3-1.4-7-5.3-7-9.8V6l7-3z"/><path d="M9.2 12.1l1.7 1.7 3.9-4.1"/></svg></span><div className="cc-footer-main"><strong>Market intelligence only.</strong><em>Not financial advice. {rankingScope}. {claimReady ? 'Broad-index threshold met.' : 'Not claiming all-Hyperliquid top 50 yet.'}</em><small>Live coverage: {liveCoverageText} · {summary.snapshot_wallets || 0} fallback · Sync: <b className={`cc-audit-${dataHealthy ? 'pass' : 'checking'}`}>{dataHealthy ? 'live' : snapshotFresh ? 'checking' : 'stale'}</b> · {snapshotFresh ? (summary.data_quality_message || 'Waiting for live feed') : 'Latest signal snapshot is outside the live freshness window'}</small></div><div className={`cc-footer-meta ${dataHealthy ? 'healthy' : 'checking'}`}><span className="cc-footer-quality"><span className="cc-pulse-dot" /><b>{dataHealthy ? (claimReady ? 'Live data and ranking verified' : 'Live feed healthy') : snapshotFresh ? 'Data quality checking' : 'Live data delayed'}</b></span><small>Signal refresh: {fmtTime(summary.latest_signal_ts_ms)} UTC · {summary.live_state_active ? `Live state: ${fmtTime(summary.latest_live_state_ts_ms)} UTC` : 'Snapshot mode'} · Snapshot/cache refresh</small></div><nav className="cc-legal-links" aria-label="Legal links" style={{ flexBasis: '100%', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 6, margin: '4px 0 0 41px', padding: 0, fontSize: 11, lineHeight: 1.25, color: 'rgba(247,251,255,.62)' }}><span style={{ color: 'rgba(247,251,255,.42)' }}>Legal:</span><a href="/terms" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>Terms</a><span aria-hidden="true" style={{ color: 'rgba(247,251,255,.42)' }}> · </span><a href="/privacy" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>Privacy</a><span aria-hidden="true" style={{ color: 'rgba(247,251,255,.42)' }}> · </span><a href="/risk-disclaimer" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>Risk disclaimer</a><span aria-hidden="true" style={{ color: 'rgba(247,251,255,.42)' }}> · </span><a href="/external-links" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>External links</a></nav></footer>
+      <footer className="cc-warning-banner"><span className="cc-shield" aria-hidden><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5.2c0 4.5-2.7 8.4-7 9.8-4.3-1.4-7-5.3-7-9.8V6l7-3z"/><path d="M9.2 12.1l1.7 1.7 3.9-4.1"/></svg></span><div className="cc-footer-main"><strong>Market intelligence only.</strong><em>Not financial advice. {rankingScope}. {claimReady ? 'Broad-index threshold met.' : 'Not claiming all-Hyperliquid top 50 yet.'}</em><small>Live coverage: {liveCoverageText} · snapshot coverage: {summary.snapshot_wallets || 0} · Sync: <b className={`cc-audit-${dataHealthy ? 'pass' : 'checking'}`}>{dataHealthy ? 'live' : snapshotFresh ? 'checking' : 'stale'}</b> · {snapshotFresh ? (summary.data_quality_message || 'Waiting for live feed') : 'Latest signal snapshot is outside the live freshness window'}</small></div><div className={`cc-footer-meta ${dataHealthy ? 'healthy' : 'checking'}`}><span className="cc-footer-quality"><span className="cc-pulse-dot" /><b>{dataHealthy ? (claimReady ? 'Live data and ranking verified' : 'Live feed healthy') : snapshotFresh ? 'Data quality checking' : 'Live data delayed'}</b></span><small>Signal refresh: {fmtTime(summary.latest_signal_ts_ms)} UTC · {summary.live_state_active ? `Live state: ${fmtTime(summary.latest_live_state_ts_ms)} UTC` : 'Snapshot mode'} · Snapshot/cache refresh</small></div><nav className="cc-legal-links" aria-label="Legal links" style={{ flexBasis: '100%', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 6, margin: '4px 0 0 41px', padding: 0, fontSize: 11, lineHeight: 1.25, color: 'rgba(247,251,255,.62)' }}><span style={{ color: 'rgba(247,251,255,.42)' }}>Legal:</span><a href="/terms" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>Terms</a><span aria-hidden="true" style={{ color: 'rgba(247,251,255,.42)' }}> · </span><a href="/privacy" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>Privacy</a><span aria-hidden="true" style={{ color: 'rgba(247,251,255,.42)' }}> · </span><a href="/risk-disclaimer" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>Risk disclaimer</a><span aria-hidden="true" style={{ color: 'rgba(247,251,255,.42)' }}> · </span><a href="/external-links" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>External links</a></nav></footer>
     </main>
   </div>
 

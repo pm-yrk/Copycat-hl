@@ -28,6 +28,7 @@ export default function AuditPage() {
   const [audit, setAudit] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState('')
+  const directLiveAuditAvailable = process.env.NEXT_PUBLIC_STATIC_EXPORT !== 'true'
 
   async function load(live = false, full = false) {
     try {
@@ -42,7 +43,7 @@ export default function AuditPage() {
     }
   }
 
-  useEffect(() => { load(false); const id = setInterval(() => load(false), 10000); return () => clearInterval(id) }, [])
+  useEffect(() => { load(false); const id = setInterval(() => load(false), 60000); return () => clearInterval(id) }, [])
 
   const checks: AuditCheck[] = audit?.checks || []
   const failed = checks.filter(c => c.status === 'fail')
@@ -56,8 +57,8 @@ export default function AuditPage() {
       <p>This page compares dashboard values against the database snapshot and can also sample live Hyperliquid data directly.</p>
       <div className="audit-actions">
         <button onClick={() => load(false)} disabled={loading}>{loading ? 'Checking…' : 'Run database audit'}</button>
-        <button onClick={() => load(true, false)} disabled={loading}>Run live sample</button>
-        <button onClick={() => load(true, true)} disabled={loading}>Run full 50-wallet live audit</button>
+        <button onClick={() => load(true, false)} disabled={loading || !directLiveAuditAvailable} title={directLiveAuditAvailable ? '' : 'Run this from the private backend admin service'}>Run live sample</button>
+        <button onClick={() => load(true, true)} disabled={loading || !directLiveAuditAvailable} title={directLiveAuditAvailable ? '' : 'Run this from the private backend admin service'}>Run full 50-wallet live audit</button>
       </div>
       {err && <div className="audit-error">{err}</div>}
     </section>
@@ -71,7 +72,7 @@ export default function AuditPage() {
       </section>
 
       <section className="audit-card">
-        <div className="audit-card-head"><h2>Checks</h2><span>Auto-refreshes every 10 seconds</span></div>
+        <div className="audit-card-head"><h2>Checks</h2><span>Auto-refreshes every minute</span></div>
         <div className="audit-check-list">
           {checks.map((c, i) => <div key={`${c.name}-${i}`} className="audit-check-row">
             <StatusPill status={c.status} severity={c.severity} />
@@ -94,7 +95,7 @@ export default function AuditPage() {
         </div>
         <div className="audit-card">
           <div className="audit-card-head"><h2>Live Hyperliquid check</h2></div>
-          {!live && <p className="audit-muted">Click “Run live sample” or “Run full 50-wallet live audit” to compare against Hyperliquid directly.</p>}
+          {!live && <p className="audit-muted">{directLiveAuditAvailable ? 'Run a live audit to compare the stored snapshot against Hyperliquid directly.' : 'Direct Hyperliquid audits run from the private backend admin service. This deployed page safely displays the latest published reconciliation snapshot.'}</p>}
           {live && <table className="audit-table"><tbody>
             <tr><th>Wallets checked</th><td>{live.wallets_ok}/{live.wallets_requested}</td></tr>
             <tr><th>Live account value</th><td>{money(live.account_value_usd)}</td></tr>

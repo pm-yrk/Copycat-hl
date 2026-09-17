@@ -3001,7 +3001,7 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
         top_display_signal = top_conviction_display_value(top_signal)
         pct = round(abs(top_display_signal) * 100)
         side = "Long" if top_display_signal >= 0 else "Short"
-        insights.append({"type": "top_signal", "label": "Top conviction asset", "coin": top_signal["coin"], "detail": f"{pct}% {side} Â· {top_signal.get('confidence')}", "row": top_signal})
+        insights.append({"type": "top_signal", "label": "Top conviction asset", "coin": top_signal["coin"], "detail": f"{pct}% {side} · {top_signal.get('confidence')}", "row": top_signal})
         largest = max(signals, key=lambda r: r.get("gross_value_usd", 0))
         insights.append({"type": "largest_exposure", "label": "Largest current exposure", "coin": largest["coin"], "detail": f"${largest.get('gross_value_usd',0):,.0f} gross exposure", "row": largest})
     if flow:

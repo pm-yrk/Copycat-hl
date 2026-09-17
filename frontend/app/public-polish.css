@@ -1361,3 +1361,54 @@
   .public-nav-mobile>div{max-width:calc(100vw - 36px);z-index:111}
   .public-nav-mobile summary,.public-nav-mobile a{min-height:44px;box-sizing:border-box;display:flex;align-items:center}
 }
+
+/* Keep below-fold public content out of the render pipeline until it nears
+   the viewport. Intrinsic sizing preserves the existing page geometry. */
+.public-steps,
+.public-portfolio-section,
+.public-product-preview,
+.public-telegram-preview,
+.public-comparison,
+.public-api-offer,
+.public-api-pipeline,
+.public-api-code-section,
+.public-api-browser,
+.public-api-endpoint-section{
+  content-visibility:auto;
+  contain-intrinsic-size:auto 600px;
+}
+
+/* Long audit formula identifiers must remain inside their own table cell. */
+.cc-ranking-table-wrap td:last-child{
+  overflow-wrap:anywhere;
+  white-space:normal;
+}
+
+.public-code-toolbar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-top:18px;
+}
+.public-code-toolbar>div{display:flex;gap:5px;flex-wrap:wrap}
+.public-code-toolbar button{
+  min-height:30px;
+  padding:0 10px;
+  border:1px solid rgba(151,190,220,.13);
+  border-radius:7px;
+  background:rgba(2,9,20,.45);
+  color:#8295a8;
+  font:750 10px/1 var(--font);
+  cursor:pointer;
+}
+.public-code-toolbar button.active{
+  border-color:rgba(35,233,157,.35);
+  background:rgba(35,233,157,.08);
+  color:var(--pub-green);
+}
+.public-code-toolbar .public-copy-code{margin-left:auto;color:#dce6ef}
+@media(max-width:620px){
+  .public-code-toolbar{align-items:flex-start}
+  .public-code-toolbar>div{max-width:230px}
+}

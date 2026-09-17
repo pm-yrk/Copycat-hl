@@ -69,6 +69,8 @@ function copycatSnapshotTimestamp(payload: any) {
     payload?.as_of_ms,
     payload?.generated_at_ms,
     payload?.latest_ts_ms,
+    payload?.latest_signal_ts_ms,
+    payload?.latest_live_state_ts_ms,
     payload?.summary?.latest_signal_ts_ms,
     payload?.summary?.latest_live_state_ts_ms,
   ].map(Number).filter((value) => Number.isFinite(value) && value > 0)
@@ -214,4 +216,3 @@ export async function apiGetFresh(path: string, options: ApiOptions = {}) {
     if (timeout) window.clearTimeout(timeout)
   }
 }
-
