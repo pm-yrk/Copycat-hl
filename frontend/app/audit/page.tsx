@@ -48,13 +48,21 @@ export default function AuditPage() {
   const checks: AuditCheck[] = audit?.checks || []
   const failed = checks.filter(c => c.status === 'fail')
   const totals = audit?.totals || {}
+  const snapshotRollup = totals.snapshot_rollup || {}
+  const positionRollup = totals.position_rollup || {}
+  const scannerRollup = totals.scanner_rollup || {}
+  const trackedWalletValue = snapshotRollup.tracked_total_wallet_value
+    ?? snapshotRollup.tracked_total
+    ?? totals.signal_rollup?.tracked_total
+  const trackedPerpEquity = snapshotRollup.tracked_perp_equity
+  const fullyValuedWallets = snapshotRollup.total_value_complete_wallets
   const live = audit?.live_check
 
   return <><Nav /><main className="audit-shell">
     <section className="audit-hero">
       <p className="eyebrow live">Private data audit</p>
       <h1>Copycat data reconciliation</h1>
-      <p>This page compares dashboard values against the database snapshot and can also sample live Hyperliquid data directly.</p>
+      <p>This page reconciles the same published snapshot used by the dashboard and can also sample live Hyperliquid data directly.</p>
       <div className="audit-actions">
         <button onClick={() => load(false)} disabled={loading}>{loading ? 'Checking…' : 'Run database audit'}</button>
         <button onClick={() => load(true, false)} disabled={loading || !directLiveAuditAvailable} title={directLiveAuditAvailable ? '' : 'Run this from the private backend admin service'}>Run live sample</button>
@@ -67,8 +75,8 @@ export default function AuditPage() {
       <section className="audit-summary-grid">
         <article><small>Overall status</small><StatusPill status={audit.overall_status} /><span>{failed.length} failed checks</span></article>
         <article><small>Latest snapshot</small><b>{fmtMs(audit.latest_signal_ts_ms)}</b><span>Signal/dashboard source</span></article>
-        <article><small>Tracked value</small><b>{money(totals.snapshot_rollup?.tracked_total || totals.signal_rollup?.tracked_total)}</b><span>Completed wallet snapshots</span></article>
-        <article><small>Open position value</small><b>{money(totals.position_rollup?.open_total)}</b><span>{totals.position_rollup?.positions || 0} raw positions</span></article>
+        <article><small>Tracked wallet value</small><b>{money(trackedWalletValue)}</b><span>{fullyValuedWallets ? `${fullyValuedWallets}/50 fully valued` : 'Published wallet snapshot'}</span></article>
+        <article><small>Open position value</small><b>{money(positionRollup.open_total)}</b><span>{positionRollup.positions || 0} live positions</span></article>
       </section>
 
       <section className="audit-card">
@@ -83,14 +91,15 @@ export default function AuditPage() {
 
       <section className="audit-two-col">
         <div className="audit-card">
-          <div className="audit-card-head"><h2>Database rollups</h2></div>
+          <div className="audit-card-head"><h2>Published rollups</h2></div>
           <table className="audit-table"><tbody>
-            <tr><th>Signal rollup tracked total</th><td>{money(totals.signal_rollup?.tracked_total)}</td></tr>
-            <tr><th>Wallet snapshot tracked total</th><td>{money(totals.snapshot_rollup?.tracked_total)}</td></tr>
-            <tr><th>Raw positions open total</th><td>{money(totals.position_rollup?.open_total)}</td></tr>
-            <tr><th>Signal rows open total</th><td>{money(totals.signal_rollup?.signal_open_total)}</td></tr>
-            <tr><th>Targets sum</th><td>{Number(totals.target_rollup?.target_sum || 0).toFixed(6)}</td></tr>
-            <tr><th>Collector age</th><td>{Number(totals.collector_stale_seconds || 0).toFixed(1)}s</td></tr>
+            <tr><th>Tracked wallet value</th><td>{money(trackedWalletValue)}</td></tr>
+            {trackedPerpEquity != null && <tr><th>Perpetual account equity</th><td>{money(trackedPerpEquity)}</td></tr>}
+            {fullyValuedWallets != null && <tr><th>Fully valued wallets</th><td>{fullyValuedWallets}/50</td></tr>}
+            <tr><th>Open position value</th><td>{money(positionRollup.open_total)}</td></tr>
+            <tr><th>Live positions</th><td>{Number(positionRollup.positions || 0).toLocaleString()}</td></tr>
+            {scannerRollup.candidate_wallets_scored != null && <tr><th>Fully analysed candidates</th><td>{Number(scannerRollup.candidate_wallets_scored).toLocaleString()}</td></tr>}
+            {scannerRollup.selected_wallet_count != null && <tr><th>Selected wallets</th><td>{Number(scannerRollup.selected_wallet_count).toLocaleString()}</td></tr>}
           </tbody></table>
         </div>
         <div className="audit-card">
