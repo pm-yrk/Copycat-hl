@@ -1049,7 +1049,7 @@ function PricePositioningChart({ icons, signals, details }: { icons: Record<stri
   const priceValues = points.map((row) => row.price).filter(Number.isFinite)
   const positionRawMin = positionValues.length ? Math.min(...positionValues) : -1
   const positionRawMax = positionValues.length ? Math.max(...positionValues) : 1
-  const positionPadding = Math.max(1, Math.abs(positionRawMax - positionRawMin) * .14, Math.abs(currentNet) * .035)
+  const positionPadding = positionRawMax > positionRawMin ? Math.max(1, (positionRawMax - positionRawMin) * .14) : Math.max(1, Math.abs(currentNet) * .005)
   const positionMin = positionRawMin - positionPadding
   const positionMax = positionRawMax + positionPadding
   const priceRawMin = priceValues.length ? Math.min(...priceValues) : 0

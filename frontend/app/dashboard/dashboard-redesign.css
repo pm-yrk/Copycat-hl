@@ -1522,6 +1522,12 @@ html body .cc-dashboard-page::after{
 .cc-dashboard-page .cc-dashboard-trading-grid{grid-template-columns:minmax(0,1fr)!important}
 .cc-dashboard-page .cc-position-observation-dot{fill:#36e8aa;stroke:#082c26;stroke-width:1;vector-effect:non-scaling-stroke}
 .cc-dashboard-page .cc-model-line{fill:none!important;stroke-width:2.5!important;vector-effect:non-scaling-stroke}
+.cc-dashboard-page .cc-flow-bubble>b,
+.cc-dashboard-page .cc-flow-bubble.label-left>b{
+  top:calc(100% + 4px)!important;left:50%!important;right:auto!important;
+  transform:translateX(-50%)!important;font-size:9px!important;
+  text-shadow:0 1px 4px #03121b,0 0 4px #03121b!important;
+}
 @media(max-width:980px){
   .cc-dashboard-page .cc-dashboard-primary-grid>.cc-card{grid-column:auto!important}
 }
