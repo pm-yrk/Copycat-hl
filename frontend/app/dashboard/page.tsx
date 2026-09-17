@@ -825,8 +825,10 @@ function SignalFlowMap({ rows, icons, details }: { rows: any[]; icons: Record<st
     const rate = flowRate(row)
     const baseLeft = 50 + signal * 38
     const baseTop = 50 - (rate / maxFlowRate) * 36
-    const size = 32 + Math.sqrt(Math.max(0, gross) / maxGross) * 34
-    return { row, index, signal, flowValue, rate, gross, size, left: baseLeft, top: baseTop }
+    const size = 26 + Math.sqrt(Math.max(0, gross) / maxGross) * 24
+    const labelOffsets = [[-32, -14], [34, -8], [-34, 7], [26, 7], [38, 19], [-10, 28]]
+    const [labelX, labelY] = labelOffsets[index] || [0, 4]
+    return { row, index, signal, flowValue, rate, gross, size, left: baseLeft, top: baseTop, labelX, labelY }
   })
 
   return <section className="cc-card cc-signal-flow-card">
@@ -852,13 +854,13 @@ function SignalFlowMap({ rows, icons, details }: { rows: any[]; icons: Record<st
         <span className="cc-quadrant-note q-br"><b>↘</b> Longs reducing<br/>possible weakness</span>
         {[-100, -50, 0, 50, 100].map((tick) => <span className="cc-axis-tick x" style={{ left: `${50 + tick * .39}%` }} key={`x-${tick}`}>{tick}%</span>)}
         {[1, .5, 0, -.5, -1].map((ratio) => <span className="cc-axis-tick y" style={{ top: `${50 - ratio * 37}%` }} key={`y-${ratio}`}>{`${ratio > 0 ? '+' : ''}${(ratio * maxFlowRate * 100).toFixed(maxFlowRate < .01 ? 2 : 1)}%`}</span>)}
-        {bubbleLayout.map(({ row, index, signal, flowValue, size, left, top }) => {
+        {bubbleLayout.map(({ row, index, signal, flowValue, size, left, top, labelX, labelY }) => {
           return <span
             key={String(row.coin)}
             className={`cc-flow-bubble ${signal < 0 ? 'negative' : 'positive'} ${left > 72 || (left > 28 && index % 2 === 1) ? 'label-left' : ''}`}
             data-coin={displayToken(row.coin)}
             
-            style={{ left: `${left}%`, top: `${top}%`, ['--bubble-size' as any]: `${size}px`, ['--bubble-colour' as any]: tokenColour(row.coin, index) }}
+            style={{ left: `${left}%`, top: `${top}%`, ['--bubble-size' as any]: `${size}px`, ['--bubble-colour' as any]: tokenColour(row.coin, index), ['--label-x' as any]: `${labelX}px`, ['--label-y' as any]: `${labelY}px` }}
           >
             <span className="cc-flow-bubble-core"><AssetName coin={row.coin} details={details} row={row}><TokenLogo coin={row.coin} icons={icons} /></AssetName></span>
             <b>{displayToken(row.coin)}</b>
