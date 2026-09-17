@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import PublicNav from '../../components/PublicNav'
 import { apiGet } from '../../lib/api'
@@ -223,7 +223,7 @@ function footerUniverseCaption(summary: any) {
 
 const USDC_LOGO_DATA_URI = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxMjggMTI4Jz48Y2lyY2xlIGN4PSc2NCcgY3k9JzY0JyByPSc2NCcgZmlsbD0nIzI3NzVDQScvPjxwYXRoIGQ9J000MiAzMGE0MiA0MiAwIDAgMCAwIDY4JyBmaWxsPSdub25lJyBzdHJva2U9JyNmZmYnIHN0cm9rZS13aWR0aD0nOCcgc3Ryb2tlLWxpbmVjYXA9J3JvdW5kJy8+PHBhdGggZD0nTTg2IDMwYTQyIDQyIDAgMCAxIDAgNjgnIGZpbGw9J25vbmUnIHN0cm9rZT0nI2ZmZicgc3Ryb2tlLXdpZHRoPSc4JyBzdHJva2UtbGluZWNhcD0ncm91bmQnLz48dGV4dCB4PSc2NCcgeT0nODQnIHRleHQtYW5jaG9yPSdtaWRkbGUnIGZvbnQtZmFtaWx5PSdBcmlhbCxIZWx2ZXRpY2Esc2Fucy1zZXJpZicgZm9udC1zaXplPSc1OCcgZm9udC13ZWlnaHQ9JzgwMCcgZmlsbD0nI2ZmZic+JDwvdGV4dD48L3N2Zz4='
 const palette = ['#43E8D0', '#8057FF', '#44BDEC', '#FFB020', '#25D366', '#F35EA6', '#A6E22E', '#FF5B72', '#38BDF8', '#F97316']
-const fallbackColours: Record<string, string> = { HYPE:'#43E8D0', ETH:'#627EEA', BTC:'#F7931A', SOL:'#14F195', ZEC:'#F4B728', NEAR:'#00EC97', AAVE:'#8B7DFF', TRX:'#FF4B4B', XRP:'#4B9FFF', USDC:'#2775CA', 'USDC/CASH':'#2775CA', MELANIA:'#D7A785', WLD:'#8492A6', PAXG:'#F0C419', PUMP:'#61C685', LIT:'#35D0B4', BNB:'#F3BA2F', XLM:'#44BDEC', PENGU:'#A0D7F8' }
+const fallbackColours: Record<string, string> = { HYPE:'#43E8D0', ETH:'#627EEA', BTC:'#F7931A', SOL:'#14F195', ZEC:'#F4B728', NEAR:'#00EC97', AAVE:'#8B7DFF', TRX:'#FF4B4B', XRP:'#4B9FFF', USDC:'#2775CA', 'USDC/CASH':'#2775CA', MELANIA:'#D7A785', WLD:'#8492A6', PAXG:'#F0C419', PUMP:'#61C685', LIT:'#35D0B4', BNB:'#F3BA2F', XLM:'#44BDEC', PENGU:'#A0D7F8', SUI:'#6FBCF0', BCH:'#8DC351', UNI:'#FF007A', ALGO:'#CCD5DE', CASHCAT:'#43E8D0', WLFI:'#D4AF37' }
 const staticLogoUrls: Record<string, string> = {
   BTC:'https://cryptologos.cc/logos/bitcoin-btc-logo.svg?v=040', ETH:'https://cryptologos.cc/logos/ethereum-eth-logo.svg?v=040', SOL:'https://cryptologos.cc/logos/solana-sol-logo.svg?v=040', USDC:'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/A0b86991c6218b36c1d19d4a2e9eb0ce3606eb48/logo.png', USDT:'https://cryptologos.cc/logos/tether-usdt-logo.svg?v=040', DOGE:'https://cryptologos.cc/logos/dogecoin-doge-logo.svg?v=040',
   AAVE:'https://cryptologos.cc/logos/aave-aave-logo.svg?v=040', TRX:'https://cryptologos.cc/logos/tron-trx-logo.svg?v=040', XRP:'https://cryptologos.cc/logos/xrp-xrp-logo.svg?v=040', AVAX:'https://cryptologos.cc/logos/avalanche-avax-logo.svg?v=040', BNB:'https://cryptologos.cc/logos/bnb-bnb-logo.svg?v=040', LINK:'https://cryptologos.cc/logos/chainlink-link-logo.svg?v=040', UNI:'https://cryptologos.cc/logos/uniswap-uni-logo.svg?v=040', LTC:'https://cryptologos.cc/logos/litecoin-ltc-logo.svg?v=040', DOT:'https://cryptologos.cc/logos/polkadot-new-dot-logo.svg?v=040', FIL:'https://cryptologos.cc/logos/filecoin-fil-logo.svg?v=040', ATOM:'https://cryptologos.cc/logos/cosmos-atom-logo.svg?v=040', NEAR:'https://cryptologos.cc/logos/near-protocol-near-logo.svg?v=040', ZEC:'https://cryptologos.cc/logos/zcash-zec-logo.svg?v=040', ARB:'https://cryptologos.cc/logos/arbitrum-arb-logo.svg?v=040', SUI:'https://cryptologos.cc/logos/sui-sui-logo.svg?v=040', OP:'https://cryptologos.cc/logos/optimism-ethereum-op-logo.svg?v=040', APE:'https://cryptologos.cc/logos/apecoin-ape-ape-logo.svg?v=040', INJ:'https://cryptologos.cc/logos/injective-inj-logo.svg?v=040', FET:'https://cryptologos.cc/logos/artificial-superintelligence-alliance-fet-logo.svg?v=040'
@@ -292,7 +292,7 @@ function priceText(n: any) {
 }
 
 
-function AssetName({ coin, details, row, compact = false }: { coin: any, details: Record<string, AssetDetail>, row?: any, compact?: boolean }) {
+function AssetName({ coin, details, row, compact = false, children }: { coin: any, details: Record<string, AssetDetail>, row?: any, compact?: boolean, children?: ReactNode }) {
   const [anchor, setAnchor] = useState<{ left: number, top: number } | null>(null)
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
@@ -316,7 +316,7 @@ function AssetName({ coin, details, row, compact = false }: { coin: any, details
   const show = (e: any) => place(e.currentTarget as HTMLElement)
   const hide = () => setAnchor(null)
   const tooltip = anchor && mounted ? createPortal(<div className="cc-asset-tooltip-portal" style={{ left: anchor.left, top: anchor.top }}><strong>{meta?.name || tokenFullName(symbol)}</strong><em>{symbol} on Hyperliquid</em><dl><dt>Mark price</dt><dd>{priceText(markPrice)}</dd><dt>Tracked tilt</dt><dd className={tilt.toLowerCase().includes('short') ? 'negative' : tilt.toLowerCase().includes('long') ? 'positive' : ''}>{tilt}{conviction ? `  |  ${Math.round(conviction)}%` : ''}</dd><dt>Open exposure</dt><dd>{gross ? compactMoney(gross) : '—'}</dd>{meta?.max_leverage ? <><dt>Max leverage</dt><dd>{meta.max_leverage}x</dd></> : null}<dt>Wallets</dt><dd>{Number(meta?.wallets_long || row?.wallets_long || 0)} long / {Number(meta?.wallets_short || row?.wallets_short || 0)} short</dd><dt>Recent flow</dt><dd className={flowValue < 0 ? 'negative' : flowValue > 0 ? 'positive' : ''}>{flowValue ? compactMoney(flowValue) : '—'}</dd></dl></div>, document.body) : null
-  return <span className="cc-asset-hover" tabIndex={0} onMouseEnter={show} onMouseMove={show} onMouseLeave={hide} onFocus={show} onBlur={hide}><b>{symbol}</b>{tooltip}</span>
+  return <span className="cc-asset-hover" tabIndex={0} onMouseEnter={show} onMouseMove={show} onMouseLeave={hide} onFocus={show} onBlur={hide} onClick={show} onKeyDown={(e) => { if (e.key === 'Escape') hide() }} aria-label={children ? `${symbol} asset details` : undefined}>{children || <b>{symbol}</b>}{tooltip}</span>
 }
 
 function tokenColour(symbol: string, index: number) {
@@ -803,7 +803,7 @@ function CatalystWatchCard({ watch }: { watch?: any }) {
 
 
 
-function SignalFlowMap({ rows, icons }: { rows: any[]; icons: Record<string, string> }) {
+function SignalFlowMap({ rows, icons, details }: { rows: any[]; icons: Record<string, string>; details: Record<string, AssetDetail> }) {
   const candidates = [...(rows || [])]
     .filter((row: any) => row?.coin)
     .sort((a: any, b: any) => {
@@ -823,7 +823,7 @@ function SignalFlowMap({ rows, icons }: { rows: any[]; icons: Record<string, str
     const flowStrength = flowValue ? Math.sign(flowValue) * (Math.log1p(Math.abs(flowValue)) / Math.log1p(maxFlow)) : 0
     const baseLeft = 50 + signal * 38
     const baseTop = flowValue ? 50 - flowStrength * 36 : 50 + ((index % 3) - 1) * 9
-    const size = 50 + Math.sqrt(Math.max(0, gross) / maxGross) * 54
+    const size = 32 + Math.sqrt(Math.max(0, gross) / maxGross) * 34
     const xBounds: [number, number] = signal < -.02 ? [10, 46] : signal > .02 ? [54, 90] : [45, 55]
     const yBounds: [number, number] = flowValue < 0 ? [54, 88] : flowValue > 0 ? [12, 46] : [43, 57]
     const clamp = (value: number, bounds: [number, number]) => Math.max(bounds[0], Math.min(bounds[1], value))
@@ -833,7 +833,7 @@ function SignalFlowMap({ rows, icons }: { rows: any[]; icons: Record<string, str
       const left = clamp(baseLeft + offsetX, xBounds)
       const top = clamp(baseTop + offsetY, yBounds)
       const score = placed.length ? Math.min(...placed.map((prior) => {
-        const distance = Math.hypot((left - prior.left) * 11, (top - prior.top) * 4.55)
+        const distance = Math.hypot((left - prior.left) * 11, (top - prior.top) * 2.3)
         return distance - ((size + prior.size) / 2 + 14)
       })) : 999
       if (score > best.score) best = { left, top, score }
@@ -871,10 +871,10 @@ function SignalFlowMap({ rows, icons }: { rows: any[]; icons: Record<string, str
             key={String(row.coin)}
             className={`cc-flow-bubble ${signal < 0 ? 'negative' : 'positive'} ${left > 72 || (left > 28 && index % 2 === 1) ? 'label-left' : ''}`}
             data-coin={displayToken(row.coin)}
-            title={`${displayToken(row.coin)}: ${displaySignalMagnitudePct(row)} ${displaySignalDirection(row)}, ${compactMoney(flowValue)} recent net flow`}
-            style={{ left: `${left}%`, top: `${top}%`, ['--bubble-size' as any]: `${size}px` }}
+            
+            style={{ left: `${left}%`, top: `${top}%`, ['--bubble-size' as any]: `${size}px`, ['--bubble-colour' as any]: tokenColour(row.coin, index) }}
           >
-            <span className="cc-flow-bubble-core"><TokenLogo coin={row.coin} icons={icons} /></span>
+            <span className="cc-flow-bubble-core"><AssetName coin={row.coin} details={details} row={row}><TokenLogo coin={row.coin} icons={icons} /></AssetName></span>
             <b>{displayToken(row.coin)}</b>
           </span>
         })}
@@ -907,7 +907,6 @@ function PositioningChanges({ rows, icons, details, windowLabel }: { rows: any[]
 
 type QuickChartWindow = '24H' | '7D' | '30D'
 type PriceCandle = { ts_ms: number; price: number }
-type PositioningChartPoint = { ts_ms: number; position: number; price: number }
 
 function quickChartWindowMs(windowKey: QuickChartWindow) {
   if (windowKey === '7D') return 7 * 24 * 60 * 60 * 1000
@@ -936,33 +935,14 @@ function benchmarkPriceFallback(data: any, windowKey: QuickChartWindow, asset: s
   return rows.map((row: any) => ({ ts_ms: row.ts_ms, price: currentPrice > 0 ? currentPrice * row.nav / latestNav : row.nav }))
 }
 
-function signedOrderDelta(order: any) {
-  const side = String(order?.side || order?.direction || '').toLowerCase()
-  const amount = Math.abs(Number(order?.delta_value_usd || order?.position_value_usd || order?.notional_usd || 0))
-  if (!amount) return 0
-  if (side.includes('open long') || side.includes('close short') || side === 'b' || side === 'buy') return amount
-  if (side.includes('open short') || side.includes('close long') || side === 's' || side === 'sell') return -amount
-  return 0
-}
+type PositionObservation = { ts_ms: number; position: number }
 
-function buildPositioningSeries(candles: PriceCandle[], orders: any[], asset: string, currentNet: number): PositioningChartPoint[] {
-  const selectedOrders = (orders || [])
-    .filter((order: any) => canonicalToken(String(order?.coin || '')) === canonicalToken(asset))
-    .map((order: any) => ({ ts_ms: Number(order?.ts_ms || 0), delta: signedOrderDelta(order) }))
-    .filter((order: any) => order.ts_ms > 0 && order.delta)
-    .sort((a: any, b: any) => a.ts_ms - b.ts_ms)
-
-  return candles.map((candle) => {
-    const laterDelta = selectedOrders.reduce((sum: number, order: any) => order.ts_ms > candle.ts_ms ? sum + order.delta : sum, 0)
-    return { ...candle, position: currentNet - laterDelta }
-  })
-}
-
-function chartPath(points: PositioningChartPoint[], key: 'position' | 'price', minimum: number, span: number) {
+function chartPath(points: Array<{ ts_ms: number; position?: number; price?: number }>, key: 'position' | 'price', minimum: number, span: number, start: number, end: number) {
   return points.map((row, index) => {
-    const x = points.length === 1 ? 0 : (index / (points.length - 1)) * 760
+    const x = ((row.ts_ms - start) / Math.max(1, end - start)) * 760
     const y = 250 - ((Number(row[key]) - minimum) / span) * 250
-    return `${index ? 'L' : 'M'} ${x.toFixed(2)} ${y.toFixed(2)}`
+    const continuous = index > 0 && (key !== 'position' || row.ts_ms - points[index - 1].ts_ms <= 10 * 60000)
+    return `${continuous ? 'L' : 'M'} ${x.toFixed(2)} ${y.toFixed(2)}`
   }).join(' ')
 }
 
@@ -972,12 +952,14 @@ function chartTimeLabel(timestamp: number, windowKey: QuickChartWindow) {
   return date.toLocaleDateString([], { day: '2-digit', month: 'short' })
 }
 
-function PricePositioningChart({ icons, signals, orders, details }: { icons: Record<string, string>; signals: any[]; orders: any[]; details: Record<string, AssetDetail> }) {
+function PricePositioningChart({ icons, signals, details }: { icons: Record<string, string>; signals: any[]; details: Record<string, AssetDetail> }) {
   const [data, setData] = useState<any>(null)
   const [windowKey, setWindowKey] = useState<QuickChartWindow>('24H')
   const [asset, setAsset] = useState('BTC')
   const [liveCandles, setLiveCandles] = useState<PriceCandle[]>([])
   const [priceLoading, setPriceLoading] = useState(false)
+  const [observations, setObservations] = useState<PositionObservation[]>([])
+  const [observationAsset, setObservationAsset] = useState('')
 
   const assetOptions = useMemo(() => {
     const seen = new Set<string>()
@@ -1017,6 +999,7 @@ function PricePositioningChart({ icons, signals, orders, details }: { icons: Rec
     const controller = new AbortController()
     const now = Date.now()
     setPriceLoading(true)
+    setLiveCandles([])
     fetch('https://api.hyperliquid.xyz/info', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1046,9 +1029,30 @@ function PricePositioningChart({ icons, signals, orders, details }: { icons: Rec
   const currentPrice = Number(assetDetail?.current_price || (assetDetail as any)?.price_usd || 0)
   const fallbackCandles = useMemo(() => benchmarkPriceFallback(data, windowKey, asset, currentPrice), [data, windowKey, asset, currentPrice])
   const candles = liveCandles.length >= 2 ? liveCandles : fallbackCandles
-  const points = useMemo(() => buildPositioningSeries(candles, orders, asset, currentNet), [candles, orders, asset, currentNet])
+  const observedAt = Number(selectedSignal?.ts_ms || 0)
+  useEffect(() => {
+    const storageKey = 'copycat-position-observations-v1:' + asset
+    let saved: PositionObservation[] = []
+    try {
+      const parsed = JSON.parse(localStorage.getItem(storageKey) || '[]')
+      if (Array.isArray(parsed)) saved = parsed.filter((p) => p && Number.isFinite(p.ts_ms) && Number.isFinite(p.position) && p.ts_ms >= Date.now() - 30 * 86400000 && p.ts_ms <= Date.now())
+    } catch {}
+    if (observedAt > 0 && observedAt <= Date.now() && Number.isFinite(currentNet)) {
+      saved = saved.filter((p) => p.ts_ms !== observedAt)
+      saved.push({ ts_ms: observedAt, position: currentNet })
+    }
+    saved.sort((a, b) => a.ts_ms - b.ts_ms)
+    saved = saved.slice(-10000)
+    setObservations(saved)
+    setObservationAsset(asset)
+    try { localStorage.setItem(storageKey, JSON.stringify(saved)) } catch {}
+  }, [asset, currentNet, observedAt])
 
-  const positionValues = points.map((row) => row.position).filter(Number.isFinite)
+  const points = candles
+  const chartStart = points[0]?.ts_ms || Date.now() - quickChartWindowMs(windowKey)
+  const chartEnd = Math.max(points[points.length - 1]?.ts_ms || 0, observedAt, chartStart + 1)
+  const positionPoints = observationAsset === asset ? observations.filter((p) => p.ts_ms >= chartStart && p.ts_ms <= chartEnd) : []
+  const positionValues = positionPoints.map((row) => row.position).filter(Number.isFinite)
   const priceValues = points.map((row) => row.price).filter(Number.isFinite)
   const positionRawMin = positionValues.length ? Math.min(...positionValues) : -1
   const positionRawMax = positionValues.length ? Math.max(...positionValues) : 1
@@ -1060,46 +1064,45 @@ function PricePositioningChart({ icons, signals, orders, details }: { icons: Rec
   const pricePadding = Math.max(.000001, (priceRawMax - priceRawMin) * .1)
   const priceMin = Math.max(0, priceRawMin - pricePadding)
   const priceMax = priceRawMax + pricePadding
-  const positionPath = chartPath(points, 'position', positionMin, Math.max(1, positionMax - positionMin))
-  const pricePath = chartPath(points, 'price', priceMin, Math.max(.000001, priceMax - priceMin))
+  const positionPath = chartPath(positionPoints, 'position', positionMin, Math.max(1, positionMax - positionMin), chartStart, chartEnd)
+  const pricePath = chartPath(points, 'price', priceMin, Math.max(.000001, priceMax - priceMin), chartStart, chartEnd)
 
   const first = points[0]
   const last = points[points.length - 1]
-  const positionMove = first ? Number(last?.position || 0) - Number(first.position || 0) : 0
+  const positionMove = positionPoints.length >= 2 ? positionPoints[positionPoints.length - 1].position - positionPoints[0].position : 0
   const priceMove = first?.price ? ((Number(last?.price || 0) / Number(first.price)) - 1) * 100 : 0
-  const divergence = Math.abs(positionMove) > Math.max(1, Math.abs(currentNet) * .01) && Math.abs(priceMove) >= .15 && Math.sign(positionMove) !== Math.sign(priceMove)
+  const divergence = positionPoints.length >= 2 && positionPoints[0].ts_ms <= chartStart + 60000 && Math.abs(positionMove) > Math.max(1, Math.abs(currentNet) * .01) && Math.abs(priceMove) >= .15 && Math.sign(positionMove) !== Math.sign(priceMove)
   const timeTicks = points.length >= 2 ? [0, .25, .5, .75, 1].map((ratio) => points[Math.min(points.length - 1, Math.round((points.length - 1) * ratio))]?.ts_ms) : []
 
   return <section className="cc-card cc-price-positioning-card">
     <div className="cc-panel-title cc-price-chart-head">
-      <div><h3>Price vs Smart-Wallet Positioning</h3><span>Top 50 wallet net position against live market price</span></div>
+      <div className="cc-price-title-group"><h3>Price vs Smart-Wallet Positioning</h3><label className="cc-asset-select">
+        <TokenLogo coin={asset} icons={icons} />
+        <select value={asset} onChange={(event) => setAsset(event.target.value)} aria-label="Select asset">
+          {assetOptions.map((coin) => <option value={coin} key={coin}>{displayToken(coin)}</option>)}
+        </select>
+      </label></div>
       <div className="cc-chart-window-tabs" aria-label="Chart timeframe">
         {(['24H', '7D', '30D'] as QuickChartWindow[]).map((key) => <button type="button" className={windowKey === key ? 'active' : ''} onClick={() => setWindowKey(key)} key={key}>{key}</button>)}
       </div>
     </div>
     <div className="cc-price-control-row">
-      <label className="cc-asset-select">
-        <TokenLogo coin={asset} icons={icons} />
-        <select value={asset} onChange={(event) => setAsset(event.target.value)} aria-label="Select asset">
-          {assetOptions.map((coin) => <option value={coin} key={coin}>{displayToken(coin)}</option>)}
-        </select>
-      </label>
-      {divergence ? <div className="cc-divergence-callout"><b>Divergence detected</b><span>{positionMove > 0 ? 'Top wallets building longs' : 'Top wallets reducing exposure'} while price {priceMove >= 0 ? 'rises' : 'falls'}</span></div> : <span className="cc-chart-observation">Live top-50 positioning · {priceLoading ? 'updating price history…' : displayToken(asset) + ' selected'}</span>}
+      
+      {divergence ? <div className="cc-divergence-callout"><b>Divergence detected</b><span>{positionMove > 0 ? 'Top wallets building longs' : 'Top wallets reducing exposure'} while price {priceMove >= 0 ? 'rises' : 'falls'}</span></div> : <span className="cc-chart-observation">{positionPoints.length < 2 ? 'Position history builds while this asset is open; earlier history is unavailable.' : 'Recorded positioning from ' + new Date(positionPoints[0].ts_ms).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>}
     </div>
     <div className="cc-chart-legend">
       <span><i className="model" />Top 50 wallet net position <b className={cls(currentNet)}>{compactMoney(currentNet)}</b></span>
       <span><i className="price" />{displayToken(asset)} price <b>{points.length ? priceText(points[points.length - 1]?.price) : '—'}</b></span>
     </div>
     <div className="cc-price-chart-frame">
-      <div className="cc-y-axis cc-y-axis-left"><span>{compactMoney(positionMax)}</span><span>{compactMoney((positionMax + positionMin) / 2)}</span><span>{compactMoney(positionMin)}</span></div>
+      <div className="cc-y-axis cc-y-axis-left"><span>{positionPoints.length ? compactMoney(positionMax) : '—'}</span><span>{positionPoints.length ? compactMoney((positionMax + positionMin) / 2) : '—'}</span><span>{positionPoints.length ? compactMoney(positionMin) : '—'}</span></div>
       <div className="cc-y-axis-title left">Net position (USD)</div>
       <div className="cc-price-line-chart">
         {points.length >= 2 ? <svg viewBox="0 0 760 250" preserveAspectRatio="none" role="img" aria-label={'Top 50 wallet net position and ' + displayToken(asset) + ' price over ' + windowKey}>
           <defs>
             <linearGradient id="ccPositionArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#36e8aa" stopOpacity=".2" /><stop offset="1" stopColor="#36e8aa" stopOpacity="0" /></linearGradient>
           </defs>
-          <path className="cc-model-area" d={positionPath + ' L 760 250 L 0 250 Z'} />
-          <path className="cc-model-line" d={positionPath} />
+          {positionPoints.length >= 2 ? <path className="cc-model-line" d={positionPath} /> : null}
           <path className="cc-price-line" d={pricePath} />
         </svg> : <div className="cc-chart-empty">{priceLoading ? 'Loading ' + displayToken(asset) + ' price history…' : 'Price history is not available for ' + displayToken(asset) + ' yet.'}</div>}
       </div>
@@ -1380,7 +1383,7 @@ export default function Dashboard() {
       </section>
 
       <section className="cc-dashboard-primary-grid">
-        <SignalFlowMap rows={alignedFlow} icons={icons} />
+        <SignalFlowMap rows={alignedFlow} icons={icons} details={mergedAssetDetails} />
         <div className="cc-card cc-allocation-card"><div className="cc-card-title-row"><h3>Portfolio allocation</h3><span>Rebalanced {fmtTime(latestAllocationTs(targets, signals, summary))} UTC</span></div><AllocationDonut targets={targets} signals={signals} trackedValue={Number(summary.tracked_account_value_usd || 0)} icons={icons} assetDetails={mergedAssetDetails} /></div>
         <div className="cc-card cc-exposure-card"><div className="cc-panel-title"><h3>Long vs short exposure</h3><span><i />Long <em />Short</span></div><ExposureBars signals={signals} icons={icons} assetDetails={mergedAssetDetails} /></div>
       </section>
@@ -1397,7 +1400,7 @@ export default function Dashboard() {
 
       <section className="cc-dashboard-trading-grid">
         <PositioningChanges rows={alignedFlow} icons={icons} details={mergedAssetDetails} windowLabel={flowWindowText(summary)} />
-        <PricePositioningChart icons={icons} signals={signals} orders={orders} details={mergedAssetDetails} />
+        <PricePositioningChart icons={icons} signals={signals} details={mergedAssetDetails} />
       </section>
 
       <section className="cc-dashboard-context-row">

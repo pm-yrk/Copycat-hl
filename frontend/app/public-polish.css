@@ -1347,3 +1347,17 @@
   transform:scale(1.32);
   transform-origin:center;
 }
+
+
+/* Keep the primary destination reachable in the compact navigation. */
+.public-nav-mobile .public-mobile-dashboard{
+  display:flex;justify-content:space-between;align-items:center;gap:12px;
+  margin-top:5px;min-height:44px;padding:10px 12px!important;
+  color:#03110b!important;font-weight:800;
+  background:linear-gradient(115deg,#22e49b,#55e8cf);border-radius:7px;
+}
+@media(max-width:820px){
+  .public-nav-mobile{grid-column:3;z-index:110}
+  .public-nav-mobile>div{max-width:calc(100vw - 36px);z-index:111}
+  .public-nav-mobile summary,.public-nav-mobile a{min-height:44px;box-sizing:border-box;display:flex;align-items:center}
+}

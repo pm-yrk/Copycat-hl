@@ -26,7 +26,9 @@ export default function PublicNav() {
       <div>
         {links.map(([href, label]) => <Link key={href} href={href}>{label}</Link>)}
         <Link href="/login">Sign in</Link>
+        <Link href="/dashboard" className="public-mobile-dashboard">Open dashboard <span aria-hidden>→</span></Link>
       </div>
     </details>
   </nav>
 }
+
