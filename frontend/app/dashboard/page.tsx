@@ -883,9 +883,11 @@ function PositioningChanges({ rows, icons, details, windowLabel }: { rows: any[]
       {leaders.length ? leaders.map((row: any) => {
         const netFlow = Number(row?.net_value_flow_usd || 0)
         const buyers = Number(row?.net_buyer_count || 0)
+        const hasUniqueWalletBreadth = row?.wallets_buying !== undefined && row?.wallets_selling !== undefined
+        const walletBreadth = `${Math.abs(buyers)} net ${buyers < 0 ? 'seller' : 'buyer'}${Math.abs(buyers) === 1 ? '' : 's'}`
         return <div className="cc-positioning-row" key={String(row.coin)}>
           <span className="cc-asset-cell"><TokenLogo coin={row.coin} icons={icons} /><AssetName coin={row.coin} details={details} row={row} /></span>
-          <span>{flowRead(netFlow)} · {Math.abs(buyers)} net {buyers >= 0 ? 'buyers' : 'sellers'}</span>
+          <span>{flowRead(netFlow)}{hasUniqueWalletBreadth ? ` · ${walletBreadth}` : ''}</span>
           <b className={cls(netFlow)}>{compactMoney(netFlow)}</b>
         </div>
       }) : <p className="cc-catalyst-empty">Collecting the latest positioning changes…</p>}
