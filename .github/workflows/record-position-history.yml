@@ -1,0 +1,32 @@
+name: Record wallet positioning history
+on:
+  schedule:
+    - cron: '2-59/5 * * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - scripts/record_position_history.py
+      - .github/workflows/record-position-history.yml
+permissions:
+  contents: write
+concurrency:
+  group: copycat-position-history
+  cancel-in-progress: false
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Archive the public dashboard snapshot
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 scripts/record_position_history.py
+      - name: Establish the first interval on setup
+        if: github.event_name == 'push'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          sleep 65
+          python3 scripts/record_position_history.py
