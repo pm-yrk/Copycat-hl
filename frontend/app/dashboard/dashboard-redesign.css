@@ -1535,3 +1535,15 @@ html body .cc-dashboard-page::after{
   html body .cc-dashboard-page>.cc-dashboard-shell>*{order:0!important}
   html body .cc-dashboard-page>.cc-dashboard-shell>.cc-warning-banner{order:99!important}
 }
+
+/* Stable first paint: the data-rich client dashboard mounts after hydration so
+   browser extensions cannot alter its large server-rendered tree mid-hydration. */
+.cc-dashboard-loading{min-height:calc(100vh - 74px);align-content:start}
+.cc-dashboard-loading-pulse,.cc-dashboard-loading-kpis,.cc-dashboard-loading-panels{display:grid;gap:16px}
+.cc-dashboard-loading-pulse{grid-template-columns:repeat(5,minmax(0,1fr))}
+.cc-dashboard-loading-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}
+.cc-dashboard-loading-panels{grid-template-columns:repeat(2,minmax(0,1fr))}
+.cc-dashboard-loading span{display:block;border:1px solid rgba(130,200,195,.13);border-radius:15px;background:linear-gradient(155deg,rgba(8,28,37,.88),rgba(3,14,23,.92));box-shadow:0 16px 38px rgba(0,0,0,.16)}
+.cc-dashboard-loading-pulse span{height:132px}.cc-dashboard-loading-kpis span{height:118px}.cc-dashboard-loading-panels span{height:430px}
+@media(max-width:980px){.cc-dashboard-loading-pulse{grid-template-columns:repeat(2,minmax(0,1fr))}.cc-dashboard-loading-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:620px){.cc-dashboard-loading-pulse,.cc-dashboard-loading-kpis,.cc-dashboard-loading-panels{grid-template-columns:1fr}.cc-dashboard-loading-pulse span{height:92px}.cc-dashboard-loading-kpis span{height:96px}.cc-dashboard-loading-panels span{height:260px}}

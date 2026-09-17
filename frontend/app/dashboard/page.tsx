@@ -1092,7 +1092,7 @@ function PricePositioningChart({ icons, signals, details }: { icons: Record<stri
     {timeTicks.length ? <div className="cc-chart-time-axis">{timeTicks.map((timestamp, index) => <span key={String(timestamp) + '-' + index}>{chartTimeLabel(timestamp, windowKey)}</span>)}</div> : null}
   </section>
 }
-export default function Dashboard() {
+function DashboardContent() {
   const [summary, setSummary] = useState<any>({})
   const [signals, setSignals] = useState<any[]>([])
   const [targets, setTargets] = useState<any[]>([])
@@ -1408,4 +1408,26 @@ export default function Dashboard() {
     </main>
   </div>
 
+}
+
+export default function Dashboard() {
+  const [ready, setReady] = useState(false)
+  useEffect(() => setReady(true), [])
+
+  if (!ready) {
+    return <div className="cc-dashboard-page">
+      <PublicNav />
+      <main className="cc-dashboard-shell cc-dashboard-loading" aria-busy="true" aria-label="Loading live dashboard">
+        <section className="cc-dashboard-loading-pulse" aria-hidden>
+          {Array.from({ length: 5 }).map((_, index) => <span key={index} />)}
+        </section>
+        <section className="cc-dashboard-loading-kpis" aria-hidden>
+          {Array.from({ length: 4 }).map((_, index) => <span key={index} />)}
+        </section>
+        <section className="cc-dashboard-loading-panels" aria-hidden><span /><span /></section>
+      </main>
+    </div>
+  }
+
+  return <DashboardContent />
 }
