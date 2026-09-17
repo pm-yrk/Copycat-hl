@@ -929,6 +929,10 @@ function PricePositioningChart({ icons, signals, details }: { icons: Record<stri
   const [history, setHistory] = useState<PositionFrame[]>([])
   const [historyState, setHistoryState] = useState<'loading' | 'ready' | 'unavailable'>('loading')
   const [refresh, setRefresh] = useState(0)
+  // Keep the static HTML and first browser render identical. Reading Date.now()
+  // during render made the chart tick labels differ at hydration time, which
+  // caused React to replace the chart and produced a visible flash.
+  const [chartNow, setChartNow] = useState(0)
 
   const assetOptions = useMemo(() => {
     const seen = new Set<string>()
@@ -972,6 +976,7 @@ function PricePositioningChart({ icons, signals, details }: { icons: Record<stri
     let alive = true
     const controller = new AbortController()
     const now = Date.now()
+    setChartNow(now)
     setPriceLoading(true)
     setLiveCandles([])
     fetch('https://api.hyperliquid.xyz/info', {
@@ -1000,7 +1005,7 @@ function PricePositioningChart({ icons, signals, details }: { icons: Record<stri
   const selectedSignal = useMemo(() => (signals || []).find((row: any) => canonicalToken(String(row?.coin || '')) === canonicalToken(asset)) || null, [signals, asset])
   const currentNet = Number(selectedSignal?.net_value_usd ?? (Number(selectedSignal?.value_long_usd || 0) - Number(selectedSignal?.value_short_usd || 0)))
   const observedAt = Number(selectedSignal?.ts_ms || 0)
-  const requestedEnd = Date.now()
+  const requestedEnd = chartNow
   const requestedStart = requestedEnd - quickChartWindowMs(windowKey)
   const recorded = assetHistory(history, asset, requestedStart, requestedEnd)
   const positions = new Map(recorded.map((point) => [point.ts_ms, point]))
@@ -1043,7 +1048,7 @@ function PricePositioningChart({ icons, signals, details }: { icons: Record<stri
   const positionMove = positionPoints.length >= 2 ? positionPoints[positionPoints.length - 1].position - positionPoints[0].position : 0
   const priceMove = first?.price ? ((Number(last?.price || 0) / Number(first.price)) - 1) * 100 : 0
   const divergence = historyContinuous && !partialHistory && points.length >= 2 && first.ts_ms <= chartStart + 60000 && Math.abs(positionMove) > Math.max(1, Math.abs(currentNet) * .01) && Math.abs(priceMove) >= .15 && Math.sign(positionMove) !== Math.sign(priceMove)
-  const timeTicks = [0, .25, .5, .75, 1].map((ratio) => chartStart + (chartEnd - chartStart) * ratio)
+  const timeTicks = chartNow ? [0, .25, .5, .75, 1].map((ratio) => chartStart + (chartEnd - chartStart) * ratio) : []
   const coverageLabel = hasHistory ? `${partialHistory ? 'Available history' : 'Recorded history'}: ${new Date(chartStart).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} – ${new Date(chartEnd).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}${partialHistory ? ` · ${windowKey} still building` : ''}${!historyContinuous ? ` · gap detected (${Math.round(largestHistoryGap / 60000)}m)` : ''}` : historyState === 'loading' ? 'Loading recorded wallet positions…' : historyState === 'unavailable' ? 'Position archive temporarily unavailable · latest observed position shown' : 'Recording wallet positions automatically · first observation shown'
 
   return <section className="cc-card cc-price-positioning-card">
