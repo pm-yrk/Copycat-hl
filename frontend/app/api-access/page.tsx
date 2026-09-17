@@ -46,11 +46,17 @@ function displaySignalValue(row: any) {
   const shortUsd = Number(row?.value_short_usd || 0)
   const total = longUsd + shortUsd
   if (total <= 0) return Number(row?.signal || 0)
-  return longUsd >= shortUsd ? longUsd / total : -(shortUsd / total)
+  return (longUsd - shortUsd) / total
 }
 function signalText(row: any) {
   const value = displaySignalValue(row)
-  return `${Math.round(Math.abs(value) * 100)}% ${value < 0 ? 'Short' : 'Long'}`
+  return `${Math.round(Math.abs(value) * 100)}% ${value < 0 ? 'Short' : value > 0 ? 'Long' : 'Neutral'}`
+}
+function activityClass(side: any) {
+  const value = String(side || '').toLowerCase()
+  if (value === 'sell' || value.includes('open short') || value.includes('close long')) return 'negative'
+  if (value === 'buy' || value.includes('open long') || value.includes('close short')) return 'positive'
+  return ''
 }
 function rankSignalsLikeDashboard(rows: any[]) {
   const confidenceRank: Record<string, number> = { high: 3, medium: 2, med: 2, low: 1, reserve: 0 }
@@ -139,25 +145,29 @@ export default function ApiAccessPage() {
     || (coverageLive && (coverage?.selected_wallet_count || coverage?.wallets_configured))
     || 0
   )
+  const analysed = Number(
+    (feedLive && summary.latest_scanner_candidate_wallets_scored)
+    || (statusLive && status?.latest_scanner_candidate_wallets_scored)
+    || (coverageLive && coverage?.latest_scanner_candidate_wallets_scored)
+    || 0
+  )
   const wallets = boardLive ? (leaderboard?.rows || leaderboard?.data || []) : []
   const dashboardMarkets = feedLive && Array.isArray(feed?.signals) ? rankSignalsLikeDashboard(feed.signals) : []
   const markets = dashboardMarkets.length ? dashboardMarkets : (marketLive ? (screener?.rows || screener?.data || []) : [])
   const activity = feedLive ? (feed?.orders || feed?.recent_orders || []) : []
   const marketDataTs = dashboardMarkets.length ? feedTs : marketTs
-  const sample = markets[0] || null
+  const sample = marketLive ? ((screener?.rows || screener?.data || [])[0] || null) : null
   const base = endpointBase()
 
   const codeSample = useMemo(() => {
     if (!sample) return '{\n  "status": "waiting_for_fresh_snapshot"\n}'
     return JSON.stringify({
-      asset: sample.coin,
-      direction: displaySignalValue(sample) < 0 ? 'short' : 'long',
-      conviction: Math.round(Math.abs(displaySignalValue(sample)) * 100),
-      long_wallets: Number(sample.wallets_long || 0),
-      short_wallets: Number(sample.wallets_short || 0),
-      net_exposure: Number(sample.net_value_usd || 0),
+      status: screener?.status || 'ok',
+      source: screener?.source,
+      updated_at_ms: screener?.updated_at_ms,
+      rows: [sample],
     }, null, 2)
-  }, [sample])
+  }, [sample, screener])
 
   const endpoints = [
     ['Dashboard feed', '/dashboard-feed.json', 'Aggregate live snapshot of market signals, flow, orders and model targets.'],
@@ -183,7 +193,7 @@ export default function ApiAccessPage() {
 
       <section className="public-api-stats">
         <article><i><ApiGlyph type="wallets"/></i><b>{live && selected ? compact(selected) : '—'}</b><span>ranked wallets</span></article>
-        <article><i><ApiGlyph type="scan"/></i><b>{live && scanned ? compact(scanned) : '—'}</b><span>wallets analysed</span></article>
+        <article><i><ApiGlyph type="scan"/></i><b>{live && scanned ? compact(scanned) : '—'}</b><span>wallets indexed · {analysed ? `${compact(analysed)} fully analysed` : 'analysis count pending'}</span></article>
         <article><i><ApiGlyph type="live"/></i><b>{live ? 'Live' : '—'}</b><span>{live ? freshness(latestTs) : 'fresh feed unavailable'}</span></article>
         <article><i><ApiGlyph type="json"/></i><b>JSON</b><span>REST endpoints</span></article>
       </section>
@@ -201,7 +211,7 @@ export default function ApiAccessPage() {
 
       <section className="public-api-code-section">
         <article className="public-code-card">
-          <header><div><h2>One request. Structured intelligence.</h2><span><b>GET</b> /api/token-screener-preview.json</span></div><em className={live && sample ? 'live' : ''}>{live && sample ? '200 LIVE' : 'WAITING'}</em></header>
+          <header><div><h2>One request. Structured intelligence.</h2><span><b>GET</b> /api/token-screener-preview.json · response excerpt</span></div><em className={marketLive && sample ? 'live' : ''}>{marketLive && sample ? '200 LIVE' : 'WAITING'}</em></header>
           <pre>{codeSample}</pre>
         </article>
         <div className="public-api-benefits">
@@ -215,7 +225,7 @@ export default function ApiAccessPage() {
         <header><div className="public-api-tabs">{(['wallets','markets','activity','endpoints'] as Tab[]).map(t => <button key={t} className={tab === t ? 'active' : ''} onClick={() => setTab(t)}>{t[0].toUpperCase()+t.slice(1)}</button>)}</div><span className={live ? 'live' : ''}>{live ? 'Live data' : 'Fresh data unavailable'}</span></header>
         {tab === 'markets' ? <div className="public-api-table-block"><h3>Market positioning <small>Same dashboard feed • {freshness(marketDataTs || latestTs)}</small></h3>{markets.length ? <div className="public-table-scroll"><table><thead><tr><th>Asset</th><th>Conviction</th><th>Long wallets</th><th>Short wallets</th><th>Net exposure</th></tr></thead><tbody>{markets.slice(0,12).map((r:any)=><tr key={r.coin}><td><span className="public-api-token-cell"><PublicTokenIcon symbol={r.coin}/><b>{r.coin}</b></span></td><td className={displaySignalValue(r) < 0 ? 'negative' : 'positive'}>{signalText(r)}</td><td>{compact(r.wallets_long)}</td><td>{compact(r.wallets_short)}</td><td className={Number(r.net_value_usd)<0?'negative':'positive'}>{money(r.net_value_usd)}</td></tr>)}</tbody></table></div> : <div className="public-data-empty"><b>Waiting for a fresh market snapshot.</b><span>No bundled table is shown as live.</span></div>}</div> : null}
         {tab === 'wallets' ? <div className="public-api-table-block"><h3>Ranked wallet cohort <small>{freshness(boardTs || latestTs)}</small></h3>{wallets.length ? <div className="public-table-scroll"><table><thead><tr><th>#</th><th>Wallet</th><th>Total value</th><th>Perp equity</th><th>Open exposure</th></tr></thead><tbody>{wallets.slice(0,20).map((r:any,i:number)=><tr key={r.wallet || i}><td>{r.rank || i+1}</td><td><a href={r.wallet ? `https://hypurrscan.io/address/${r.wallet}` : '#'} target="_blank" rel="noreferrer">{shortWallet(r)}</a></td><td>{money(r.total_wallet_value_usd)}</td><td>{money(r.perp_account_value_usd ?? r.account_value_usd)}</td><td>{money(r.open_position_value_usd)}</td></tr>)}</tbody></table></div> : <div className="public-data-empty"><b>Waiting for a fresh wallet snapshot.</b><span>No deploy-time wallet values are substituted.</span></div>}</div> : null}
-        {tab === 'activity' ? <div className="public-api-table-block"><h3>Recent tracked-wallet activity <small>{freshness(feedTs || latestTs)}</small></h3>{activity.length ? <div className="public-table-scroll"><table><thead><tr><th>Wallet</th><th>Action</th><th>Asset</th><th>Value</th><th>Time</th></tr></thead><tbody>{activity.slice(0,20).map((r:any,i:number)=><tr key={`${r.wallet}-${r.ts_ms}-${i}`}><td>{shortWallet(r)}</td><td className={String(r.side).toLowerCase().includes('short')?'negative':'positive'}>{r.side || r.action || 'Order'}</td><td><span className="public-api-token-cell"><PublicTokenIcon symbol={r.coin || r.asset}/><b>{r.coin || r.asset || '—'}</b></span></td><td>{money(r.delta_value_usd || r.position_value_usd || r.value_usd)}</td><td>{freshness(r.ts_ms)}</td></tr>)}</tbody></table></div> : <div className="public-data-empty"><b>Waiting for fresh wallet activity.</b><span>Activity only appears when the live feed is current.</span></div>}</div> : null}
+        {tab === 'activity' ? <div className="public-api-table-block"><h3>Recent tracked-wallet activity <small>{freshness(feedTs || latestTs)}</small></h3>{activity.length ? <div className="public-table-scroll"><table><thead><tr><th>Wallet</th><th>Action</th><th>Asset</th><th>Value</th><th>Time</th></tr></thead><tbody>{activity.slice(0,20).map((r:any,i:number)=><tr key={`${r.wallet}-${r.ts_ms}-${i}`}><td>{shortWallet(r)}</td><td className={activityClass(r.side || r.action)}>{r.side || r.action || 'Order'}</td><td><span className="public-api-token-cell"><PublicTokenIcon symbol={r.coin || r.asset}/><b>{r.coin || r.asset || '—'}</b></span></td><td>{money(r.delta_value_usd ?? r.position_value_usd ?? r.value_usd)}</td><td>{freshness(r.ts_ms)}</td></tr>)}</tbody></table></div> : <div className="public-data-empty"><b>Waiting for fresh wallet activity.</b><span>Activity only appears when the live feed is current.</span></div>}</div> : null}
         {tab === 'endpoints' ? <div className="public-api-tab-endpoints">{endpoints.map(([title,path,desc])=><code key={title}><b>{title}</b><span>GET {base}{path}</span><em>{desc}</em></code>)}</div> : null}
       </section>
 

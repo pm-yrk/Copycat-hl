@@ -1,25 +1,16 @@
 name: Deploy Copycat to Cloudflare Pages
 
-# Direct-upload deployment. This deliberately does not depend on Cloudflare's GitHub App,
-# so a stale/broken Pages repository connection cannot block releases.
-#
-# Automatic runs are limited to frontend/config changes only; README/docs-only pushes do not
-# spend an Actions run or create a Cloudflare deployment.
+# Cloudflare's connected Git deployment is the production path. Keep this direct-upload
+# workflow as a manual recovery option; automatic runs require repository secrets that
+# are intentionally not configured and would otherwise report a false failed release.
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - "frontend/**"
-      - "cloudflare-pages.toml"
 
 permissions:
   contents: read
 
 concurrency:
   group: copycat-cloudflare-pages-production
-  # If several frontend commits land quickly, only the newest build is useful.
   cancel-in-progress: true
 
 env:
@@ -69,9 +60,6 @@ jobs:
       - name: Build static Cloudflare Pages site
         working-directory: frontend
         env:
-          # These are public browser configuration values, but keeping the existing Supabase
-          # values as repository secrets lets this direct build match the old Cloudflare build.
-          # If Copycat does not use them they may remain unset.
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
         run: npm run build:cloudflare
@@ -121,5 +109,5 @@ jobs:
             echo
             echo "Direct deployment target: https://${PAGES_PROJECT}.pages.dev"
             echo
-            echo "This workflow does not use the Cloudflare GitHub App repository connection."
+            echo "This workflow is the manual recovery route for the connected Git deployment."
           } >> "$GITHUB_STEP_SUMMARY"

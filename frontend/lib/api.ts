@@ -3,6 +3,7 @@
 import { getApiBaseUrl, getSupabase } from './supabase'
 
 type ApiOptions = { signal?: AbortSignal; timeoutMs?: number }
+const SNAPSHOT_MAX_AGE_MS = Number(process.env.NEXT_PUBLIC_SNAPSHOT_MAX_AGE_MS || 10 * 60 * 1000)
 
 
 
@@ -54,9 +55,34 @@ function copycatFreshSnapshotUrlsForPath(path: string) {
 
 function copycatPrefersSnapshot(path: string) {
   if (!copycatSnapshotFileForPath(path)) return false
+  if (/[?&](live|full)=true(?:&|$)/.test(path)) return false
   return process.env.NEXT_PUBLIC_SNAPSHOT_FIRST === 'true'
     || process.env.NEXT_PUBLIC_STATIC_EXPORT === 'true'
     || copycatIsCloudflarePagesRuntime()
+}
+
+function copycatSnapshotTimestamp(payload: any) {
+  const candidates = [
+    payload?.snapshot_generated_at_ms,
+    payload?.server_time_ms,
+    payload?.updated_at_ms,
+    payload?.as_of_ms,
+    payload?.generated_at_ms,
+    payload?.latest_ts_ms,
+    payload?.summary?.latest_signal_ts_ms,
+    payload?.summary?.latest_live_state_ts_ms,
+  ].map(Number).filter((value) => Number.isFinite(value) && value > 0)
+  return candidates.length ? Math.max(...candidates) : 0
+}
+
+function assertUsableSnapshot(path: string, payload: any) {
+  const file = copycatSnapshotFileForPath(path)
+  if (!file || file === 'token-icons.json') return payload
+  const timestamp = copycatSnapshotTimestamp(payload)
+  if (!timestamp || Math.abs(Date.now() - timestamp) > SNAPSHOT_MAX_AGE_MS) {
+    throw new Error('Snapshot is outside the live freshness window')
+  }
+  return payload
 }
 
 async function copycatFetchJson(url: string, options: ApiOptions = {}, cache: RequestCache = 'default') {
@@ -88,7 +114,7 @@ export async function apiGet(path: string, options: ApiOptions = {}) {
   if (snapshotUrls.length && copycatPrefersSnapshot(path)) {
     for (const url of snapshotUrls) {
       try {
-        return await copycatFetchJson(url, options, 'default')
+        return assertUsableSnapshot(path, await copycatFetchJson(url, options, 'no-store'))
       } catch {
         // Try next snapshot source, then fall back to the live API.
       }
@@ -158,7 +184,7 @@ export async function apiGetFresh(path: string, options: ApiOptions = {}) {
   const snapshotUrls = copycatFreshSnapshotUrlsForPath(path)
   for (const url of snapshotUrls) {
     try {
-      return await copycatFetchJson(url, options, 'no-store')
+      return assertUsableSnapshot(path, await copycatFetchJson(url, options, 'no-store'))
     } catch {
       // Fall through to the authenticated/live API below.
     }

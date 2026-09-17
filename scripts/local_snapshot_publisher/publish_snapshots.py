@@ -549,6 +549,70 @@ def spot_token_prices(spot_market: Any) -> Tuple[Dict[int, Dict[str, Any]], Dict
     return prices, names
 
 
+def spot_market_aliases(spot_market: Any) -> Dict[str, str]:
+    """Map Hyperliquid numeric spot market IDs (for example @107) to symbols."""
+    if not isinstance(spot_market, list) or not spot_market or not isinstance(spot_market[0], dict):
+        return {}
+    meta = spot_market[0]
+    tokens = meta.get("tokens") if isinstance(meta.get("tokens"), list) else []
+    universe = meta.get("universe") if isinstance(meta.get("universe"), list) else []
+    names = {
+        safe_int(token.get("index"), -1): clean_coin(token.get("name"))
+        for token in tokens if isinstance(token, dict) and safe_int(token.get("index"), -1) >= 0
+    }
+    aliases: Dict[str, str] = {}
+    for pair in universe:
+        if not isinstance(pair, dict):
+            continue
+        market = clean_coin(pair.get("name"))
+        token_pair = pair.get("tokens")
+        if not market or not isinstance(token_pair, list) or not token_pair:
+            continue
+        symbol = names.get(safe_int(token_pair[0], -1), "")
+        if symbol:
+            aliases[market] = symbol
+    return aliases
+
+
+def aggregate_order_flow(orders: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Aggregate order value and unique wallet direction per asset."""
+    flow_by_coin: Dict[str, Dict[str, Any]] = {}
+    for order in orders:
+        coin = clean_coin(order.get("coin"))
+        if not coin:
+            continue
+        value = abs(safe_float(order.get("delta_value_usd")))
+        side = str(order.get("side", "")).lower()
+        bullish = "open long" in side or "close short" in side or side in {"b", "buy"}
+        bearish = "open short" in side or "close long" in side or side in {"a", "s", "sell"}
+        if not bullish and not bearish:
+            continue
+        row = flow_by_coin.setdefault(
+            coin,
+            {"coin": coin, "bullish_flow_usd": 0.0, "bearish_flow_usd": 0.0, "net_value_flow_usd": 0.0, "_wallet_net": {}},
+        )
+        signed_value = value if bullish else -value
+        if bullish:
+            row["bullish_flow_usd"] += value
+        else:
+            row["bearish_flow_usd"] += value
+        row["net_value_flow_usd"] += signed_value
+        wallet = str(order.get("wallet") or "").lower()
+        if wallet:
+            row["_wallet_net"][wallet] = row["_wallet_net"].get(wallet, 0.0) + signed_value
+
+    flow = list(flow_by_coin.values())
+    for row in flow:
+        wallet_net = row.pop("_wallet_net", {})
+        row["net_buyer_count"] = sum(1 for value in wallet_net.values() if value > 0) - sum(1 for value in wallet_net.values() if value < 0)
+        row["wallets_buying"] = sum(1 for value in wallet_net.values() if value > 0)
+        row["wallets_selling"] = sum(1 for value in wallet_net.values() if value < 0)
+        for key in ["bullish_flow_usd", "bearish_flow_usd", "net_value_flow_usd"]:
+            row[key] = round(row[key], 2)
+    flow.sort(key=lambda row: abs(row.get("net_value_flow_usd", 0)) + row.get("bullish_flow_usd", 0) + row.get("bearish_flow_usd", 0), reverse=True)
+    return flow
+
+
 def spot_wallet_value(
     spot_state: Optional[Dict[str, Any]],
     spot_market: Any,
@@ -2634,6 +2698,7 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
         config.request_timeout_seconds,
         spot_market_refresh_seconds,
     )
+    spot_aliases = spot_market_aliases(spot_market)
     total_value_inputs: Dict[str, Dict[str, Any]] = {}
     live_state_count = 0
     stale_state_count = 0
@@ -2673,7 +2738,8 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
         time.sleep(max(0.05, config.request_pause_seconds / 3))
         fills = get_fills(wallet, start_ms, config.request_timeout_seconds)
         for fill in fills:
-            coin = clean_coin(fill.get("coin"))
+            raw_coin = clean_coin(fill.get("coin"))
+            coin = spot_aliases.get(raw_coin, raw_coin)
             px = safe_float(fill.get("px"))
             size = abs(safe_float(fill.get("sz")))
             value = round(px * size, 2) if px and size else 0.0
@@ -2864,32 +2930,7 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
         states, wallets, now_ms, mids,
     )
 
-    flow_by_coin: Dict[str, Dict[str, Any]] = {}
-    for order in orders:
-        coin = clean_coin(order.get("coin"))
-        value = safe_float(order.get("delta_value_usd"))
-        row = flow_by_coin.setdefault(
-            coin,
-            {"coin": coin, "net_buyer_count": 0, "bullish_flow_usd": 0.0, "bearish_flow_usd": 0.0, "net_value_flow_usd": 0.0},
-        )
-        bullish = str(order.get("side", "")).lower().find("open long") >= 0 or str(order.get("side", "")).lower().find("close short") >= 0
-        if not bullish and (str(order.get("side", "")).lower().find("open short") >= 0 or str(order.get("side", "")).lower().find("close long") >= 0):
-            bullish = False
-        elif str(order.get("side", "")).lower() in {"b", "buy"}:
-            bullish = True
-        if bullish:
-            row["bullish_flow_usd"] += value
-            row["net_value_flow_usd"] += value
-            row["net_buyer_count"] += 1
-        else:
-            row["bearish_flow_usd"] += value
-            row["net_value_flow_usd"] -= value
-            row["net_buyer_count"] -= 1
-    flow = list(flow_by_coin.values())
-    for r in flow:
-        for k in ["bullish_flow_usd", "bearish_flow_usd", "net_value_flow_usd"]:
-            r[k] = round(r[k], 2)
-    flow.sort(key=lambda r: abs(r.get("net_value_flow_usd", 0)) + r.get("bullish_flow_usd", 0) + r.get("bearish_flow_usd", 0), reverse=True)
+    flow = aggregate_order_flow(orders)
 
     orders.sort(key=lambda r: safe_int(r.get("ts_ms")), reverse=True)
     orders = orders[:50]
@@ -3299,9 +3340,67 @@ def upload_r2(config: Config, snapshots: Dict[str, Tuple[str, Dict[str, Any]]]) 
     log(f"Uploaded {len(snapshots)} snapshot file(s) to R2 bucket {config.r2_bucket}")
 
 
+POSITION_HISTORY_DIR = SCRIPT_DIR / "scanner_state" / "position_history"
+
+
+def position_history_snapshots(feed: Dict[str, Any]) -> Dict[str, Tuple[str, Dict[str, Any]]]:
+    """Persist genuine five-minute observations beside the live R2 snapshots."""
+    summary = feed.get("summary") if isinstance(feed.get("summary"), dict) else {}
+    ts_ms = safe_int(summary.get("latest_signal_ts_ms"))
+    selected = safe_int(summary.get("selected_wallet_count") or summary.get("qualified_wallets"))
+    live = safe_int(summary.get("wallets_with_live_state") or summary.get("live_wallets"))
+    if not ts_ms or selected != 50 or live != 50 or safe_int(summary.get("wallets_missing_state")) or safe_int(summary.get("wallets_with_stale_state")):
+        return {}
+    signals = feed.get("signals") if isinstance(feed.get("signals"), list) else []
+    if not signals:
+        return {}
+    assets: Dict[str, List[Optional[float]]] = {}
+    for row in signals:
+        coin = str(row.get("coin") or "") if isinstance(row, dict) else ""
+        net = row.get("net_value_usd") if isinstance(row, dict) else None
+        price = row.get("price_usd") if isinstance(row, dict) else None
+        if not coin or coin in assets or not isinstance(net, (int, float)) or isinstance(net, bool) or not math.isfinite(net):
+            return {}
+        assets[coin] = [round(float(net), 2), round(float(price), 10) if isinstance(price, (int, float)) and not isinstance(price, bool) and math.isfinite(price) and price > 0 else None]
+
+    POSITION_HISTORY_DIR.mkdir(parents=True, exist_ok=True)
+    day = datetime.fromtimestamp(ts_ms / 1000, timezone.utc).date().isoformat()
+    day_path = POSITION_HISTORY_DIR / f"{day}.json"
+    payload: Dict[str, Any] = {"schema_version": 1, "frames": []}
+    if day_path.exists():
+        try:
+            loaded = json.loads(day_path.read_text(encoding="utf-8"))
+            if loaded.get("schema_version") == 1 and isinstance(loaded.get("frames"), list):
+                payload = loaded
+        except Exception as exc:
+            log(f"Position history cache warning: {exc}")
+    frames = [row for row in payload["frames"] if isinstance(row, dict) and safe_int(row.get("ts_ms"))]
+    last_ts = safe_int(frames[-1].get("ts_ms")) if frames else 0
+    if not last_ts or ts_ms - last_ts >= 4 * 60 * 1000:
+        frames.append({"ts_ms": ts_ms, "assets": assets})
+    by_ts = {safe_int(row.get("ts_ms")): row for row in frames}
+    payload = {"schema_version": 1, "frames": [by_ts[key] for key in sorted(by_ts) if key]}
+    day_path.write_text(json.dumps(payload, separators=(",", ":"), ensure_ascii=False), encoding="utf-8")
+
+    cutoff_day = datetime.fromtimestamp((ts_ms - 31 * 86_400_000) / 1000, timezone.utc).date().isoformat()
+    for old_path in POSITION_HISTORY_DIR.glob("????-??-??.json"):
+        if old_path.stem < cutoff_day:
+            old_path.unlink(missing_ok=True)
+    days = sorted(path.stem for path in POSITION_HISTORY_DIR.glob("????-??-??.json") if path.stem >= cutoff_day)
+    manifest = {"schema_version": 1, "latest_ts_ms": ts_ms, "days": days, "cohort": "Copycat-ranked top 50 at each observation", "cadence_minutes": 5}
+    return {
+        "position-history/index.json": ("application/json", manifest),
+        f"position-history/days/{day}.json": ("application/json", payload),
+    }
+
+
 def once(config: Config) -> None:
     wallets = load_wallets(config.wallet_file, config.max_wallets)
     snapshots = build_snapshots(wallets, config)
+    try:
+        snapshots.update(position_history_snapshots(snapshots["dashboard-feed.json"][1]))
+    except Exception as exc:
+        log(f"Position history warning: {exc}")
     write_local(config.out_dir, snapshots)
     upload_r2(config, snapshots)
     public_url = (config.r2_public_url or "").rstrip("/")

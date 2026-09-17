@@ -39,6 +39,12 @@ function freshness(ts: any) {
   const mins = Math.round(secs / 60)
   return mins < 60 ? `Updated ${mins}m ago` : `Updated ${Math.round(mins / 60)}h ago`
 }
+function activityClass(side: any) {
+  const value = String(side || '').toLowerCase()
+  if (value === 'sell' || value.includes('open short') || value.includes('close long')) return 'negative'
+  if (value === 'buy' || value.includes('open long') || value.includes('close short')) return 'positive'
+  return ''
+}
 function isFresh(ts: any) {
   const n = Number(ts || 0)
   return Boolean(n && Math.abs(Date.now() - n) <= MAX_LIVE_AGE_MS)
@@ -54,7 +60,7 @@ function displaySignalValue(row: any) {
   const shortUsd = Number(row?.value_short_usd || 0)
   const total = longUsd + shortUsd
   if (total <= 0) return Number(row?.signal || 0)
-  return longUsd >= shortUsd ? longUsd / total : -(shortUsd / total)
+  return (longUsd - shortUsd) / total
 }
 function rankSignalsLikeDashboard(rows: any[]) {
   const confidenceRank: Record<string, number> = { high: 3, medium: 2, med: 2, low: 1, reserve: 0 }
@@ -161,6 +167,7 @@ export default function Home() {
   const orders = feedLive && Array.isArray(feed?.orders) ? feed.orders : []
   const selected = Number(summary.qualified_wallets || summary.selected_wallet_count || summary.tracked_active_wallets || 0)
   const indexed = Number(summary.indexed_wallets || summary.known_wallet_candidates || summary.registry_wallets || summary.owned_wallets_indexed || summary.scanner_candidate_wallets_scored || 0)
+  const analysed = Number(summary.latest_scanner_candidate_wallets_scored || 0)
   const rankedSignals = useMemo(() => rankSignalsLikeDashboard(signals), [signals])
   const btc = signals.find((r: any) => String(r?.coin).toUpperCase() === 'BTC') || rankedSignals[0]
   const btcSignal = displaySignalValue(btc)
@@ -247,7 +254,7 @@ export default function Home() {
           <p className="public-hero-lede">{selected && feedLive ? <>Copycat tracks <strong>{compact(selected)}</strong> of its highest-ranked Hyperliquid wallets and turns their positions into simple signals anyone can understand.</> : <>Copycat turns the positioning of its ranked Hyperliquid wallet cohort into simple signals anyone can understand.</>}</p>
           <div className="public-live-stats">
             <div><i><MiniIcon type="users"/></i><b>{feedLive && selected ? compact(selected) : '—'}</b><span>top wallets tracked</span></div>
-            <div><i><MiniIcon type="search"/></i><b>{feedLive && indexed ? compact(indexed) : '—'}</b><span>wallets analysed</span></div>
+            <div><i><MiniIcon type="search"/></i><b>{feedLive && indexed ? compact(indexed) : '—'}</b><span>wallets indexed{analysed ? ` · ${compact(analysed)} fully analysed` : ''}</span></div>
             <div><i><MiniIcon type="pulse"/></i><b>{feedLive ? 'Live' : '—'}</b><span>{feedLive ? freshness(feedTs) : 'feed unavailable'}</span></div>
           </div>
         </div>
@@ -307,7 +314,7 @@ export default function Home() {
               <article className="public-shot-signals"><header><b>Asset signal board</b><span>live conviction</span></header><div>{rankedSignals.slice(0,5).map((row:any,index:number)=>{const value=displaySignalValue(row);return <span key={row.coin}><i>{index+1}</i><PublicTokenIcon symbol={row.coin}/><b>{row.coin}</b><em className={value < 0 ? 'negative' : 'positive'}>{Math.round(Math.abs(value)*100)}% {value < 0 ? 'Short' : 'Long'}</em><small>{money(row.net_value_usd)}</small></span>})}</div></article>
               <article className="public-shot-performance"><header><b>Model performance</b><span>Last 24 hours</span></header>{perfReady ? <><div className="public-shot-chart"><svg viewBox="0 0 260 72" preserveAspectRatio="none"><path d={copycatPath}/></svg></div><div className="public-shot-performance-legend"><span><i className="public-index-mark">◇</i>Copycat <b className={perf24hReturns.copycat < 0 ? 'negative' : 'positive'}>{pct(perf24hReturns.copycat)}</b></span><span><PublicTokenIcon symbol="BTC"/>BTC <b className={perf24hReturns.btc < 0 ? 'negative' : 'positive'}>{pct(perf24hReturns.btc)}</b></span><span><PublicTokenIcon symbol="ETH"/>ETH <b className={perf24hReturns.eth < 0 ? 'negative' : 'positive'}>{pct(perf24hReturns.eth)}</b></span></div></> : <div className="public-data-empty"><b>24h window warming up.</b></div>}</article>
             </div>
-            <div className="public-shot-orders"><header><b>Most recent orders</b><span>same live cohort as dashboard</span></header><div>{orders.slice(0,3).map((row:any,index:number)=><span key={`${row.wallet}-${row.ts_ms}-${index}`}><PublicTokenIcon symbol={row.coin || row.asset}/><b>{row.coin || row.asset}</b><em className={String(row.side).toLowerCase().includes('short')?'negative':'positive'}>{row.side || 'Order'}</em><small>{String(row.wallet_label || row.wallet || 'Wallet').replace(/^(.{8}).*(.{4})$/, '$1…$2')}</small><strong>{money(row.delta_value_usd || row.position_value_usd)}</strong></span>)}</div></div>
+            <div className="public-shot-orders"><header><b>Most recent orders</b><span>same live cohort as dashboard</span></header><div>{orders.slice(0,3).map((row:any,index:number)=><span key={`${row.wallet}-${row.ts_ms}-${index}`}><PublicTokenIcon symbol={row.coin || row.asset}/><b>{row.coin || row.asset}</b><em className={activityClass(row.side)}>{row.side || 'Order'}</em><small>{String(row.wallet_label || row.wallet || 'Wallet').replace(/^(.{8}).*(.{4})$/, '$1…$2')}</small><strong>{money(row.delta_value_usd ?? row.position_value_usd)}</strong></span>)}</div></div>
           </div> : <div className="public-data-empty"><b>Fresh dashboard snapshot unavailable.</b><span>The preview never substitutes made-up data.</span></div>}
         </div>
         <div className="public-telegram-preview">

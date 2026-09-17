@@ -74,15 +74,13 @@ function longSharePct(longUsd: any, shortUsd: any) {
   return `${Math.round(share)}%`
 }
 function displaySignalValue(row: any) {
-  // Customer-facing signal = value-weighted directional majority.
-  // If an asset is mostly long, show the long share. If mostly short, show the
-  // short share as a negative number. This keeps the signal board, at-a-glance
-  // card, and long/short exposure bars mathematically aligned.
+  // Signed net positioning. A balanced 50/50 market is neutral (0%), while a
+  // one-sided market approaches +/-100%.
   const l = Number(row?.value_long_usd || 0)
   const sh = Number(row?.value_short_usd || 0)
   const total = l + sh
   if (total <= 0) return Number(row?.signal || 0)
-  return l >= sh ? l / total : -(sh / total)
+  return (l - sh) / total
 }
 function displaySignalPct(row: any) {
   const v = displaySignalValue(row) * 100
@@ -805,15 +803,6 @@ function CatalystWatchCard({ watch }: { watch?: any }) {
 
 
 function SignalFlowMap({ rows, icons, details }: { rows: any[]; icons: Record<string, string>; details: Record<string, AssetDetail> }) {
-  const plotRef = useRef<HTMLDivElement>(null)
-  const [plotSize, setPlotSize] = useState({ width: 500, height: 310 })
-  useEffect(() => {
-    const node = plotRef.current
-    if (!node) return
-    const observer = new ResizeObserver(([entry]) => setPlotSize({ width: entry.contentRect.width, height: entry.contentRect.height }))
-    observer.observe(node)
-    return () => observer.disconnect()
-  }, [])
   const candidates = [...(rows || [])]
     .filter((row: any) => row?.coin)
     .sort((a: any, b: any) => {
@@ -823,34 +812,21 @@ function SignalFlowMap({ rows, icons, details }: { rows: any[]; icons: Record<st
       return flowDifference || (bGross - aGross)
     })
     .slice(0, 6)
-  const maxFlow = Math.max(1, ...candidates.map((row: any) => Math.abs(Number(row?.net_value_flow_usd || 0))))
+  const flowRate = (row: any) => {
+    const gross = Number(row?.value_long_usd || 0) + Number(row?.value_short_usd || 0)
+    return gross > 0 ? Number(row?.net_value_flow_usd || 0) / gross : 0
+  }
+  const maxFlowRate = Math.max(.0001, ...candidates.map((row: any) => Math.abs(flowRate(row))))
   const maxGross = Math.max(1, ...candidates.map((row: any) => Number(row?.value_long_usd || 0) + Number(row?.value_short_usd || 0)))
-  const placed: Array<{ left: number; top: number; size: number }> = []
   const bubbleLayout = candidates.map((row: any, index: number) => {
     const signal = Math.max(-1, Math.min(1, displaySignalValue(row)))
     const flowValue = Number(row?.net_value_flow_usd || 0)
     const gross = Number(row?.value_long_usd || 0) + Number(row?.value_short_usd || 0)
-    const flowStrength = flowValue ? Math.sign(flowValue) * (Math.log1p(Math.abs(flowValue)) / Math.log1p(maxFlow)) : 0
+    const rate = flowRate(row)
     const baseLeft = 50 + signal * 38
-    const baseTop = flowValue ? 50 - flowStrength * 36 : 50 + ((index % 3) - 1) * 9
+    const baseTop = 50 - (rate / maxFlowRate) * 36
     const size = 32 + Math.sqrt(Math.max(0, gross) / maxGross) * 34
-    const xBounds: [number, number] = signal < -.02 ? [10, 46] : signal > .02 ? [54, 90] : [45, 55]
-    const yBounds: [number, number] = flowValue < 0 ? [54, 88] : flowValue > 0 ? [12, 46] : [43, 57]
-    const clamp = (value: number, bounds: [number, number]) => Math.max(bounds[0], Math.min(bounds[1], value))
-    const offsets = [[0, 0], [12, 0], [-12, 0], [0, -18], [0, 18], [12, -18], [-12, 18], [12, 18], [-12, -18], [22, 0], [-22, 0], [22, -18], [-22, 18], [0, -30], [0, 30]]
-    let best = { left: clamp(baseLeft, xBounds), top: clamp(baseTop, yBounds), score: -Infinity }
-    for (const [offsetX, offsetY] of offsets) {
-      const left = clamp(baseLeft + offsetX, xBounds)
-      const top = clamp(baseTop + offsetY, yBounds)
-      const score = placed.length ? Math.min(...placed.map((prior) => {
-        const distance = Math.hypot((left - prior.left) * plotSize.width / 100, (top - prior.top) * plotSize.height / 100)
-        return distance - ((size + prior.size) / 2 + 14)
-      })) : 999
-      if (score > best.score) best = { left, top, score }
-      if (score >= 0) break
-    }
-    placed.push({ left: best.left, top: best.top, size })
-    return { row, index, signal, flowValue, gross, size, left: best.left, top: best.top }
+    return { row, index, signal, flowValue, rate, gross, size, left: baseLeft, top: baseTop }
   })
 
   return <section className="cc-card cc-signal-flow-card">
@@ -859,10 +835,10 @@ function SignalFlowMap({ rows, icons, details }: { rows: any[]; icons: Record<st
         <h3>Signal × Flow</h3>
         <span>Where top wallets are positioned vs what they are doing now</span>
       </div>
-      <span className="cc-bubble-key">Bubble size = tracked exposure <i aria-hidden>i</i></span>
+      <span className="cc-bubble-key">Position = signed exposure · Flow = net 60m flow ÷ exposure · Bubble = exposure <i aria-hidden>i</i></span>
     </div>
     <div className="cc-signal-flow-stage">
-      <div ref={plotRef} className="cc-signal-flow-plot" role="img" aria-label="Asset signal and recent flow map">
+      <div className="cc-signal-flow-plot" role="img" aria-label="Asset signed positioning and recent net flow as a share of exposure">
         <i className="cc-signal-flow-axis-x" aria-hidden />
         <i className="cc-signal-flow-axis-y" aria-hidden />
         <span className="cc-axis-title y-positive">Buying now</span>
@@ -875,7 +851,7 @@ function SignalFlowMap({ rows, icons, details }: { rows: any[]; icons: Record<st
         <span className="cc-quadrant-note q-bl"><b>↘</b> Bearish continuation</span>
         <span className="cc-quadrant-note q-br"><b>↘</b> Longs reducing<br/>possible weakness</span>
         {[-100, -50, 0, 50, 100].map((tick) => <span className="cc-axis-tick x" style={{ left: `${50 + tick * .39}%` }} key={`x-${tick}`}>{tick}%</span>)}
-        {[100, 50, 0, -50, -100].map((tick) => <span className="cc-axis-tick y" style={{ top: `${50 - tick * .37}%` }} key={`y-${tick}`}>{tick}%</span>)}
+        {[1, .5, 0, -.5, -1].map((ratio) => <span className="cc-axis-tick y" style={{ top: `${50 - ratio * 37}%` }} key={`y-${ratio}`}>{`${ratio > 0 ? '+' : ''}${(ratio * maxFlowRate * 100).toFixed(maxFlowRate < .01 ? 2 : 1)}%`}</span>)}
         {bubbleLayout.map(({ row, index, signal, flowValue, size, left, top }) => {
           return <span
             key={String(row.coin)}
@@ -1036,6 +1012,8 @@ function PricePositioningChart({ icons, signals, details }: { icons: Record<stri
   const firstRecorded = positionPoints[0]?.ts_ms
   const lastRecorded = positionPoints[positionPoints.length - 1]?.ts_ms
   const hasHistory = positionPoints.length >= 2 && lastRecorded > firstRecorded
+  const largestHistoryGap = positionPoints.slice(1).reduce((largest, point, index) => Math.max(largest, point.ts_ms - positionPoints[index].ts_ms), 0)
+  const historyContinuous = hasHistory && largestHistoryGap <= 15 * 60 * 1000
   // Until the archive fills the selected window, show the real shared interval
   // at a readable scale, explicitly labelled as partial coverage.
   const chartStart = hasHistory ? Math.max(requestedStart, firstRecorded) : requestedStart
@@ -1064,9 +1042,9 @@ function PricePositioningChart({ icons, signals, details }: { icons: Record<stri
   const last = points[points.length - 1]
   const positionMove = positionPoints.length >= 2 ? positionPoints[positionPoints.length - 1].position - positionPoints[0].position : 0
   const priceMove = first?.price ? ((Number(last?.price || 0) / Number(first.price)) - 1) * 100 : 0
-  const divergence = hasHistory && !partialHistory && points.length >= 2 && first.ts_ms <= chartStart + 60000 && Math.abs(positionMove) > Math.max(1, Math.abs(currentNet) * .01) && Math.abs(priceMove) >= .15 && Math.sign(positionMove) !== Math.sign(priceMove)
+  const divergence = historyContinuous && !partialHistory && points.length >= 2 && first.ts_ms <= chartStart + 60000 && Math.abs(positionMove) > Math.max(1, Math.abs(currentNet) * .01) && Math.abs(priceMove) >= .15 && Math.sign(positionMove) !== Math.sign(priceMove)
   const timeTicks = [0, .25, .5, .75, 1].map((ratio) => chartStart + (chartEnd - chartStart) * ratio)
-  const coverageLabel = hasHistory ? `${partialHistory ? 'Available history' : 'Recorded history'}: ${new Date(chartStart).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} – ${new Date(chartEnd).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}${partialHistory ? ` · ${windowKey} still building` : ''}` : historyState === 'loading' ? 'Loading recorded wallet positions…' : historyState === 'unavailable' ? 'Position archive temporarily unavailable · latest observed position shown' : 'Recording wallet positions automatically · first observation shown'
+  const coverageLabel = hasHistory ? `${partialHistory ? 'Available history' : 'Recorded history'}: ${new Date(chartStart).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} – ${new Date(chartEnd).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}${partialHistory ? ` · ${windowKey} still building` : ''}${!historyContinuous ? ` · gap detected (${Math.round(largestHistoryGap / 60000)}m)` : ''}` : historyState === 'loading' ? 'Loading recorded wallet positions…' : historyState === 'unavailable' ? 'Position archive temporarily unavailable · latest observed position shown' : 'Recording wallet positions automatically · first observation shown'
 
   return <section className="cc-card cc-price-positioning-card">
     <div className="cc-panel-title cc-price-chart-head">
@@ -1272,7 +1250,10 @@ export default function Dashboard() {
   const longValue = signals.reduce((a, r) => a + Number(r.value_long_usd || 0), 0)
   const shortValue = signals.reduce((a, r) => a + Number(r.value_short_usd || 0), 0)
   const isLong = longValue >= shortValue
-  const dataHealthy = summary.data_quality_status === 'healthy'
+  const latestSignalTs = Number(summary.latest_signal_ts_ms || 0)
+  const snapshotFresh = latestSignalTs > 0 && Math.abs(Date.now() - latestSignalTs) <= 10 * 60 * 1000
+  const dataHealthy = summary.data_quality_status === 'healthy' && snapshotFresh
+  const hasDashboardData = signals.length > 0 && latestSignalTs > 0
   const claimReady = Boolean(summary.top_claim_ready)
   const indexedWallets = Number(summary.indexed_wallets || summary.known_wallet_candidates || summary.registry_wallets || summary.owned_wallets_indexed || summary.scanner_candidate_wallets_scored || 0)
   const suppliedRankingScope = String(summary.claim_label || summary.ranking_scope_label || '').trim()
@@ -1347,8 +1328,8 @@ export default function Dashboard() {
       <section className="cc-market-pulse" aria-label="Market pulse">
         <article>
           <span className="cc-pulse-label">Positioning bias</span>
-          <div className="cc-pulse-main"><strong className={`cc-pulse-bias ${isLong ? 'positive' : 'negative'}`}><i aria-hidden />{isLong ? 'LONG' : 'SHORT'}</strong></div>
-          <span className="cc-pulse-meta">{Math.round(longShare)}% long · {Math.round(100 - longShare)}% short · {compactMoney(longValue - shortValue)} net</span>
+          {hasDashboardData ? <><div className="cc-pulse-main"><strong className={`cc-pulse-bias ${isLong ? 'positive' : 'negative'}`}><i aria-hidden />{isLong ? 'LONG' : 'SHORT'}</strong></div>
+          <span className="cc-pulse-meta">{Math.round(longShare)}% long · {Math.round(100 - longShare)}% short · {compactMoney(longValue - shortValue)} net</span></> : <span className="cc-pulse-meta">Loading live positioning…</span>}
         </article>
         <article>
           <span className="cc-pulse-label">Largest exposure</span>
@@ -1416,10 +1397,8 @@ export default function Dashboard() {
         </div>
       </section>
 
-      <footer className="cc-warning-banner"><span className="cc-shield" aria-hidden><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5.2c0 4.5-2.7 8.4-7 9.8-4.3-1.4-7-5.3-7-9.8V6l7-3z"/><path d="M9.2 12.1l1.7 1.7 3.9-4.1"/></svg></span><div className="cc-footer-main"><strong>Market intelligence only.</strong><em>Not financial advice. {rankingScope}. {claimReady ? 'Broad-index threshold met.' : 'Not claiming all-Hyperliquid top 50 yet.'}</em><small>Live coverage: {liveCoverageText} · {summary.snapshot_wallets || 0} fallback · Sync: <b className={`cc-audit-${summary.data_quality_status === 'healthy' ? 'pass' : 'checking'}`}>{summary.data_quality_status === 'healthy' ? 'live' : 'checking'}</b> · {summary.data_quality_message || 'Waiting for live feed'}</small></div><div className={`cc-footer-meta ${dataHealthy ? 'healthy' : 'checking'}`}><span className="cc-footer-quality"><span className="cc-pulse-dot" /><b>{dataHealthy ? (claimReady ? 'Live data and ranking verified' : 'Live feed healthy') : 'Data quality checking'}</b></span><small>Signal refresh: {fmtTime(summary.latest_signal_ts_ms)} UTC · {summary.live_state_active ? `Live state: ${fmtTime(summary.latest_live_state_ts_ms)} UTC` : 'Snapshot mode'} · Snapshot/cache refresh</small></div><nav className="cc-legal-links" aria-label="Legal links" style={{ flexBasis: '100%', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 6, margin: '4px 0 0 41px', padding: 0, fontSize: 11, lineHeight: 1.25, color: 'rgba(247,251,255,.62)' }}><span style={{ color: 'rgba(247,251,255,.42)' }}>Legal:</span><a href="/terms" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>Terms</a><span aria-hidden="true" style={{ color: 'rgba(247,251,255,.42)' }}> · </span><a href="/privacy" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>Privacy</a><span aria-hidden="true" style={{ color: 'rgba(247,251,255,.42)' }}> · </span><a href="/risk-disclaimer" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>Risk disclaimer</a><span aria-hidden="true" style={{ color: 'rgba(247,251,255,.42)' }}> · </span><a href="/external-links" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>External links</a></nav></footer>
+      <footer className="cc-warning-banner"><span className="cc-shield" aria-hidden><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5.2c0 4.5-2.7 8.4-7 9.8-4.3-1.4-7-5.3-7-9.8V6l7-3z"/><path d="M9.2 12.1l1.7 1.7 3.9-4.1"/></svg></span><div className="cc-footer-main"><strong>Market intelligence only.</strong><em>Not financial advice. {rankingScope}. {claimReady ? 'Broad-index threshold met.' : 'Not claiming all-Hyperliquid top 50 yet.'}</em><small>Live coverage: {liveCoverageText} · {summary.snapshot_wallets || 0} fallback · Sync: <b className={`cc-audit-${dataHealthy ? 'pass' : 'checking'}`}>{dataHealthy ? 'live' : snapshotFresh ? 'checking' : 'stale'}</b> · {snapshotFresh ? (summary.data_quality_message || 'Waiting for live feed') : 'Latest signal snapshot is outside the live freshness window'}</small></div><div className={`cc-footer-meta ${dataHealthy ? 'healthy' : 'checking'}`}><span className="cc-footer-quality"><span className="cc-pulse-dot" /><b>{dataHealthy ? (claimReady ? 'Live data and ranking verified' : 'Live feed healthy') : snapshotFresh ? 'Data quality checking' : 'Live data delayed'}</b></span><small>Signal refresh: {fmtTime(summary.latest_signal_ts_ms)} UTC · {summary.live_state_active ? `Live state: ${fmtTime(summary.latest_live_state_ts_ms)} UTC` : 'Snapshot mode'} · Snapshot/cache refresh</small></div><nav className="cc-legal-links" aria-label="Legal links" style={{ flexBasis: '100%', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 6, margin: '4px 0 0 41px', padding: 0, fontSize: 11, lineHeight: 1.25, color: 'rgba(247,251,255,.62)' }}><span style={{ color: 'rgba(247,251,255,.42)' }}>Legal:</span><a href="/terms" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>Terms</a><span aria-hidden="true" style={{ color: 'rgba(247,251,255,.42)' }}> · </span><a href="/privacy" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>Privacy</a><span aria-hidden="true" style={{ color: 'rgba(247,251,255,.42)' }}> · </span><a href="/risk-disclaimer" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>Risk disclaimer</a><span aria-hidden="true" style={{ color: 'rgba(247,251,255,.42)' }}> · </span><a href="/external-links" style={{ color: 'inherit', textDecoration: 'none', fontSize: 11 }}>External links</a></nav></footer>
     </main>
   </div>
 
 }
-
-

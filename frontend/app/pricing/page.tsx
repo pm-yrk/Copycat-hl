@@ -5,7 +5,7 @@ import PublicMeshBackdrop from '../../components/PublicMeshBackdrop'
 const tiers = [
   { title: 'Free', price: '£0', desc: 'Explore Copycat with no commitment.', items: ['Delayed dashboard preview', 'Short API preview endpoints', 'Risk warnings and methodology notes', 'No credit card required'], cta: 'Coming soon', href: '/login', icon: '◇' },
   { title: 'Copycat Pro', price: '£14.99', unit: '/month', desc: 'Live dashboard access and advanced market intelligence.', items: ['Live dashboard access', 'Top 50 Copycat-ranked wallet cohort', 'Asset signal board and buyer/seller pressure', 'Portfolio allocation and Copycat Index', 'Market intelligence updates'], cta: 'Start Pro', href: '/login', featured: true, icon: '⌁' },
-  { title: 'Copycat Pro + Alerts', price: '£19.99', unit: '/month', desc: 'Everything in Pro, plus alerts when the market moves.', items: ['Everything in Copycat Pro', '15-minute Telegram digests', 'Major conviction change alerts', 'Large accumulation/distribution alerts', 'Priority alert channels later'], cta: 'Start alerts', href: '/login', icon: '◷' },
+  { title: 'Copycat Pro + Alerts', price: '£19.99', unit: '/month', desc: 'Everything in Pro, plus alerts when the market moves.', items: ['Everything in Copycat Pro', 'Hourly Telegram market pulse', 'Major conviction change alerts', 'Large accumulation/distribution alerts', 'Priority alert channels later'], cta: 'Start alerts', href: '/login', icon: '◷' },
 ]
 
 const comparison = [
@@ -55,3 +55,4 @@ export default function Pricing() {
     </main>
   </div>
 }
+

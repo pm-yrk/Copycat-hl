@@ -134,10 +134,33 @@ function selectTimeframe(data: PerfData, range: TimeframeKey): PerfData {
   const supplied = Array.isArray(data.timeframes?.[range]) ? data.timeframes?.[range] || [] : []
   const points = (supplied.length ? supplied : fallbackTimeframePoints(data, range)).map(normalisePerfPoint)
   if (!points.length) return data
+  const first = points[0]
+  const last = points[points.length - 1]
+  const periodReturn = (key: SeriesKey) => {
+    const start = Number(first?.[key] || 0)
+    const end = Number(last?.[key] || 0)
+    return start > 0 && end > 0 ? ((end / start) - 1) * 100 : 0
+  }
+  let peak = Number(first.copycat_nav || 100)
+  let maxDrawdown = 0
+  for (const point of points) {
+    const value = Number(point.copycat_nav || 0)
+    if (value > peak) peak = value
+    if (peak > 0 && value > 0) maxDrawdown = Math.min(maxDrawdown, ((value / peak) - 1) * 100)
+  }
   return {
     ...data,
     points,
     latest_ts_ms: points[points.length - 1].ts_ms,
+    copycat_nav: last.copycat_nav,
+    btc_nav: last.btc_nav,
+    eth_nav: last.eth_nav,
+    spx_nav: last.spx_nav,
+    copycat_return_pct: periodReturn('copycat_nav'),
+    btc_return_pct: periodReturn('btc_nav'),
+    eth_return_pct: periodReturn('eth_nav'),
+    spx_return_pct: periodReturn('spx_nav'),
+    max_drawdown_pct: maxDrawdown,
   }
 }
 function PerformanceChart({ data, compact = false }: { data: PerfData; compact?: boolean }) {
@@ -209,7 +232,7 @@ export default function PerformanceIndex({ variant = 'dashboard' }: { variant?: 
     ? `Backtested from ${shortDate(data.start_ts_ms)} | USDC margin excluded`
     : range === 'ALL'
       ? `Live history from ${shortDate(data.start_ts_ms)} | protected archive | no hindsight`
-      : `${range} window | same continuous Index scale from inception | no hindsight`
+      : `${range} window | selected-period returns and drawdown | no hindsight`
 
   return <section className={`cc-index-card ${compact ? 'home' : 'deep cc-index-dashboard-fit'}`}>
     <div className="cc-index-head">
