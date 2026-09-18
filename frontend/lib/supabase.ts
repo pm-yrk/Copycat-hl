@@ -10,6 +10,7 @@ type RuntimeConfig = {
 
 let configPromise: Promise<RuntimeConfig> | null = null
 let supabaseClient: SupabaseClient | null = null
+let supabasePromise: Promise<SupabaseClient> | null = null
 
 function envRuntimeConfig(): RuntimeConfig {
   return {
@@ -35,13 +36,22 @@ export async function getRuntimeConfig(): Promise<RuntimeConfig> {
 
 export async function getSupabase(): Promise<SupabaseClient> {
   if (supabaseClient) return supabaseClient
-  const cfg = await getRuntimeConfig()
-  if (!cfg.supabaseUrl || !cfg.supabaseAnonKey) {
-    throw new Error('Supabase is not configured. Check frontend environment variables.')
+  if (!supabasePromise) {
+    supabasePromise = (async () => {
+      const cfg = await getRuntimeConfig()
+      if (!cfg.supabaseUrl || !cfg.supabaseAnonKey) {
+        throw new Error('Supabase is not configured. Check frontend environment variables.')
+      }
+      const { createClient } = await import('@supabase/supabase-js')
+      supabaseClient = createClient(cfg.supabaseUrl, cfg.supabaseAnonKey)
+      return supabaseClient
+    })().catch((error) => {
+      // Allow a later retry if configuration/network setup was temporarily unavailable.
+      supabasePromise = null
+      throw error
+    })
   }
-  const { createClient } = await import('@supabase/supabase-js')
-  supabaseClient = createClient(cfg.supabaseUrl, cfg.supabaseAnonKey)
-  return supabaseClient
+  return supabasePromise
 }
 
 export async function getApiBaseUrl(): Promise<string> {

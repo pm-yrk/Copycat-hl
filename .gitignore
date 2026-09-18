@@ -12,6 +12,8 @@ project_audit.csv
 copycat_daily_scout_out/
 frontend/.next/
 frontend/node_modules/
+frontend/out/
+frontend/tsconfig.tsbuildinfo
 # Old local patch backup files should not be committed
 *.copycatbak
 *.healthbak

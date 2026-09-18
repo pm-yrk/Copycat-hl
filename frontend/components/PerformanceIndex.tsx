@@ -53,6 +53,16 @@ function nav(n: any) { return Number(n || 100).toFixed(2) }
 function ret(n: any) { const v = Number(n || 0); return `${v >= 0 ? '+' : ''}${v.toFixed(2)}%` }
 function cls(n: any) { return Number(n || 0) >= 0 ? 'positive' : 'negative' }
 function shortDate(ms: any) { if (!ms) return 'Starting now'; return new Date(Number(ms)).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' }) }
+function timeframeDates(points: Point[], range: TimeframeKey) {
+  const first = points[0]?.ts_ms
+  const last = points[points.length - 1]?.ts_ms
+  if (!first || !last) return ''
+  if (range === '1D') {
+    const format = (value: number) => new Date(value).toLocaleString(undefined, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+    return `${format(first)} – ${format(last)}`
+  }
+  return `${shortDate(first)} – ${shortDate(last)}`
+}
 
 function normalisePerfPoint(p: any): Point {
   return {
@@ -100,8 +110,14 @@ function chartDomain(points: Point[]) {
 
 function makePath(points: Point[], key: SeriesKey, domain: { min: number; span: number }, width = 640, height = 190) {
   if (!points.length) return ''
+  const start = Number(points[0]?.ts_ms || 0)
+  const end = Number(points[points.length - 1]?.ts_ms || start)
+  const timeSpan = Math.max(1, end - start)
   return points.map((p: any, i) => {
-    const x = points.length === 1 ? 0 : (i / (points.length - 1)) * width
+    // Use observation time rather than array position. Downsampled periods and
+    // collector gaps must not visually stretch into evenly spaced fake data.
+    const timestamp = Number(p?.ts_ms || start)
+    const x = points.length === 1 ? 0 : ((timestamp - start) / timeSpan) * width
     const y = height - ((Number(p[key] || 100) - domain.min) / domain.span) * height
     return `${i === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`
   }).join(' ')
@@ -228,11 +244,12 @@ export default function PerformanceIndex({ variant = 'dashboard' }: { variant?: 
     ? (isBacktest ? '1Y methodology backtest' : 'Live model performance')
     : 'Copycat Index vs BTC / ETH / S&P 500'
   const eyebrow = compact && isBacktest ? 'Copycat 1Y backtest' : 'Copycat live strategy index'
+  const selectedDates = timeframeDates(viewData.points || [], range)
   const dateLine = isBacktest
     ? `Backtested from ${shortDate(data.start_ts_ms)} | USDC margin excluded`
     : range === 'ALL'
       ? `Live history from ${shortDate(data.start_ts_ms)} | protected archive | no hindsight`
-      : `${range} window | selected-period return ${ret(viewData.copycat_return_pct)} | since inception ${ret(data.copycat_return_pct)} | no hindsight`
+      : `${range} window${selectedDates ? ` · ${selectedDates}` : ''} | selected-period return ${ret(viewData.copycat_return_pct)} | since inception ${ret(data.copycat_return_pct)} | no hindsight`
 
   return <section className={`cc-index-card ${compact ? 'home' : 'deep cc-index-dashboard-fit'}`}>
     <div className="cc-index-head">

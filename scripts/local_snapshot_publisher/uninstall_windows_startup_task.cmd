@@ -1,5 +1,6 @@
 @echo off
 setlocal
 schtasks /delete /tn "Copycat Snapshot Publisher" /f
-echo Removed startup task if it existed.
+schtasks /delete /tn "Copycat Snapshot Publisher Watchdog" /f
+echo Removed startup and watchdog tasks if they existed.
 pause

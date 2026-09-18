@@ -3,9 +3,8 @@
 Copycat local snapshot publisher.
 
 Runs on a laptop/PC, pulls Hyperliquid-native public data for a configured wallet list,
-builds compact dashboard/API JSON snapshots, and uploads them to Cloudflare R2.
-
-It does not use Supabase and does not store historical data locally.
+builds compact dashboard/API JSON snapshots, stores the small amount of history needed
+by the charts, and uploads the public snapshots to Cloudflare R2.
 """
 from __future__ import annotations
 
@@ -40,6 +39,7 @@ DEFAULT_ENV_FILE = SCRIPT_DIR / "publisher.env"
 DEFAULT_WALLET_FILE = SCRIPT_DIR / "wallets.txt"
 DEFAULT_OUT_DIR = ROOT / "copycat_snapshot_out"
 HL_INFO_URL = "https://api.hyperliquid.xyz/info"
+PUBLISHER_VERSION = "snapshot-v2.3"
 
 
 TOKEN_NAMES = {
@@ -87,6 +87,7 @@ class Config:
     fill_lookback_minutes: int = 60
     request_timeout_seconds: int = 20
     request_pause_seconds: float = 0.45
+    r2_upload_retries: int = 3
     state_cache_max_age_seconds: int = 6 * 60 * 60
     local_only: bool = False
     upload: bool = True
@@ -183,6 +184,7 @@ def load_config() -> Config:
         fill_lookback_minutes=max(5, env_int("FILL_LOOKBACK_MINUTES", 60)),
         request_timeout_seconds=max(5, env_int("REQUEST_TIMEOUT_SECONDS", 20)),
         request_pause_seconds=max(0.15, env_float("REQUEST_PAUSE_SECONDS", 0.45)),
+        r2_upload_retries=max(1, env_int("R2_UPLOAD_RETRIES", 3)),
         state_cache_max_age_seconds=max(300, env_int("STATE_CACHE_MAX_AGE_SECONDS", 6 * 60 * 60)),
         local_only=env_bool("LOCAL_ONLY", False),
         upload=not env_bool("NO_UPLOAD", False),
@@ -918,7 +920,8 @@ def ensure_copycat_publisher_lock() -> None:
         return
     handle = _copycat_acquire_publisher_lock()
     if handle is None:
-        raise SystemExit(0)
+        log("Another Copycat publisher already owns the singleton lock; this duplicate will exit")
+        raise SystemExit(73)
     _COPYCAT_PUBLISHER_LOCK_HANDLE = handle
 
 def _copycat_state_backup_path(path: Path) -> Path:
@@ -2668,7 +2671,8 @@ END:VCALENDAR"""
 
 
 def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, Dict[str, Any]]]:
-    now_ms = int(time.time() * 1000)
+    collection_started_ms = int(time.time() * 1000)
+    now_ms = collection_started_ms
     scanner = read_scanner_results()
     scanner_scored = safe_int(scanner.get('candidate_wallets_scored'))
     scanner_discovered = safe_int(scanner.get('wallets_discovered_from_recent_trades'))
@@ -2762,6 +2766,11 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
             log(f"Fetched {idx}/{len(wallets)} wallet(s)")
     save_wallet_state_cache(wallet_cache)
     save_total_value_cache(total_value_cache)
+    # Snapshot timestamps represent when collection finished, not when the first
+    # wallet request began. Otherwise a fresh upload is already several minutes
+    # old on a complete 50-wallet cycle.
+    now_ms = int(time.time() * 1000)
+    collection_duration_seconds = round(max(0, now_ms - collection_started_ms) / 1000.0, 1)
 
     by_coin: Dict[str, Dict[str, Any]] = {}
     wallet_rows: List[Dict[str, Any]] = []
@@ -2950,6 +2959,9 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
         data_status = "degraded"
         data_msg = "No wallet states fetched; check wallets.txt and network"
     summary = {
+        "publisher_version": PUBLISHER_VERSION,
+        "collection_started_at_ms": collection_started_ms,
+        "collection_duration_seconds": collection_duration_seconds,
         "latest_signal_ts_ms": now_ms,
         "latest_position_ts_ms": now_ms,
         "latest_live_state_ts_ms": now_ms,
@@ -3115,6 +3127,9 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
     platform_health = {
         "status": "ok" if states else "degraded",
         "service": "copycat-snapshot-publisher",
+        "publisher_version": PUBLISHER_VERSION,
+        "collection_started_at_ms": collection_started_ms,
+        "collection_duration_seconds": collection_duration_seconds,
         "updated_at_ms": now_ms,
         "frontend": "cloudflare_pages",
         "data_delivery": "cloudflare_r2_snapshots",
@@ -3134,7 +3149,7 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
     status = {
         "status": "ok" if states else "degraded",
         "product": "Copycat Data API",
-        "version": "snapshot-v1",
+        "version": PUBLISHER_VERSION,
         "source": "local_hyperliquid_snapshot",
         "updated_at_ms": now_ms,
         "tracked_active_wallets": len(wallets),
@@ -3176,6 +3191,7 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
     }
     audit_snapshot = {
         'overall_status': 'free_mode_ok' if states else 'degraded',
+        'publisher_version': PUBLISHER_VERSION,
         'latest_signal_ts_ms': now_ms,
         'checks': [
             {'name': 'R2 snapshot publisher', 'status': 'pass' if states else 'fail', 'severity': 'critical', 'detail': data_msg},
@@ -3328,22 +3344,63 @@ def upload_r2(config: Config, snapshots: Dict[str, Tuple[str, Dict[str, Any]]]) 
         aws_secret_access_key=config.r2_secret_access_key,
         region_name="auto",
     )
+    failures: List[str] = []
     for key, (content_type, payload) in snapshots.items():
         body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
-        s3.put_object(
-            Bucket=config.r2_bucket,
-            Key=key,
-            Body=body,
-            ContentType=content_type,
-            CacheControl="public, max-age=20, s-maxage=20",
-        )
+        for attempt in range(1, config.r2_upload_retries + 1):
+            try:
+                s3.put_object(
+                    Bucket=config.r2_bucket,
+                    Key=key,
+                    Body=body,
+                    ContentType=content_type,
+                    CacheControl="public, max-age=20, s-maxage=20",
+                )
+                break
+            except Exception as exc:
+                if attempt >= config.r2_upload_retries:
+                    failures.append(f"{key}: {exc}")
+                    break
+                wait = min(8.0, 1.5 * (2 ** (attempt - 1)))
+                log(f"R2 upload retry {attempt}/{config.r2_upload_retries} for {key} in {wait:.1f}s: {exc}")
+                time.sleep(wait)
+    if failures:
+        raise RuntimeError("R2 upload failed after retries: " + "; ".join(failures))
     log(f"Uploaded {len(snapshots)} snapshot file(s) to R2 bucket {config.r2_bucket}")
 
 
-POSITION_HISTORY_DIR = SCRIPT_DIR / "scanner_state" / "position_history"
+def position_history_dir() -> Path:
+    configured = os.getenv("COPYCAT_POSITION_HISTORY_DIR", "").strip()
+    if configured:
+        return Path(configured).expanduser()
+    if os.name == "nt":
+        return Path(r"C:\CopycatPersistentState\position_history")
+    return SCRIPT_DIR / "scanner_state" / "position_history"
 
 
-def position_history_snapshots(feed: Dict[str, Any]) -> Dict[str, Tuple[str, Dict[str, Any]]]:
+def atomic_json_write(path: Path, payload: Dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp = path.with_name(path.name + ".tmp")
+    temp.write_text(json.dumps(payload, separators=(",", ":"), ensure_ascii=False), encoding="utf-8")
+    os.replace(str(temp), str(path))
+
+
+def migrate_position_history_if_needed(target: Path) -> None:
+    legacy = SCRIPT_DIR / "scanner_state" / "position_history"
+    if target == legacy or not legacy.exists():
+        return
+    target.mkdir(parents=True, exist_ok=True)
+    for source in legacy.glob("????-??-??.json"):
+        destination = target / source.name
+        if destination.exists():
+            continue
+        try:
+            destination.write_bytes(source.read_bytes())
+        except Exception as exc:
+            log(f"Position history migration warning for {source.name}: {exc}")
+
+
+def position_history_snapshots(feed: Dict[str, Any], history_dir: Optional[Path] = None) -> Dict[str, Tuple[str, Dict[str, Any]]]:
     """Persist genuine five-minute observations beside the live R2 snapshots."""
     summary = feed.get("summary") if isinstance(feed.get("summary"), dict) else {}
     ts_ms = safe_int(summary.get("latest_signal_ts_ms"))
@@ -3363,9 +3420,11 @@ def position_history_snapshots(feed: Dict[str, Any]) -> Dict[str, Tuple[str, Dic
             return {}
         assets[coin] = [round(float(net), 2), round(float(price), 10) if isinstance(price, (int, float)) and not isinstance(price, bool) and math.isfinite(price) and price > 0 else None]
 
-    POSITION_HISTORY_DIR.mkdir(parents=True, exist_ok=True)
+    history_dir = history_dir or position_history_dir()
+    migrate_position_history_if_needed(history_dir)
+    history_dir.mkdir(parents=True, exist_ok=True)
     day = datetime.fromtimestamp(ts_ms / 1000, timezone.utc).date().isoformat()
-    day_path = POSITION_HISTORY_DIR / f"{day}.json"
+    day_path = history_dir / f"{day}.json"
     payload: Dict[str, Any] = {"schema_version": 1, "frames": []}
     if day_path.exists():
         try:
@@ -3380,14 +3439,15 @@ def position_history_snapshots(feed: Dict[str, Any]) -> Dict[str, Tuple[str, Dic
         frames.append({"ts_ms": ts_ms, "assets": assets})
     by_ts = {safe_int(row.get("ts_ms")): row for row in frames}
     payload = {"schema_version": 1, "frames": [by_ts[key] for key in sorted(by_ts) if key]}
-    day_path.write_text(json.dumps(payload, separators=(",", ":"), ensure_ascii=False), encoding="utf-8")
+    atomic_json_write(day_path, payload)
 
     cutoff_day = datetime.fromtimestamp((ts_ms - 31 * 86_400_000) / 1000, timezone.utc).date().isoformat()
-    for old_path in POSITION_HISTORY_DIR.glob("????-??-??.json"):
+    for old_path in history_dir.glob("????-??-??.json"):
         if old_path.stem < cutoff_day:
             old_path.unlink(missing_ok=True)
-    days = sorted(path.stem for path in POSITION_HISTORY_DIR.glob("????-??-??.json") if path.stem >= cutoff_day)
-    manifest = {"schema_version": 1, "latest_ts_ms": ts_ms, "days": days, "cohort": "Copycat-ranked top 50 at each observation", "cadence_minutes": 5}
+    days = sorted(path.stem for path in history_dir.glob("????-??-??.json") if path.stem >= cutoff_day)
+    actual_latest_ts = safe_int(payload["frames"][-1].get("ts_ms")) if payload["frames"] else 0
+    manifest = {"schema_version": 1, "latest_ts_ms": actual_latest_ts, "days": days, "cohort": "Copycat-ranked top 50 at each observation", "cadence_minutes": 5}
     return {
         "position-history/index.json": ("application/json", manifest),
         f"position-history/days/{day}.json": ("application/json", payload),
@@ -3397,10 +3457,34 @@ def position_history_snapshots(feed: Dict[str, Any]) -> Dict[str, Tuple[str, Dic
 def once(config: Config) -> None:
     wallets = load_wallets(config.wallet_file, config.max_wallets)
     snapshots = build_snapshots(wallets, config)
+    history_snapshots: Dict[str, Tuple[str, Dict[str, Any]]] = {}
     try:
-        snapshots.update(position_history_snapshots(snapshots["dashboard-feed.json"][1]))
+        history_snapshots = position_history_snapshots(snapshots["dashboard-feed.json"][1])
+        snapshots.update(history_snapshots)
     except Exception as exc:
         log(f"Position history warning: {exc}")
+    history_manifest = history_snapshots.get("position-history/index.json", ("", {}))[1]
+    history_latest = safe_int(history_manifest.get("latest_ts_ms"))
+    for key in ("dashboard-feed.json", "api/platform-health.json", "api/status.json", "api/audit.json"):
+        payload = snapshots.get(key, ("", {}))[1]
+        target = payload.get("summary") if key == "dashboard-feed.json" else payload
+        if isinstance(target, dict):
+            target["publisher_version"] = PUBLISHER_VERSION
+            target["position_history_status"] = "active" if history_latest else "waiting_for_complete_live_snapshot"
+            target["position_history_latest_ts_ms"] = history_latest or None
+            target["position_history_cadence_minutes"] = 5
+    audit_payload = snapshots.get("api/audit.json", ("", {}))[1]
+    if isinstance(audit_payload, dict) and isinstance(audit_payload.get("checks"), list):
+        audit_payload["checks"].append({
+            "name": "Position history archive",
+            "status": "pass" if history_latest else "warn",
+            "severity": "info",
+            "detail": (
+                "Publisher-owned five-minute wallet-position history is active in R2."
+                if history_latest
+                else "Waiting for the next complete 50-wallet live observation before recording history."
+            ),
+        })
     write_local(config.out_dir, snapshots)
     upload_r2(config, snapshots)
     public_url = (config.r2_public_url or "").rstrip("/")
@@ -3408,24 +3492,71 @@ def once(config: Config) -> None:
         log(f"Dashboard snapshot URL: {public_url}/dashboard-feed.json")
 
 
+def publisher_runtime_status_path() -> Path:
+    configured = os.getenv("COPYCAT_PUBLISHER_RUNTIME_STATUS", "").strip()
+    if configured:
+        return Path(configured).expanduser()
+    if os.name == "nt":
+        return Path(r"C:\CopycatPersistentState\publisher_runtime_status.json")
+    return SCRIPT_DIR / "scanner_state" / "publisher_runtime_status.json"
+
+
+def write_publisher_runtime_status(status: str, cycle_started_ms: int, detail: str = "") -> None:
+    path = publisher_runtime_status_path()
+    previous: Dict[str, Any] = {}
+    try:
+        if path.exists():
+            loaded = json.loads(path.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                previous = loaded
+    except Exception:
+        previous = {}
+    now_ms = int(time.time() * 1000)
+    payload = {
+        "publisher_version": PUBLISHER_VERSION,
+        "status": status,
+        "pid": os.getpid(),
+        "cycle_started_at_ms": cycle_started_ms,
+        "updated_at_ms": now_ms,
+        "last_success_at_ms": now_ms if status == "healthy" else previous.get("last_success_at_ms"),
+        "last_error": detail if status == "error" else None,
+    }
+    try:
+        atomic_json_write(path, payload)
+    except Exception as exc:
+        log(f"Runtime status warning: {exc}")
+
+
 def main() -> int:
     config = load_config()
+    ensure_copycat_publisher_lock()
     log("Copycat local snapshot publisher starting")
+    log(f"Publisher version: {PUBLISHER_VERSION}")
     log(f"Wallet file: {config.wallet_file}")
     log(f"Interval: {config.interval_seconds}s | max wallets: {config.max_wallets} | request pause: {config.request_pause_seconds:.2f}s | local only: {config.local_only}")
     run_once = "--once" in sys.argv
     while True:
+        cycle_started_monotonic = time.monotonic()
+        cycle_started_ms = int(time.time() * 1000)
+        cycle_ok = False
+        write_publisher_runtime_status("running", cycle_started_ms)
         try:
             once(config)
+            cycle_ok = True
+            write_publisher_runtime_status("healthy", cycle_started_ms)
         except KeyboardInterrupt:
             log("Stopped")
             return 0
         except Exception as exc:
             log(f"ERROR: {exc}")
             traceback.print_exc()
+            write_publisher_runtime_status("error", cycle_started_ms, str(exc))
         if run_once:
-            return 0
-        time.sleep(config.interval_seconds)
+            return 0 if cycle_ok else 1
+        elapsed = time.monotonic() - cycle_started_monotonic
+        sleep_seconds = max(1.0, config.interval_seconds - elapsed) if cycle_ok else float(config.interval_seconds)
+        log(f"Cycle finished in {elapsed:.1f}s; next cycle in {sleep_seconds:.1f}s")
+        time.sleep(sleep_seconds)
 
 
 if __name__ == "__main__":

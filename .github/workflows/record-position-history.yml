@@ -1,7 +1,10 @@
 name: Record wallet positioning history
 on:
   schedule:
-    - cron: '*/5 * * * *'
+    # R2 history is written by the Windows publisher every five minutes.
+    # This lower-frequency, off-peak GitHub archive is the independent fallback;
+    # frequent */5 schedules were being coalesced into multi-hour gaps.
+    - cron: '7,22,37,52 * * * *'
   workflow_dispatch:
   push:
     branches: [main]
@@ -17,7 +20,7 @@ jobs:
   record:
     if: github.event_name != 'schedule' || github.repository == 'pm-yrk/Copycat-hl'
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 6
     steps:
       - uses: actions/checkout@v4
       - name: Archive the public dashboard snapshot
