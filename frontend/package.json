@@ -10,14 +10,19 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.47.10",
-    "next": "^15.1.2",
+    "next": "15.5.27",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "typescript": "^5.7.2",
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.1",
-    "@types/react-dom": "^19.0.2"
+    "@types/react-dom": "^19.0.2",
+    "typescript": "^5.7.2"
+  },
+  "overrides": {
+    "nanoid": "3.3.19",
+    "postcss": "8.5.28",
+    "sharp": "0.35.5"
   }
 }

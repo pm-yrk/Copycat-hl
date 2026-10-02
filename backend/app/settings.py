@@ -67,6 +67,12 @@ class Settings(BaseSettings):
     # Do not claim \"top 50 on all Hyperliquid\" until enough wallets have
     # been indexed by the owned scanner. Dashboard wording uses this guard.
     owned_top_claim_min_indexed_wallets: int = 10000
+    owned_backfill_wallet_limit: int = 25
+    owned_backfill_days: int = 365
+    owned_backfill_max_pages_per_wallet: int = 5
+    owned_backfill_max_seconds: int = 900
+    owned_backfill_sleep_seconds: int = 3600
+    market_universe_sleep_seconds: int = 60
     owned_discovery_fetch_fills: bool = False
     owned_discovery_min_account_value_usd: float = 50_000
     owned_discovery_min_30d_pnl_usd: float = 1_000
@@ -79,21 +85,6 @@ class Settings(BaseSettings):
     owned_backtest_min_wallets: int = 10
     owned_backtest_min_rows: int = 26
     owned_backtest_replace_existing: bool = True
-
-
-    # Big API/data-lake workers. These jobs build customer-facing historical
-    # coverage without blocking the live dashboard.
-    owned_scanner_batch_size: int = 250
-    owned_scanner_max_seconds: int = 900
-    owned_scanner_sleep_seconds: int = 3600
-    owned_top_claim_min_indexed_wallets: int = 10_000
-    owned_backfill_wallet_limit: int = 25
-    owned_backfill_days: int = 365
-    owned_backfill_max_pages_per_wallet: int = 5
-    owned_backfill_max_seconds: int = 900
-    owned_backfill_sleep_seconds: int = 3600
-    market_universe_sleep_seconds: int = 60
-
     qualified_wallet_limit: int = 50
     collector_interval_seconds: int = 1
     collector_freshness_seconds: int = 180
@@ -116,7 +107,6 @@ class Settings(BaseSettings):
     stripe_price_id_annual: str = ''
 
     # Copycat platform v1 / alert cadence.
-    owned_top_claim_min_indexed_wallets: int = 10000
     platform_worker_heartbeat_max_age_minutes: int = 30
     telegram_alert_enabled: bool = False
     telegram_alert_interval_minutes: int = 15

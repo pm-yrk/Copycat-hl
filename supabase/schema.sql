@@ -329,3 +329,29 @@ CREATE TABLE IF NOT EXISTS owned_wallet_scan_state (
   last_status text,
   metadata_json jsonb NOT NULL DEFAULT '{}'::jsonb
 );
+
+-- All product data is served through the authenticated backend or publisher,
+-- never directly through Supabase's public Data API. Keep anon/authenticated
+-- clients denied by default while service-role/direct database workers retain
+-- their normal access.
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE wallet_candidates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE wallet_scores ENABLE ROW LEVEL SECURITY;
+ALTER TABLE qualified_wallets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE wallet_snapshots ENABLE ROW LEVEL SECURITY;
+ALTER TABLE positions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE asset_signals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE portfolio_targets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notification_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE collector_runs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE strategy_index_points ENABLE ROW LEVEL SECURITY;
+ALTER TABLE strategy_backtest_points ENABLE ROW LEVEL SECURITY;
+ALTER TABLE owned_wallet_fills ENABLE ROW LEVEL SECURITY;
+ALTER TABLE owned_wallet_metrics ENABLE ROW LEVEL SECURITY;
+ALTER TABLE owned_wallet_metric_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE copycat_api_keys ENABLE ROW LEVEL SECURITY;
+ALTER TABLE copycat_api_usage ENABLE ROW LEVEL SECURITY;
+ALTER TABLE copycat_live_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE copycat_historical_sources ENABLE ROW LEVEL SECURITY;
+ALTER TABLE owned_wallet_scan_state ENABLE ROW LEVEL SECURITY;

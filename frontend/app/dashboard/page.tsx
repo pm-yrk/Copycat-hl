@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import PublicNav from '../../components/PublicNav'
 import { apiGet } from '../../lib/api'
-import { assetHistory, loadPositionHistory, positionChartPath, type PositionFrame, type PositionSample } from '../../lib/position-history'
+import { assetHistory, loadPositionHistory, positionChartPaths, POSITION_HISTORY_MAX_CONTINUOUS_GAP_MS, type PositionFrame, type PositionSample } from '../../lib/position-history'
 import PerformanceIndex from '../../components/PerformanceIndex'
 import './dashboard-redesign.css'
 
@@ -827,7 +827,7 @@ function CatalystWatchCard({ watch }: { watch?: any }) {
 
 
 function SignalFlowMap({ rows, icons, details }: { rows: any[]; icons: Record<string, string>; details: Record<string, AssetDetail> }) {
-  const candidates = [...(rows || [])]
+  const pool = [...(rows || [])]
     .filter((row: any) => row?.coin)
     .sort((a: any, b: any) => {
       const aGross = Number(a?.value_long_usd || 0) + Number(a?.value_short_usd || 0)
@@ -835,12 +835,26 @@ function SignalFlowMap({ rows, icons, details }: { rows: any[]; icons: Record<st
       const flowDifference = flowPressureScore(b) - flowPressureScore(a)
       return flowDifference || (bGross - aGross)
     })
-    .slice(0, 6)
+    .slice(0, 24)
   const flowRate = (row: any) => {
     const gross = Number(row?.value_long_usd || 0) + Number(row?.value_short_usd || 0)
     return gross > 0 ? Number(row?.net_value_flow_usd || 0) / gross : 0
   }
-  const maxFlowRate = Math.max(.0001, ...candidates.map((row: any) => Math.abs(flowRate(row))))
+  const maxFlowRate = Math.max(.0001, ...pool.map((row: any) => Math.abs(flowRate(row))))
+  // Choose the strongest readable set without altering any asset's real x/y
+  // coordinate. This avoids misleading collision offsets in a dense cluster.
+  const candidates: any[] = []
+  for (const row of pool) {
+    const x = displaySignalValue(row)
+    const y = flowRate(row) / maxFlowRate
+    const separated = candidates.every((selected) => {
+      const dx = x - displaySignalValue(selected)
+      const dy = y - flowRate(selected) / maxFlowRate
+      return Math.hypot(dx, dy) >= .2
+    })
+    if (separated || candidates.length < 2) candidates.push(row)
+    if (candidates.length === 6) break
+  }
   const maxGross = Math.max(1, ...candidates.map((row: any) => Number(row?.value_long_usd || 0) + Number(row?.value_short_usd || 0)))
   const bubbleLayout = candidates.map((row: any, index: number) => {
     const signal = Math.max(-1, Math.min(1, displaySignalValue(row)))
@@ -1046,7 +1060,7 @@ function PricePositioningChart({ icons, signals, details }: { icons: Record<stri
   const lastRecorded = positionPoints[positionPoints.length - 1]?.ts_ms
   const hasHistory = positionPoints.length >= 2 && lastRecorded > firstRecorded
   const largestHistoryGap = positionPoints.slice(1).reduce((largest, point, index) => Math.max(largest, point.ts_ms - positionPoints[index].ts_ms), 0)
-  const historyContinuous = hasHistory && largestHistoryGap <= 15 * 60 * 1000
+  const historyContinuous = hasHistory && largestHistoryGap <= POSITION_HISTORY_MAX_CONTINUOUS_GAP_MS
   // Until the archive fills the selected window, show the real shared interval
   // at a readable scale, explicitly labelled as partial coverage.
   const chartStart = hasHistory ? Math.max(requestedStart, firstRecorded) : requestedStart
@@ -1068,7 +1082,7 @@ function PricePositioningChart({ icons, signals, details }: { icons: Record<stri
   const pricePadding = Math.max(.000001, (priceRawMax - priceRawMin) * .1)
   const priceMin = Math.max(0, priceRawMin - pricePadding)
   const priceMax = priceRawMax + pricePadding
-  const positionPath = positionChartPath(positionPoints, positionMin, positionMax - positionMin, chartStart, chartEnd)
+  const positionPaths = positionChartPaths(positionPoints, positionMin, positionMax - positionMin, chartStart, chartEnd)
   const pricePath = chartPath(points, 'price', priceMin, Math.max(.000001, priceMax - priceMin), chartStart, chartEnd)
 
   const first = points[0]
@@ -1077,7 +1091,7 @@ function PricePositioningChart({ icons, signals, details }: { icons: Record<stri
   const priceMove = first?.price ? ((Number(last?.price || 0) / Number(first.price)) - 1) * 100 : 0
   const divergence = historyContinuous && !partialHistory && points.length >= 2 && first.ts_ms <= chartStart + 60000 && Math.abs(positionMove) > Math.max(1, Math.abs(currentNet) * .01) && Math.abs(priceMove) >= .15 && Math.sign(positionMove) !== Math.sign(priceMove)
   const timeTicks = chartNow ? [0, .25, .5, .75, 1].map((ratio) => chartStart + (chartEnd - chartStart) * ratio) : []
-  const coverageLabel = hasHistory ? `${partialHistory ? 'Available history' : 'Recorded history'}: ${new Date(chartStart).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} – ${new Date(chartEnd).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}${partialHistory ? ` · ${windowKey} still building` : ''}${!historyContinuous ? ` · gap detected (${Math.round(largestHistoryGap / 60000)}m)` : ''}` : historyState === 'loading' ? 'Loading recorded wallet positions…' : historyState === 'unavailable' ? 'Position archive temporarily unavailable · latest observed position shown' : 'Recording wallet positions automatically · first observation shown'
+  const coverageLabel = hasHistory ? `${partialHistory ? 'Available history' : 'Recorded history'}: ${new Date(chartStart).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} – ${new Date(chartEnd).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}${partialHistory ? ` · ${windowKey} still building` : ''}${!historyContinuous ? ` · dashed section has no recorded observations (${Math.round(largestHistoryGap / 60000)}m)` : ''}` : historyState === 'loading' ? 'Loading recorded wallet positions…' : historyState === 'unavailable' ? 'Position archive temporarily unavailable · latest observed position shown' : 'Recording wallet positions automatically · first observation shown'
 
   return <section className="cc-card cc-price-positioning-card">
     <div className="cc-panel-title cc-price-chart-head">
@@ -1107,7 +1121,7 @@ function PricePositioningChart({ icons, signals, details }: { icons: Record<stri
           <defs>
             <linearGradient id="ccPositionArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#36e8aa" stopOpacity=".2" /><stop offset="1" stopColor="#36e8aa" stopOpacity="0" /></linearGradient>
           </defs>
-          {positionPoints.length >= 2 ? <path className="cc-model-line" d={positionPath} /> : null}
+          {positionPoints.length >= 2 ? <><path className="cc-model-gap" d={positionPaths.gaps} /><path className="cc-model-line" d={positionPaths.solid} /></> : null}
           {points.length >= 2 ? <path className="cc-price-line" d={pricePath} /> : null}
           {positionPoints.map((point) => <circle key={point.ts_ms} className="cc-position-observation-dot" cx={Math.max(3, Math.min(757, (point.ts_ms - chartStart) / Math.max(1, chartEnd - chartStart) * 760))} cy={250 - (point.position - positionMin) / Math.max(1, positionMax - positionMin) * 250} r={positionPoints.length < 3 ? 3 : 1.5}><title>{new Date(point.ts_ms).toLocaleString()}: {money(point.position)}</title></circle>)}
         </svg> : <div className="cc-chart-empty">{priceLoading ? 'Loading ' + displayToken(asset) + ' price history…' : 'Price history is not available for ' + displayToken(asset) + ' yet.'}</div>}

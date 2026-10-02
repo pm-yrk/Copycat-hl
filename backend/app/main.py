@@ -61,7 +61,6 @@ stripe.api_key = settings.stripe_secret_key or None
 
 app = FastAPI(title='Hyper Wallet Tracker SaaS API')
 app.add_middleware(GZipMiddleware, minimum_size=1024)
-app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[settings.public_site_url, 'http://localhost:3000'],

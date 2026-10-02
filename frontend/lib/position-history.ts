@@ -1,5 +1,6 @@
 export type PositionSample = { ts_ms: number; position: number; price?: number }
 export type PositionFrame = { ts_ms: number; assets: Record<string, [number, number | null]> }
+export const POSITION_HISTORY_MAX_CONTINUOUS_GAP_MS = 20 * 60 * 1000
 const HISTORY_BASES = [
   `${(process.env.NEXT_PUBLIC_SNAPSHOT_BASE_URL || 'https://pub-b9e0279f5eb0496b99c7fa37329e6b53.r2.dev').replace(/\/+$/, '')}/position-history`,
   'https://raw.githubusercontent.com/pm-yrk/Copycat-hl/position-history',
@@ -54,12 +55,24 @@ export async function loadPositionHistory(rangeMs: number, signal: AbortSignal):
   return [...byTimestamp.values()].sort((a, b) => a.ts_ms - b.ts_ms)
 }
 
-export function positionChartPath(points: PositionSample[], minimum: number, span: number, start: number, end: number): string {
-  return points.map((point, index) => {
+export function positionChartPaths(points: PositionSample[], minimum: number, span: number, start: number, end: number): { solid: string; gaps: string } {
+  const coordinates = points.map((point) => {
     const x = (point.ts_ms - start) / Math.max(1, end - start) * 760
     const y = 250 - (point.position - minimum) / Math.max(1, span) * 250
-    // Scheduled captures can be delayed. Longer holes remain visible gaps.
-    const command = index > 0 && point.ts_ms - points[index - 1].ts_ms <= 30 * 60000 ? 'L' : 'M'
-    return `${command} ${x.toFixed(2)} ${y.toFixed(2)}`
+    return { x: x.toFixed(2), y: y.toFixed(2), ts_ms: point.ts_ms }
+  })
+  const solid = coordinates.map((point, index) => {
+    const continuous = index > 0 && point.ts_ms - coordinates[index - 1].ts_ms <= POSITION_HISTORY_MAX_CONTINUOUS_GAP_MS
+    return `${continuous ? 'L' : 'M'} ${point.x} ${point.y}`
   }).join(' ')
+  const gaps = coordinates.slice(1).flatMap((point, index) => {
+    const previous = coordinates[index]
+    if (point.ts_ms - previous.ts_ms <= POSITION_HISTORY_MAX_CONTINUOUS_GAP_MS) return []
+    return [`M ${previous.x} ${previous.y} L ${point.x} ${point.y}`]
+  }).join(' ')
+  return { solid, gaps }
+}
+
+export function positionChartPath(points: PositionSample[], minimum: number, span: number, start: number, end: number): string {
+  return positionChartPaths(points, minimum, span, start, end).solid
 }

@@ -1522,6 +1522,7 @@ html body .cc-dashboard-page::after{
 .cc-dashboard-page .cc-dashboard-trading-grid{grid-template-columns:minmax(0,1fr)!important}
 .cc-dashboard-page .cc-position-observation-dot{fill:#36e8aa;stroke:#082c26;stroke-width:1;vector-effect:non-scaling-stroke}
 .cc-dashboard-page .cc-model-line{fill:none!important;stroke-width:2.5!important;vector-effect:non-scaling-stroke}
+.cc-dashboard-page .cc-model-gap{fill:none;stroke:#36e8aa;stroke-width:1.5;stroke-dasharray:5 6;opacity:.42;vector-effect:non-scaling-stroke}
 .cc-dashboard-page .cc-flow-bubble>b,
 .cc-dashboard-page .cc-flow-bubble.label-left>b{
   top:calc(100% + 4px + var(--label-y,0px))!important;left:50%!important;right:auto!important;

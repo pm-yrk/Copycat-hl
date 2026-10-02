@@ -265,14 +265,16 @@ export default function PublicMeshBackdrop({ variant = 'default' }: { variant?: 
     let lastRippleAt = 0
     let ripples: Ripple[] = []
     const theme = RIBBON_THEMES[variant]
+    const primaryCount = mobileView.matches ? 30 : PRIMARY_COUNT
+    const crossCount = mobileView.matches ? 18 : CROSS_COUNT
     const particleCount = Math.round((mobileView.matches ? 28 : 50) * theme.density)
     const particles = createParticles(variant, particleCount)
     let particlePointerActive = false
-    const strandSteps = mobileView.matches ? 48 : 64
-    const primaryBaseY = Array.from({ length: PRIMARY_COUNT }, (_, index) =>
-      Array.from({ length: strandSteps + 1 }, (_, step) => ribbonY(index, PRIMARY_COUNT, step / strandSteps, 'primary', variant)))
-    const crossBaseY = Array.from({ length: CROSS_COUNT }, (_, index) =>
-      Array.from({ length: strandSteps + 1 }, (_, step) => ribbonY(index, CROSS_COUNT, step / strandSteps, 'cross', variant)))
+    const strandSteps = mobileView.matches ? 36 : 64
+    const primaryBaseY = Array.from({ length: primaryCount }, (_, index) =>
+      Array.from({ length: strandSteps + 1 }, (_, step) => ribbonY(index, primaryCount, step / strandSteps, 'primary', variant)))
+    const crossBaseY = Array.from({ length: crossCount }, (_, index) =>
+      Array.from({ length: strandSteps + 1 }, (_, step) => ribbonY(index, crossCount, step / strandSteps, 'cross', variant)))
 
     const setPhysics = () => {
       // Mobile does not use the outer transform, so avoid three needless
@@ -305,19 +307,19 @@ export default function PublicMeshBackdrop({ variant = 'default' }: { variant?: 
     const nearestStrand = (x: number, y: number) => {
       const t = clamp(x / VIEW_WIDTH, 0, 1)
       let nearest = { distance: Number.POSITIVE_INFINITY, lineIndex: 0, kind: 'primary' as RibbonKind }
-      for (let index = 0; index < PRIMARY_COUNT; index++) {
-        const distance = Math.abs(ribbonY(index, PRIMARY_COUNT, t, 'primary', variant) - y)
+      for (let index = 0; index < primaryCount; index++) {
+        const distance = Math.abs(ribbonY(index, primaryCount, t, 'primary', variant) - y)
         if (distance < nearest.distance) nearest = { distance, lineIndex: index, kind: 'primary' }
       }
-      for (let index = 0; index < CROSS_COUNT; index++) {
-        const distance = Math.abs(ribbonY(index, CROSS_COUNT, t, 'cross', variant) - y)
+      for (let index = 0; index < crossCount; index++) {
+        const distance = Math.abs(ribbonY(index, crossCount, t, 'cross', variant) - y)
         if (distance < nearest.distance) nearest = { distance, lineIndex: index, kind: 'cross' }
       }
       return nearest
     }
 
     const displacement = (x: number, baseY: number, t: number, index: number, kind: RibbonKind) => {
-      const count = kind === 'primary' ? PRIMARY_COUNT : CROSS_COUNT
+      const count = kind === 'primary' ? primaryCount : crossCount
       const n = index / Math.max(1, count - 1)
       const taper = Math.pow(Math.sin(Math.PI * t), .72)
       const phase = n * 3.4 + (kind === 'primary' ? 0 : 1.7)
@@ -360,7 +362,7 @@ export default function PublicMeshBackdrop({ variant = 'default' }: { variant?: 
           * decay
           * taper
       }
-      return amount
+      return amount * (mobileView.matches ? 1.32 : 1)
     }
 
     const traceStrand = (index: number, kind: RibbonKind) => {
@@ -434,8 +436,8 @@ export default function PublicMeshBackdrop({ variant = 'default' }: { variant?: 
       drawParticles()
       context.lineCap = 'round'
       context.lineJoin = 'round'
-      for (let index = 0; index < CROSS_COUNT; index++) {
-        const center = Math.pow(Math.sin((index / (CROSS_COUNT - 1)) * Math.PI), 1.5)
+      for (let index = 0; index < crossCount; index++) {
+        const center = Math.pow(Math.sin((index / (crossCount - 1)) * Math.PI), 1.5)
         traceStrand(index, 'cross')
         context.strokeStyle = crossGradient
         context.lineWidth = .72 + center * .34
@@ -443,8 +445,8 @@ export default function PublicMeshBackdrop({ variant = 'default' }: { variant?: 
         context.stroke()
       }
 
-      for (let index = 0; index < PRIMARY_COUNT; index++) {
-        const center = Math.pow(Math.sin((index / (PRIMARY_COUNT - 1)) * Math.PI), 1.35)
+      for (let index = 0; index < primaryCount; index++) {
+        const center = Math.pow(Math.sin((index / (primaryCount - 1)) * Math.PI), 1.35)
         traceStrand(index, 'primary')
         if (center > .54) {
           context.strokeStyle = primaryGradient
@@ -461,6 +463,12 @@ export default function PublicMeshBackdrop({ variant = 'default' }: { variant?: 
     }
 
     const animate = (now: number) => {
+      // A steady 30fps is visually fluid for this slow movement and avoids
+      // making mobile browsers redraw thousands of curve segments needlessly.
+      if (mobileView.matches && previousFrameAt && now - previousFrameAt < 32) {
+        frame = window.requestAnimationFrame(animate)
+        return
+      }
       const elapsed = previousFrameAt ? clamp((now - previousFrameAt) / 1000, 0, .034) : 1 / 60
       previousFrameAt = now
       simulationTime += elapsed
