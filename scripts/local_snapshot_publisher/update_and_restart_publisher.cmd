@@ -33,5 +33,8 @@ echo.
 echo Waiting for Cloudflare to confirm publisher version snapshot-v2.3...
 powershell -NoProfile -Command "$url='https://pub-b9e0279f5eb0496b99c7fa37329e6b53.r2.dev/api/platform-health.json'; for ($i=1; $i -le 40; $i++) { try { $health=Invoke-RestMethod -Uri ($url+'?verify='+[DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()) -TimeoutSec 20; if ($health.publisher_version -eq 'snapshot-v2.3' -and $health.position_history_status -eq 'active') { Write-Host 'Cloudflare confirmed snapshot-v2.3 and active position history.'; exit 0 } } catch {}; Start-Sleep -Seconds 15 }; Write-Host 'The publisher is running, but Cloudflare has not confirmed the new version yet. Check logs\publisher.log.'; exit 1"
 echo.
+echo Sending the approved Copycat Telegram test message...
+call run_telegram_alerts_test.cmd
+echo.
 echo Copycat publisher update finished.
 pause
