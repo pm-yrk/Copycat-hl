@@ -144,6 +144,16 @@ def story_key(story: dict[str, Any]) -> str:
 def catalyst_key(event: dict[str, Any]) -> str:
     return "|".join([str(event.get("source") or ""), str(event.get("title") or ""), str(event.get("event_at_ms") or "")])
 
+def flow_summary(row: dict[str, Any]) -> str:
+    value = as_float(row.get("net_value_flow_usd"))
+    breadth = as_int(row.get("net_buyer_count"))
+    coin = row.get("coin", "?")
+    if value >= 0:
+        participation = f"{breadth} more wallets buying" if breadth > 0 else "net buying flow"
+        return f"🟢 {coin}: {participation} · {signed_money(value)}"
+    participation = f"{abs(breadth)} more wallets selling" if breadth < 0 else "net selling flow"
+    return f"🔴 {coin}: {participation} · {signed_money(value)}"
+
 def build_test_message(feed: dict[str, Any]) -> str:
     return "✅ NEW COPYCAT ALERT FORMAT IS LIVE\n\n" + build_hourly_brief(feed)
 
@@ -189,13 +199,9 @@ def build_hourly_brief(feed: dict[str, Any]) -> str:
     if positive or negative:
         lines.extend(["", "🐋 SMART-WALLET FLOWS"])
         if positive:
-            row = positive[0]
-            buyers = max(0, as_int(row.get("net_buyer_count")))
-            lines.append(f"🟢 {row.get('coin', '?')}: {buyers} more wallets buying · {signed_money(row.get('net_value_flow_usd'))}")
+            lines.append(flow_summary(positive[0]))
         if negative:
-            row = negative[0]
-            sellers = abs(min(0, as_int(row.get("net_buyer_count"))))
-            lines.append(f"🔴 {row.get('coin', '?')}: {sellers} more wallets selling · {signed_money(row.get('net_value_flow_usd'))}")
+            lines.append(flow_summary(negative[0]))
 
     allocations = sorted(targets, key=lambda row: abs(signed_target(row)), reverse=True)
     if allocations:
