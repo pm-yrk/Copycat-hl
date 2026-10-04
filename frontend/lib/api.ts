@@ -113,10 +113,19 @@ async function authToken() {
 
 export async function apiGet(path: string, options: ApiOptions = {}) {
   const snapshotUrls = copycatSnapshotUrlsForPath(path)
+  let lastKnownSnapshot: any = null
   if (snapshotUrls.length && copycatPrefersSnapshot(path)) {
     for (const url of snapshotUrls) {
       try {
-        return assertUsableSnapshot(path, await copycatFetchJson(url, options, 'no-store'))
+        const payload = await copycatFetchJson(url, options, 'no-store')
+        try {
+          return assertUsableSnapshot(path, payload)
+        } catch {
+          // Preserve a valid but old snapshot as a last-known fallback. Dashboard
+          // freshness checks still label this data delayed; it must never be
+          // silently presented as live.
+          lastKnownSnapshot ||= payload
+        }
       } catch {
         // Try next snapshot source, then fall back to the live API.
       }
@@ -140,6 +149,7 @@ export async function apiGet(path: string, options: ApiOptions = {}) {
     }
     return res.json()
   } catch (err: any) {
+    if (lastKnownSnapshot) return lastKnownSnapshot
     if (err?.name === 'AbortError') throw new Error('Live data request timed out')
     if (err instanceof TypeError) throw new Error('Live data temporarily unavailable')
     throw err
