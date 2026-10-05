@@ -17,7 +17,7 @@ INFO_URL = "https://api.hyperliquid.xyz/info"
 ADDRESS_RE = re.compile(r"^0x[0-9a-f]{40}$")
 ZERO_ADDRESS = "0x" + ("0" * 40)
 LOOKBACK_DAYS = 90
-MAX_FILL_PAGES = 5
+MAX_FILL_PAGES = 7  # Inclusive boundary overlap requires additional pages.
 MAX_API_FILLS = 10_000
 NORMAL_RESCAN_HOURS = 7 * 24
 LIVE_RESCAN_HOURS = 24
@@ -145,6 +145,15 @@ def connect_db(repo: Path) -> sqlite3.Connection:
         );
         CREATE INDEX IF NOT EXISTS idx_wallet_profit_history_address
             ON wallet_profit_history(address, observed_at_utc DESC);
+        CREATE TABLE IF NOT EXISTS wallet_performance_evidence (
+            address TEXT PRIMARY KEY,
+            observed_at_utc TEXT NOT NULL,
+            evidence_json TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS wallet_profit_attempts (
+            address TEXT PRIMARY KEY, attempted_at_utc TEXT NOT NULL,
+            error TEXT NOT NULL
+        );
         """
     )
 
@@ -212,8 +221,15 @@ def choose_candidate(
     now = utc_now()
     live_cutoff = now - dt.timedelta(hours=LIVE_RESCAN_HOURS)
     normal_cutoff = now - dt.timedelta(hours=NORMAL_RESCAN_HOURS)
+    con.execute('''CREATE TABLE IF NOT EXISTS wallet_profit_attempts (
+        address TEXT PRIMARY KEY, attempted_at_utc TEXT NOT NULL, error TEXT NOT NULL)''')
+    retry_cutoff = utc_text(now - dt.timedelta(minutes=30))
+    cooling_down = {r[0] for r in con.execute(
+        "SELECT address FROM wallet_profit_attempts WHERE error<>'' AND attempted_at_utc>?", (retry_cutoff,))}
 
     for address in live_wallets:
+        if address in cooling_down:
+            continue
         row = con.execute(
             "SELECT observed_at_utc FROM wallet_profit_metrics WHERE address=?",
             (address,),
@@ -233,9 +249,11 @@ def choose_candidate(
            WHERE score_ready=1 AND history_complete=1 AND net_pnl>0
              AND account_value>=5000 AND span_days>=30 AND fill_count>=100
              AND observed_at_utc<?
+             AND address NOT IN (SELECT address FROM wallet_profit_attempts
+                 WHERE error<>'' AND attempted_at_utc>?)
            ORDER BY observed_at_utc ASC, net_pnl DESC, address ASC
            LIMIT 1""",
-        (utc_text(normal_cutoff),),
+        (utc_text(normal_cutoff), retry_cutoff),
     ).fetchone()
     con.execute("UPDATE profit_scan_scheduler SET turn=turn+1 WHERE id=1")
     con.commit()
@@ -256,6 +274,8 @@ def choose_candidate(
         LEFT JOIN wallet_profit_metrics m ON m.address=w.address
         WHERE length(w.address)=42
           AND lower(w.address) <> ?
+          AND w.address NOT IN (SELECT address FROM wallet_profit_attempts
+              WHERE error<>'' AND attempted_at_utc>?)
         GROUP BY w.address
         HAVING trades_14d >= 20 OR w.discovery_count >= 20
         ORDER BY
@@ -266,7 +286,7 @@ def choose_candidate(
             w.discovery_count DESC
         LIMIT 500
         """,
-        (ZERO_ADDRESS,),
+        (ZERO_ADDRESS, retry_cutoff),
     ).fetchall()
 
     for row in rows:
@@ -279,8 +299,13 @@ def choose_candidate(
     return challenger["address"] if challenger and valid_wallet(challenger["address"]) else None
 
 
+class HistoryRows(list):
+    """List-compatible rows carrying explicit pagination completeness."""
+    complete = False
+
+
 def fetch_fills(address: str, start_ms: int, end_ms: int) -> list[dict[str, Any]]:
-    all_rows: list[dict[str, Any]] = []
+    all_rows = HistoryRows()
     seen: set[tuple[Any, ...]] = set()
     cursor = start_ms
     for _ in range(MAX_FILL_PAGES):
@@ -290,11 +315,14 @@ def fetch_fills(address: str, start_ms: int, end_ms: int) -> list[dict[str, Any]
                 "user": address,
                 "startTime": cursor,
                 "endTime": end_ms,
-                "aggregateByTime": True,
+                "aggregateByTime": False,
             }
         )
-        rows = raw if isinstance(raw, list) else []
+        if not isinstance(raw, list) or any(not isinstance(r, dict) or safe_int(r.get('time')) <= 0 for r in raw):
+            raise ValueError('Invalid fill-history response')
+        rows = raw
         if not rows:
+            all_rows.complete = len(all_rows) < MAX_API_FILLS
             break
         max_time = cursor
         added = 0
@@ -316,29 +344,49 @@ def fetch_fills(address: str, start_ms: int, end_ms: int) -> list[dict[str, Any]
             all_rows.append(item)
             added += 1
             max_time = max(max_time, timestamp)
-        if added == 0 or max_time <= cursor or max_time >= end_ms:
+        if len(rows) < 2000:
+            all_rows.complete = len(all_rows) < MAX_API_FILLS
             break
-        cursor = max_time + 1
+        if added == 0 or max_time <= cursor or len(all_rows) >= MAX_API_FILLS:
+            break
+        # API startTime is inclusive. Repeat the boundary and deduplicate;
+        # adding 1ms can discard fills split across pages at that timestamp.
+        cursor = max_time
         time.sleep(1.0)
     all_rows.sort(key=lambda row: safe_int(row.get("time")))
     return all_rows
 
 
 def fetch_funding(address: str, start_ms: int, end_ms: int) -> list[dict[str, Any]]:
-    raw = post_info(
-        {
-            "type": "userFunding",
-            "user": address,
-            "startTime": start_ms,
-            "endTime": end_ms,
-        }
-    )
-    return [row for row in raw if isinstance(row, dict)] if isinstance(raw, list) else []
+    result = HistoryRows()
+    seen = set()
+    cursor = start_ms
+    for _ in range(100):
+        raw = post_info({'type': 'userFunding', 'user': address,
+                         'startTime': cursor, 'endTime': end_ms})
+        if not isinstance(raw, list) or any(not isinstance(r, dict) or safe_int(r.get('time')) <= 0 for r in raw):
+            raise ValueError('Invalid funding-history response')
+        for row in raw:
+            key = json.dumps(row, sort_keys=True, separators=(',', ':'))
+            if key not in seen:
+                seen.add(key)
+                result.append(row)
+        if len(raw) < 500:
+            result.complete = True
+            break
+        boundary = max(safe_int(r.get('time')) for r in raw)
+        if boundary <= cursor:
+            break
+        cursor = boundary
+        time.sleep(1.0)
+    return result
 
 
 def fetch_state(address: str) -> dict[str, Any]:
     raw = post_info({"type": "clearinghouseState", "user": address})
-    return raw if isinstance(raw, dict) else {}
+    if not isinstance(raw, dict) or not isinstance(raw.get('marginSummary'), dict) or 'accountValue' not in raw['marginSummary']:
+        raise ValueError('Invalid account-state response')
+    return raw
 
 
 def date_key(timestamp: int) -> str:
@@ -389,6 +437,8 @@ def calculate_metrics(
         daily[date_key(timestamp)] = daily.get(date_key(timestamp), 0.0) + net
         weekly[week_key(timestamp)] = weekly.get(week_key(timestamp), 0.0) + net
 
+    # Funding-only days must not masquerade as days with trading activity.
+    trading_active_days = len(daily)
     funding = 0.0
     for row in funding_rows:
         timestamp = safe_int(row.get("time"))
@@ -433,7 +483,9 @@ def calculate_metrics(
             open_positions += 1
 
     fill_history_capped = 1 if len(fills) >= MAX_API_FILLS else 0
-    history_complete = 1 if fills and not fill_history_capped else 0
+    history_complete = int(bool(fills) and not fill_history_capped
+                           and getattr(fills, 'complete', True)
+                           and getattr(funding_rows, 'complete', True))
 
     return {
         "address": address,
@@ -443,7 +495,7 @@ def calculate_metrics(
         "last_fill_ms": last_ms,
         "span_days": span_days,
         "fill_count": len(fills),
-        "active_days": len(daily),
+        "active_days": trading_active_days,
         "observed_weeks": observed_weeks,
         "profitable_weeks": profitable_weeks,
         "profitable_week_ratio": profitable_week_ratio,
@@ -468,7 +520,7 @@ def calculate_metrics(
         "error": "",
     }
 
-def store_metrics(con: sqlite3.Connection, metrics: dict[str, Any]) -> None:
+def store_metrics(con: sqlite3.Connection, metrics: dict[str, Any], evidence: dict[str, Any] | None = None) -> None:
     columns = [
         "address", "observed_at_utc", "lookback_days", "first_fill_ms",
         "last_fill_ms", "span_days", "fill_count", "active_days",
@@ -484,6 +536,25 @@ def store_metrics(con: sqlite3.Connection, metrics: dict[str, Any]) -> None:
     for attempt in range(6):
         try:
             con.execute("BEGIN IMMEDIATE")
+            con.execute('''INSERT INTO wallet_profit_attempts VALUES (?, ?, ?)
+                ON CONFLICT(address) DO UPDATE SET attempted_at_utc=excluded.attempted_at_utc,
+                error=excluded.error''',
+                (metrics['address'], metrics['observed_at_utc'], metrics.get('error') or ''))
+            if metrics.get('error'):
+                # Keep last known metrics and their ORIGINAL age. A failed API
+                # request is neither a zero balance nor a new valid observation.
+                con.execute('''INSERT INTO wallet_profit_history(address, observed_at_utc, metrics_json)
+                    VALUES (?, ?, ?)''', (metrics['address'], metrics['observed_at_utc'], json.dumps(metrics)))
+                con.execute('''UPDATE wallets SET last_scanned_utc=?, scan_count=scan_count+1,
+                    ok=0, last_error=?, updated_utc=? WHERE address=?''',
+                    (metrics['observed_at_utc'], metrics['error'], metrics['observed_at_utc'], metrics['address']))
+                con.commit()
+                return
+            if evidence is not None:
+                con.execute('''INSERT INTO wallet_performance_evidence VALUES (?, ?, ?)
+                    ON CONFLICT(address) DO UPDATE SET observed_at_utc=excluded.observed_at_utc,
+                    evidence_json=excluded.evidence_json''',
+                    (metrics['address'], metrics['observed_at_utc'], json.dumps(evidence)))
             con.execute(
                 f"""
                 INSERT INTO wallet_profit_metrics({','.join(columns)})
@@ -554,9 +625,25 @@ def scan_one(con: sqlite3.Connection, address: str) -> dict[str, Any]:
     funding = fetch_funding(address, start_ms, now_ms)
     time.sleep(1.0)
     state = fetch_state(address)
+    state_timestamp = utc_text()
+    time.sleep(1.0)
+    portfolio = post_info({'type': 'portfolio', 'user': address})
+    if not isinstance(portfolio, list):
+        raise ValueError('Invalid portfolio-history response')
+    try:
+        windows = dict(portfolio)
+        if not all(isinstance(windows[key]['pnlHistory'], list)
+                   and isinstance(windows[key]['accountValueHistory'], list)
+                   for key in ('perpWeek', 'perpMonth', 'perpAllTime')):
+            raise ValueError('Invalid perpetual portfolio windows')
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError('Missing perpetual portfolio evidence') from exc
+    evidence = {'address': address, 'clearinghouseState': state,
+                'clearinghouseState_retrieved_at': state_timestamp,
+                'portfolio': portfolio, 'portfolio_retrieved_at': utc_text()}
     metrics = calculate_metrics(address, fills, funding, state, start_ms)
-    store_metrics(con, metrics)
-    completeness = "complete" if metrics["history_complete"] else "API-capped"
+    store_metrics(con, metrics, evidence)
+    completeness = "complete" if metrics["history_complete"] else "incomplete or API-capped"
     print(
         f"Profit history: {metrics['fill_count']} fills ({completeness}) | "
         f"{metrics['active_days']} active days | "

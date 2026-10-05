@@ -36,6 +36,29 @@ class SchedulerTests(unittest.TestCase):
     def test_active_members_still_have_refresh_priority(self):
         self.assertEqual(worker.choose_candidate(self.con, [self.old]), self.old)
 
+    def test_failed_live_wallet_does_not_block_other_scans(self):
+        worker.choose_candidate(self.con, [])
+        self.con.execute('INSERT INTO wallet_profit_attempts VALUES (?, ?, ?)',
+                         (self.old, worker.utc_text(), 'API unavailable'))
+        self.con.commit()
+        self.assertEqual(worker.choose_candidate(self.con, [self.old]), self.new)
+
+    def test_failed_scan_preserves_values_and_original_observation_time(self):
+        self.con.executescript('''
+            CREATE TABLE wallet_profit_attempts(address TEXT PRIMARY KEY, attempted_at_utc TEXT, error TEXT);
+            CREATE TABLE wallet_profit_history(address TEXT, observed_at_utc TEXT, metrics_json TEXT);
+            ALTER TABLE wallets ADD COLUMN last_scanned_utc TEXT;
+            ALTER TABLE wallets ADD COLUMN scan_count INTEGER DEFAULT 0;
+            ALTER TABLE wallets ADD COLUMN ok INTEGER;
+            ALTER TABLE wallets ADD COLUMN last_error TEXT;
+            ALTER TABLE wallets ADD COLUMN updated_utc TEXT;
+        ''')
+        before = dict(self.con.execute('SELECT * FROM wallet_profit_metrics WHERE address=?', (self.old,)).fetchone())
+        worker.store_metrics(self.con, worker.error_metrics(self.old, 'temporary timeout'))
+        after = dict(self.con.execute('SELECT * FROM wallet_profit_metrics WHERE address=?', (self.old,)).fetchone())
+        self.assertEqual(before, after)
+        self.assertEqual(self.con.execute('SELECT count(*) FROM wallet_profit_history').fetchone()[0], 1)
+
 
 if __name__ == '__main__':
     unittest.main()

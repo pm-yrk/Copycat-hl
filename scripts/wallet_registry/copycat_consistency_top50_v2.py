@@ -212,7 +212,7 @@ def qualify(rows: list[dict[str, Any]], now: dt.datetime) -> tuple[list[dict[str
         observed = parse_utc(row.get("observed_at_utc"))
         age_hours = (now - observed).total_seconds() / 3600 if observed else 999999
         checks = [
-            ("stale_metrics", age_hours > MAX_METRIC_AGE_HOURS),
+            ("stale_metrics", age_hours < 0 or age_hours > MAX_METRIC_AGE_HOURS),
             ("small_account", safe_float(row.get("account_value")) < MIN_ACCOUNT_VALUE),
             ("too_few_fills", safe_int(row.get("fill_count")) < MIN_FILLS),
             ("short_history", safe_float(row.get("span_days")) < MIN_SPAN_DAYS),
@@ -369,6 +369,7 @@ def write_report(
     current: list[str],
     status: str,
     applied: bool,
+    persist: bool = True,
 ) -> dict[str, Any]:
     current_set = set(current)
     selected_addresses = [row["address"] for row in selected]
@@ -408,6 +409,8 @@ def write_report(
             "Only complete histories can qualify; the live cohort changes only when 50 pass."
         ),
     }
+    if not persist:
+        return report
     for path in [
         repo / "copycat_wallet_registry" / "consistency_top50_status.json",
         active / "scanner_state" / "consistency_top50_status.json",
@@ -567,7 +570,8 @@ def main() -> int:
     active = Path(args.active_publisher).expanduser().resolve()
     wallet_path = active / "wallets.txt"
     changed_flag = active / "scanner_state" / "consistency_top50_changed.flag"
-    changed_flag.unlink(missing_ok=True)
+    if args.apply:
+        changed_flag.unlink(missing_ok=True)
 
     con = connect_db(repo)
     try:
@@ -579,9 +583,11 @@ def main() -> int:
 
         if len(ranked) < TARGET:
             report = write_report(
-                repo, active, counts, ranked, selected, excluded, current, "warming", False
+                repo, active, counts, ranked, selected, excluded, current, "warming", False,
+                persist=args.apply,
             )
-            update_scanner_results(active, report)
+            if args.apply:
+                update_scanner_results(active, report)
             record_run(con, report)
             print(
                 f"SAFE HOLD: {len(ranked)} wallets pass all strict rules; "
@@ -609,9 +615,11 @@ def main() -> int:
 
         status = "applied" if applied else ("ready" if changed else "unchanged")
         report = write_report(
-            repo, active, counts, ranked, selected, excluded, current, status, applied
+            repo, active, counts, ranked, selected, excluded, current, status, applied,
+            persist=args.apply,
         )
-        update_scanner_results(active, report)
+        if args.apply:
+            update_scanner_results(active, report)
         record_run(con, report)
         print(
             f"Indexed {counts['indexed_wallets']:,} | "

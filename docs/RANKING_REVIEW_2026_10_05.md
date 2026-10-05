@@ -41,4 +41,48 @@ missing prices, publishing gaps, trading costs and funding. Preserve the old
 index state and historical archive. A new series starts at 100 only at successful
 activation, with a new series identifier and visible methodology/start date;
 ordinary restarts must not reset it. No reset or replacement ranking has been
-implemented or activated by this first-stage patch.
+activated by these patches.
+
+## Follow-up review, 5 October 2026 21:21 UTC
+
+The active cohort was fetched from the public ranking audit, rather than inferred
+from the exported database. All 50 active addresses had fresh public portfolio
+and clearinghouse-state evidence collected in this run. Across their returned
+perpMonth periods (actual timestamps retained, roughly one month):
+
+- 25/50 have negative PnL changes.
+- The sum of the 50 changes is approximately -$972,736.
+- Their current open unrealised PnL totals approximately -$1,033,935.
+
+The last two quantities are separate; do NOT add them together. Neither is the
+Copycat Index return. These are observational results from asynchronous public
+snapshots, not a simulated portfolio backtest or a prediction.
+
+The replacement scorer in performance_top50_v4.py is SHADOW ONLY. It compares
+profit per actual observed day across recent and approximately 90-day perpetual
+windows, with sampled consistency, drawdown recovery and gain-concentration
+components. It does not use profit/current balance as ROI. Its heuristic weights
+are unvalidated; it is not exposed as the live selector. It intentionally cannot
+activate a cohort. Fresh independent trade-history qualification is still needed.
+
+Additional backend fixes implemented:
+
+- Inclusive fill pagination with deduplication and explicit completeness;
+  use unaggregated fills to detect the 10,000-fill API ceiling reliably.
+- Paginated funding history; failed or stalled history cannot be complete.
+- Invalid account/history response shapes fail instead of becoming zero values.
+- API errors preserve good metrics and their original observation time, record
+  the failure separately and back off the failing wallet for 30 minutes.
+- Funding-only days no longer count as active trading days.
+- Each successful scan stores raw perpetual portfolio evidence in SQLite, in
+  the same transaction as its metrics.
+- Preview ranking runs no longer overwrite live report/scanner/flag files.
+- Future-dated metrics fail freshness eligibility.
+- Evidence collection checkpoints every endpoint and resumes after interruption.
+
+Fourteen offline regression tests plus the worker and selector self-tests pass.
+This patch does not change frontend files, publish a new cohort, reset the index,
+or deploy code onto the user's Windows scanner. The remaining activation work
+includes a fresh broad challenger scan, validated live selection, correction of
+the index's allocation amplification and per-update return clamp, and an archived,
+versioned one-time index restart. Preserve the old performance series.
