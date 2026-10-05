@@ -222,6 +222,26 @@ def choose_candidate(
         if observed is None or observed < live_cutoff:
             return address
 
+    # Reserve alternating non-member scans for previously profitable challengers.
+    # An expanding discovery backlog must not indefinitely exclude known traders
+    # from ranking simply because their evidence expired.
+    con.execute("CREATE TABLE IF NOT EXISTS profit_scan_scheduler (id INTEGER PRIMARY KEY CHECK(id=1), turn INTEGER NOT NULL)")
+    con.execute("INSERT OR IGNORE INTO profit_scan_scheduler VALUES (1, 0)")
+    turn = con.execute("SELECT turn FROM profit_scan_scheduler WHERE id=1").fetchone()[0]
+    challenger = con.execute(
+        """SELECT address FROM wallet_profit_metrics
+           WHERE score_ready=1 AND history_complete=1 AND net_pnl>0
+             AND account_value>=5000 AND span_days>=30 AND fill_count>=100
+             AND observed_at_utc<?
+           ORDER BY observed_at_utc ASC, net_pnl DESC, address ASC
+           LIMIT 1""",
+        (utc_text(normal_cutoff),),
+    ).fetchone()
+    con.execute("UPDATE profit_scan_scheduler SET turn=turn+1 WHERE id=1")
+    con.commit()
+    if turn % 2 == 0 and challenger and valid_wallet(challenger["address"]):
+        return challenger["address"]
+
     rows = con.execute(
         """
         SELECT
@@ -256,7 +276,7 @@ def choose_candidate(
         observed = parse_utc(row["observed_at_utc"])
         if observed is None or observed < normal_cutoff:
             return address
-    return None
+    return challenger["address"] if challenger and valid_wallet(challenger["address"]) else None
 
 
 def fetch_fills(address: str, start_ms: int, end_ms: int) -> list[dict[str, Any]]:
