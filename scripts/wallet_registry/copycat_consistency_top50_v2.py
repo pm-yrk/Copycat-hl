@@ -348,7 +348,8 @@ def compact_member(row: dict[str, Any]) -> dict[str, Any]:
         "score": safe_float(row.get("consistency_score")),
         "net_pnl_usd": round(safe_float(row.get("net_pnl")), 2),
         "account_value_usd": round(safe_float(row.get("account_value")), 2),
-        "roi_pct": round(safe_float(row.get("roi")) * 100, 4),
+        "roi_pct": None if row.get('performance_evidence') else round(safe_float(row.get("roi")) * 100, 4),
+        **({'performance_evidence': row['performance_evidence']} if row.get('performance_evidence') else {}),
         "fills": safe_int(row.get("fill_count")),
         "active_days": safe_int(row.get("active_days")),
         "profitable_weeks": safe_int(row.get("profitable_weeks")),
@@ -409,6 +410,13 @@ def write_report(
             "Only complete histories can qualify; the live cohort changes only when 50 pass."
         ),
     }
+    if METHOD == 'copycat_perpetual_profit_v4':
+        report['note'] = ('Fresh trade-history eligibility plus positive recent and approximately 90-day perpetual PnL. '
+            'Ranked by dollar profitability, sampled consistency, recovery and concentration; not a percentage ROI ranking.')
+        report['rules'].update({'maximum_metric_age_hours': 24,
+            'maximum_portfolio_age_hours': 24, 'minimum_long_term_history_days': 90,
+            'weights': {'long_term_profit': 35, 'recent_profit': 25, 'sampled_consistency': 20,
+                        'sampled_recovery': 15, 'gain_concentration': 5}})
     if not persist:
         return report
     for path in [
@@ -474,6 +482,8 @@ def update_scanner_results(active: Path, report: dict[str, Any]) -> None:
             "The selected cohort is the exact top 50 with no legacy retention band."
         ),
     }
+    if report.get('method') == 'copycat_perpetual_profit_v4':
+        payload['method_note'] = report['note']
     atomic_text(path, json.dumps(payload, indent=2, ensure_ascii=False) + "\n")
 
 
@@ -552,6 +562,7 @@ def self_test() -> None:
 
 
 def main() -> int:
+    global METHOD
     parser = argparse.ArgumentParser()
     parser.add_argument("--repo-root", default=r"C:\dev\hyper_wallet_tracker_saas_v1")
     parser.add_argument(
@@ -560,7 +571,17 @@ def main() -> int:
     )
     parser.add_argument("--apply", action="store_true")
     parser.add_argument("--self-test", action="store_true")
+    parser.add_argument('--performance-v4', action='store_true', help='Prepare a ranking using fresh perpetual PnL evidence')
+    parser.add_argument('--report-path', type=Path, help='Write a review report outside live scanner files')
     args = parser.parse_args()
+    activation_path = Path(args.active_publisher) / 'scanner_state' / 'index_activation.json'
+    activation = json.loads(activation_path.read_text()) if activation_path.exists() else None
+    if activation:
+        if activation.get('ranking_method') != 'copycat_perpetual_profit_v4':
+            parser.error('Unknown active ranking method; refusing legacy overwrite')
+        args.performance_v4 = True
+    if args.performance_v4 and args.apply and not activation:
+        parser.error('V4 activation requires the guarded index rollout; --apply is disabled for this review mode.')
 
     if args.self_test:
         self_test()
@@ -577,8 +598,18 @@ def main() -> int:
     try:
         metric_rows, counts = load_rows(con)
         qualified, excluded = qualify(metric_rows, utc_now())
-        ranked = rank(qualified)
+        if args.performance_v4:
+            from performance_top50_v4 import rank_qualified
+            METHOD = 'copycat_perpetual_profit_v4'
+            has_evidence = con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='wallet_performance_evidence'").fetchone()
+            evidence = [json.loads(row[0]) for row in con.execute('SELECT evidence_json FROM wallet_performance_evidence')] if has_evidence else []
+            ranked, additional_exclusions = rank_qualified(qualified, evidence, utc_now())
+            excluded.update(additional_exclusions)
+        else:
+            ranked = rank(qualified)
         current = read_wallets(wallet_path)
+        if activation:
+            current = activation['wallets']
         selected = select(ranked, current)
 
         if len(ranked) < TARGET:
@@ -589,6 +620,8 @@ def main() -> int:
             if args.apply:
                 update_scanner_results(active, report)
             record_run(con, report)
+            if args.report_path:
+                atomic_text(args.report_path, json.dumps(report, indent=2))
             print(
                 f"SAFE HOLD: {len(ranked)} wallets pass all strict rules; "
                 f"{TARGET} are required. The current live 50 were not changed."
@@ -610,6 +643,12 @@ def main() -> int:
             atomic_text(wallet_path, "\n".join(selected_addresses) + "\n")
             if read_wallets(wallet_path) != selected_addresses:
                 raise RuntimeError("New live wallet file failed verification.")
+            if activation:
+                # The manifest is authoritative to the publisher. Keep its series
+                # identifier unchanged when membership changes; no repeat reset.
+                activation['wallets'] = selected_addresses
+                activation['selected'] = [compact_member(row) for row in selected]
+                activation['cohort_updated_at_utc'] = utc_text()
             atomic_text(changed_flag, utc_text() + "\n")
             applied = True
 
@@ -619,8 +658,14 @@ def main() -> int:
             persist=args.apply,
         )
         if args.apply:
+            if activation:
+                activation['selected'] = [compact_member(row) for row in selected]
+                activation['method_note'] = report['note']
+                atomic_text(activation_path, json.dumps(activation, indent=2))
             update_scanner_results(active, report)
         record_run(con, report)
+        if args.report_path:
+            atomic_text(args.report_path, json.dumps(report, indent=2))
         print(
             f"Indexed {counts['indexed_wallets']:,} | "
             f"deeply scored {counts['deeply_scored_wallets']:,} | "

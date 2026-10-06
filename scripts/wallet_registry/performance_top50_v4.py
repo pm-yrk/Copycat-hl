@@ -55,7 +55,7 @@ def percentiles(values):
             / (len(ordered) - 1) for key, value in values.items()}
 
 
-def rank_evidence(records, now=None):
+def rank_evidence(records, now=None, selection_limit=50):
     now = now or dt.datetime.now(dt.timezone.utc)
     eligible, excluded = [], []
     seen = set()
@@ -79,6 +79,29 @@ def rank_evidence(records, now=None):
             + 5 * (1 - row['largest_positive_interval_share']), 6)
     eligible.sort(key=lambda r: (-r['score'], r['address']))
     return {'method': METHOD, 'shadow_only': True, 'eligible': len(eligible),
-            'selected': eligible[:50], 'excluded': excluded,
+            'selected': eligible[:selection_limit], 'excluded': excluded,
             'can_activate': False,
             'note': 'Research ranking only. Requires independent fresh trade-history qualification before live selection. Dollar profitability rewards larger profitable accounts; this is not a capital-return ranking. Sampled drawdowns understate losses between observations.'}
+
+
+def rank_qualified(metrics, evidence, now):
+    """Join fresh independently qualified trade records to portfolio evidence.
+
+    Evidence-only research results cannot enter this production-ready report.
+    The caller remains responsible for the legacy minimum activity/history gates.
+    """
+    fresh = {}
+    for row in metrics:
+        observed = dt.datetime.fromisoformat(row['observed_at_utc'].replace('Z', '+00:00'))
+        if observed.tzinfo is None:
+            observed = observed.replace(tzinfo=dt.timezone.utc)
+        if 0 <= (now - observed).total_seconds() <= 86400:
+            fresh[row['address']] = row
+    result = rank_evidence([r for r in evidence if r.get('address') in fresh], now, selection_limit=None)
+    ranked = []
+    for rank_number, row in enumerate(result['selected'], 1):
+        original = fresh[row['address']]
+        ranked.append({**original, 'consistency_score': row['score'],
+            'profit_factor': float(original.get('gross_profit', 0)) / max(float(original.get('gross_loss', 0)), 1),
+            'universe_rank': rank_number, 'roi': None, 'performance_evidence': row})
+    return ranked, {'portfolio_or_freshness_excluded': len(metrics) - len(ranked)}

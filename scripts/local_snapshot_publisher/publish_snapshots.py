@@ -40,6 +40,7 @@ DEFAULT_WALLET_FILE = SCRIPT_DIR / "wallets.txt"
 DEFAULT_OUT_DIR = ROOT / "copycat_snapshot_out"
 HL_INFO_URL = "https://api.hyperliquid.xyz/info"
 PUBLISHER_VERSION = "snapshot-v2.3"
+_ACTIVE_INDEX_MANIFEST = None
 
 
 TOKEN_NAMES = {
@@ -199,6 +200,21 @@ def is_wallet(value: str) -> bool:
 
 
 def load_wallets(path: Path, max_wallets: int) -> List[str]:
+    global _ACTIVE_INDEX_MANIFEST
+    manifest_path = SCRIPT_DIR / 'scanner_state' / 'index_activation.json'
+    _ACTIVE_INDEX_MANIFEST = None
+    if manifest_path.exists():
+        manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+        wallets = manifest.get('wallets', [])
+        if (manifest.get('ranking_method') != 'copycat_perpetual_profit_v4'
+                or manifest.get('index_method') != 'copycat_equal_wallet_net_exposure_v3'
+                or len(wallets) != 50 or len(set(wallets)) != 50
+                or [r.get('wallet') for r in manifest.get('selected', [])] != wallets
+                or any(not re.fullmatch(r'0x[0-9a-f]{40}', a) for a in wallets)
+                or not re.fullmatch(r'[a-zA-Z0-9_-]{8,80}', manifest.get('series_id', ''))):
+            raise ValueError('Invalid index activation manifest; refusing mixed-cohort publication')
+        _ACTIVE_INDEX_MANIFEST = manifest
+        return wallets
     if not path.exists():
         raise FileNotFoundError(f"Wallet file not found: {path}")
     seen = set()
@@ -1190,6 +1206,11 @@ def index_capped_normalize(scores: Dict[str, float], maximum_weight: float) -> D
 
 
 def build_consensus_index_targets(states: List[Dict[str, Any]], wallets: List[str], now_ms: int, mids: Dict[str, float]) -> List[Dict[str, Any]]:
+    if _ACTIVE_INDEX_MANIFEST:
+        from performance_index_v3 import build_targets
+        if wallets != _ACTIVE_INDEX_MANIFEST['wallets']:
+            raise ValueError('Wallet cohort changed during index capture')
+        return [{**row, 'ts_ms': now_ms} for row in build_targets(states, wallets, INDEX_STABLECOINS)]
     quality = index_wallet_quality_weights(wallets)
     assets: Dict[str, Dict[str, Any]] = {}
     for state in states:
@@ -1368,6 +1389,14 @@ def copycat_direct_benchmarks(state: Dict[str, Any], start_ts_ms: int, mids: Dic
 
 def build_performance_index_snapshot(now_ms: int, mids: Dict[str, float], signals: List[Dict[str, Any]], targets: List[Dict[str, Any]], config: Config) -> Dict[str, Any]:
     ensure_copycat_publisher_lock()
+    if _ACTIVE_INDEX_MANIFEST:
+        from performance_index_v3 import record, public_snapshot
+        root = performance_index_state_path().parent / 'series'
+        prices = {**mids, 'xyz:SP500': _copycat_sp500_mid()}
+        state = record(root, _ACTIVE_INDEX_MANIFEST['series_id'], now_ms, targets, prices)
+        payload = public_snapshot(root, state)
+        payload['previous_series_archive'] = _ACTIVE_INDEX_MANIFEST.get('archive_name')
+        return payload
     path = performance_index_state_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     state = read_performance_index_state(path)
@@ -2674,6 +2703,11 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
     collection_started_ms = int(time.time() * 1000)
     now_ms = collection_started_ms
     scanner = read_scanner_results()
+    if _ACTIVE_INDEX_MANIFEST:
+        scanner = {**scanner, 'source': 'copycat_perpetual_profit_v4',
+            'selected_wallet_count': 50, 'selected_wallets': wallets,
+            'top_rows': _ACTIVE_INDEX_MANIFEST.get('selected', []),
+            'method_note': _ACTIVE_INDEX_MANIFEST.get('method_note', 'Fresh perpetual-profit ranking')}
     scanner_scored = safe_int(scanner.get('candidate_wallets_scored'))
     scanner_discovered = safe_int(scanner.get('wallets_discovered_from_recent_trades'))
     scanner_selected = safe_int(scanner.get('selected_wallet_count'))
@@ -3026,10 +3060,14 @@ def build_snapshots(wallets: List[str], config: Config) -> Dict[str, Tuple[str, 
     leverage = round(open_value_total / tracked_account_value, 2) if tracked_account_value else 0.0
     insights.append({"type": "gross_leverage", "label": "Gross leverage", "coin": None, "detail": f"{leverage:.2f}x across tracked wallets", "row": {"gross_leverage": leverage}})
 
+    public_targets = targets[:80]
+    if _ACTIVE_INDEX_MANIFEST:
+        from performance_index_v3 import display_targets
+        public_targets = display_targets(targets, now_ms)
     feed = {
         "summary": summary,
         "signals": signals,
-        "targets": targets[:80],
+        "targets": public_targets,
         "flow": flow[:80],
         "orders": orders,
         "insights": insights[:8],
